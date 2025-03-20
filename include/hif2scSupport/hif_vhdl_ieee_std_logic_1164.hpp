@@ -1,0 +1,92 @@
+/// @file hif_vhdl_ieee_std_logic_1164.hpp
+/// @brief
+/// Copyright (c) 2024-2025, Electronic Systems Design (ESD) Group,
+/// Univeristy of Verona.
+/// This file is distributed under the BSD 2-Clause License.
+/// See LICENSE.md for details.
+
+#pragma once
+
+#include "hif2scSupport/hif2scSupport/config.hpp"
+
+namespace hif_vhdl_ieee_std_logic_1164
+{
+
+#ifndef HIF2SCSUPPORT_USE_HDTLIB
+typedef sc_dt::sc_logic hif_vhdl_x01;
+typedef sc_dt::sc_logic hif_vhdl_x01z;
+typedef sc_dt::sc_logic hif_vhdl_ux01;
+typedef sc_dt::sc_logic hif_vhdl_ux01z;
+#else
+typedef hdtlib::hl_logic_t hif_vhdl_x01;
+typedef hdtlib::hl_logic_t hif_vhdl_x01z;
+typedef hdtlib::hl_logic_t hif_vhdl_ux01;
+typedef hdtlib::hl_logic_t hif_vhdl_ux01z;
+#endif
+
+HIF2SCSUPPORT_EXPORT
+sc_dt::sc_logic hif_vhdl_resolved(const sc_dt::sc_lv_base &s);
+
+HIF2SCSUPPORT_EXPORT
+bool hif_vhdl_to_bit(const sc_dt::sc_logic s, const bool xmap = false);
+
+template <int size>
+sc_dt::sc_bv<size> hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap = false);
+
+template <int size>
+sc_dt::sc_lv<size> hif_vhdl_to_x01(const sc_dt::sc_lv<size> &s);
+
+HIF2SCSUPPORT_EXPORT
+sc_dt::sc_logic hif_vhdl_to_x01(const sc_dt::sc_logic &s);
+
+template <int size>
+sc_dt::sc_lv<size> hif_vhdl_to_ux01(const sc_dt::sc_lv<size> &s);
+
+HIF2SCSUPPORT_EXPORT
+sc_dt::sc_logic hif_vhdl_to_ux01(const sc_dt::sc_logic &s);
+
+#ifdef HIF2SCSUPPORT_USE_HDTLIB
+template <int size>
+hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s);
+
+HIF2SCSUPPORT_EXPORT
+bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap = false);
+
+template <int size>
+hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, const bool xmap = false);
+
+template <int size>
+hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s);
+
+HIF2SCSUPPORT_EXPORT
+hdtlib::hl_logic_t hif_vhdl_to_x01(const hdtlib::hl_logic_t &s);
+
+template <int size>
+hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s);
+
+HIF2SCSUPPORT_EXPORT
+hdtlib::hl_logic_t hif_vhdl_to_ux01(const hdtlib::hl_logic_t &s);
+#endif
+
+//// FUNCTION rising_edge  (SIGNAL s : std_ulogic) RETURN BOOLEAN;
+//ld->declarations.push_back(_makeAttribute("rising_edge", factory.boolean(), hif::copy(std_ulogic), factory.noValue(), false, hifFormat));
+//// FUNCTION falling_edge (SIGNAL s : std_ulogic) RETURN BOOLEAN;
+//ld->declarations.push_back(_makeAttribute("falling_edge", factory.boolean(), hif::copy(std_ulogic), factory.noValue(), false, hifFormat));
+
+HIF2SCSUPPORT_EXPORT
+bool hif_vhdl_is_x(const sc_dt::sc_logic s);
+
+HIF2SCSUPPORT_EXPORT
+bool hif_vhdl_is_x(const sc_dt::sc_lv_base s);
+
+#ifdef HIF2SCSUPPORT_USE_HDTLIB
+HIF2SCSUPPORT_EXPORT
+bool hif_vhdl_is_x(const hdtlib::hl_logic_t s);
+
+template <int size>
+bool hif_vhdl_is_x(const hdtlib::hl_lv_t<size> s);
+#endif
+
+} // namespace hif_vhdl_ieee_std_logic_1164
+
+#include "hif2scSupport/hif_vhdl_ieee_std_logic_1164.i.hpp"
