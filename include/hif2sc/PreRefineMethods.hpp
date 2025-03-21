@@ -36,7 +36,7 @@ void fixMiscIssues(
 /// @param sem The semantics.
 /// @return true if found at least one conflicting sub program.
 ///
-bool fixConflictingSubPrograms(hif::System *o, const bool keepBit, hif::semantics::ILanguageSemantics *sem);
+auto fixConflictingSubPrograms(hif::System *o, bool keepBit, hif::semantics::ILanguageSemantics *sem) -> bool;
 
 /// @brief Add utility library definitions and references.
-bool fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem, const hif2scParseLine &cLine);
+auto fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem, const hif2scParseLine &cLine) -> bool;

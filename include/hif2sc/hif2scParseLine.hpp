@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <hif/hif.hpp>
 
@@ -15,17 +15,17 @@ class hif2scParseLine : public hif::application_utils::CommandLineParser
 {
 public:
     hif2scParseLine(int argc, char *argv[]);
-    virtual ~hif2scParseLine();
+    ~hif2scParseLine() override;
 
-    bool useResolved() const;
-    bool useHDTLib() const;
-    bool useCpp98() const;
-    bool keepBit() const;
-    bool noRealEquals() const;
-    uint64_t getMaxLines() const;
-    uint64_t getMaxWhen() const;
-    std::string getSourcesExtension() const;
-    std::string getHeadersExtension() const;
+    auto useResolved() const -> bool;
+    auto useHDTLib() const -> bool;
+    auto useCpp98() const -> bool;
+    auto keepBit() const -> bool;
+    auto noRealEquals() const -> bool;
+    auto getMaxLines() const -> uint64_t;
+    auto getMaxWhen() const -> uint64_t;
+    auto getSourcesExtension() const -> std::string;
+    auto getHeadersExtension() const -> std::string;
 
 protected:
     /// @brief Validates and configures the arguments.
@@ -43,5 +43,5 @@ protected:
 
 private:
     hif2scParseLine(const hif2scParseLine &);
-    hif2scParseLine &operator=(const hif2scParseLine &);
+    auto operator=(const hif2scParseLine &) -> hif2scParseLine &;
 };

@@ -262,12 +262,12 @@ PrintSystemCVisitor::PrintSystemCVisitor(
     , _sem(hif::semantics::SystemCSemantics::getInstance())
     , _ctmList(ctmList)
     , _outstream(stream)
-    , _DesignUnitScope()
-    , _LibraryDefScope()
-    , _leftAngular(0LL)
+    , _design_unit_scope()
+    , _library_def_scope()
+    , _left_angular(0LL)
     , _dataTypesString("_dataTypes")
     , _baseName(baseName)
-    , _currentFileExtension(extension)
+    , _current_file_extension(extension)
 
 {
     hif::application_utils::initializeLogHeader("HIF2SC", "PrintSystemCVisitor");
@@ -285,47 +285,47 @@ PrintSystemCVisitor::PrintSystemCVisitor(ConstTemplateMap &ctmList)
     , _sem(hif::semantics::SystemCSemantics::getInstance())
     , _ctmList(ctmList)
     , _outstream(nullptr)
-    , _DesignUnitScope()
-    , _LibraryDefScope()
-    , _leftAngular(0LL)
+    , _design_unit_scope()
+    , _library_def_scope()
+    , _left_angular(0LL)
     , _dataTypesString("_dataTypes")
     , _baseName("")
-    , _currentFileExtension("")
+    , _current_file_extension("")
 {
     hif::application_utils::initializeLogHeader("HIF2SC", "PrintSystemCVisitor");
 }
 
 PrintSystemCVisitor::~PrintSystemCVisitor()
 {
-    messageDebugAssert(_leftAngular == 0LL, "Opened left angular parens should be zero.", nullptr, nullptr);
+    messageDebugAssert(_left_angular == 0LL, "Opened left angular parens should be zero.", nullptr, nullptr);
     hif::application_utils::restoreLogHeader();
 }
 
-DesignUnit *PrintSystemCVisitor::getCurrentDesignUnit() { return _DesignUnitScope.back(); }
+DesignUnit *PrintSystemCVisitor::getCurrentDesignUnit() { return _design_unit_scope.back(); }
 
 void PrintSystemCVisitor::setCurrentDesignUnit(DesignUnit *du)
 {
     if (du == nullptr)
         return;
-    _DesignUnitScope.push_back(du);
+    _design_unit_scope.push_back(du);
 }
 
-LibraryDef *PrintSystemCVisitor::getCurrentLibraryDef() { return _LibraryDefScope.back(); }
+LibraryDef *PrintSystemCVisitor::getCurrentLibraryDef() { return _library_def_scope.back(); }
 
 void PrintSystemCVisitor::setCurrentLibraryDef(LibraryDef *libDef)
 {
     if (libDef == nullptr)
         return;
-    _LibraryDefScope.push_back(libDef);
+    _library_def_scope.push_back(libDef);
 }
 
-std::list<DesignUnit *> &PrintSystemCVisitor::getDesignUnitScope() { return _DesignUnitScope; }
+std::list<DesignUnit *> &PrintSystemCVisitor::getDesignUnitScope() { return _design_unit_scope; }
 
-void PrintSystemCVisitor::setDesignUnitScope(std::list<DesignUnit *> &DUScope) { _DesignUnitScope = DUScope; }
+void PrintSystemCVisitor::setDesignUnitScope(std::list<DesignUnit *> &DUScope) { _design_unit_scope = DUScope; }
 
-std::list<LibraryDef *> &PrintSystemCVisitor::getLibraryDefScope() { return _LibraryDefScope; }
+std::list<LibraryDef *> &PrintSystemCVisitor::getLibraryDefScope() { return _library_def_scope; }
 
-void PrintSystemCVisitor::setLibraryDefScope(std::list<LibraryDef *> &LDScope) { _LibraryDefScope = LDScope; }
+void PrintSystemCVisitor::setLibraryDefScope(std::list<LibraryDef *> &LDScope) { _library_def_scope = LDScope; }
 
 void PrintSystemCVisitor::clearConstTemplateMap(PrintSystemCVisitor::ConstTemplateMap &list)
 {
@@ -341,16 +341,16 @@ PrintSystemCVisitor::BackupOpt PrintSystemCVisitor::_backupVisitMode()
 {
     BackupOpt backupOptions;
     backupOptions._opt             = _opt;
-    backupOptions._DesignUnitScope = _DesignUnitScope;
-    backupOptions._LibraryDefScope = _LibraryDefScope;
+    backupOptions._design_unit_scope = _design_unit_scope;
+    backupOptions._library_def_scope = _library_def_scope;
     return backupOptions;
 }
 
 void PrintSystemCVisitor::_restoreVisitMode(BackupOpt &backupOptions)
 {
     _opt             = backupOptions._opt;
-    _DesignUnitScope = backupOptions._DesignUnitScope;
-    _LibraryDefScope = backupOptions._LibraryDefScope;
+    _design_unit_scope = backupOptions._design_unit_scope;
+    _library_def_scope = backupOptions._library_def_scope;
 }
 
 int PrintSystemCVisitor::_printStateTable(StateTable *st, DesignUnit *du)
@@ -998,9 +998,9 @@ int PrintSystemCVisitor::visitBitvector(Bitvector &o)
     }
 
     *(_outstream) << "< ";
-    ++_leftAngular;
+    ++_left_angular;
     _printTypeSpanSize(o.getSpan());
-    --_leftAngular;
+    --_left_angular;
     *(_outstream) << " >";
 
     return 0;
@@ -1147,7 +1147,7 @@ int PrintSystemCVisitor::visitExpression(Expression &o)
 
     // Also op_ref/op_deref expressions must be printed inside brackets.
     bool needWrapParen = _needWrapParen(&o);
-    if (o.getOperator() == op_gt && _leftAngular > 0) {
+    if (o.getOperator() == op_gt && _left_angular > 0) {
         // If the operator is '>' and we are inside two template arguments
         // (i.e., at least two angle brackets are opened), add an enclosing
         // bracket around the expression to prevent a compile error.
@@ -1454,9 +1454,9 @@ int PrintSystemCVisitor::visitIntValue(IntValue &o)
     } else // SystemC types
     {
         (*_outstream) << "static_cast< ";
-        ++_leftAngular;
+        ++_left_angular;
         t->acceptVisitor(*this);
-        --_leftAngular;
+        --_left_angular;
         (*_outstream) << " >( ";
         *(_outstream) << _getNativeConstantModifier(o.getValue(), isSigned, 64LL);
         (*_outstream) << " )";
@@ -1857,11 +1857,11 @@ int PrintSystemCVisitor::visitConst(Const &o)
 
 int PrintSystemCVisitor::visitDesignUnit(DesignUnit &o)
 {
-    std::list<DesignUnit *> restore = _DesignUnitScope;
+    std::list<DesignUnit *> restore = _design_unit_scope;
 
     // Sometimes it is already set before the call by header or impl. visitors.
-    if (_DesignUnitScope.empty() || _DesignUnitScope.back()->getName() != o.getName()) {
-        _DesignUnitScope.push_back(&o);
+    if (_design_unit_scope.empty() || _design_unit_scope.back()->getName() != o.getName()) {
+        _design_unit_scope.push_back(&o);
     }
 
     if (!_opt.printImplementation) {
@@ -1870,7 +1870,7 @@ int PrintSystemCVisitor::visitDesignUnit(DesignUnit &o)
         _printModuleImplementation(o);
     }
 
-    _DesignUnitScope = restore;
+    _design_unit_scope = restore;
 
     return 0;
 }
@@ -2131,11 +2131,11 @@ int PrintSystemCVisitor::visitLibraryDef(hif::LibraryDef &o)
     _printDefineMacros(&o);
     _printAdditionalKeywords(&o);
 
-    std::list<LibraryDef *> restore = _LibraryDefScope;
+    std::list<LibraryDef *> restore = _library_def_scope;
 
     // Sometimes it is already set before the call by header or impl. visitors.
-    if (_LibraryDefScope.empty() || _LibraryDefScope.back()->getName() != o.getName())
-        _LibraryDefScope.push_back(&o);
+    if (_library_def_scope.empty() || _library_def_scope.back()->getName() != o.getName())
+        _library_def_scope.push_back(&o);
 
     if (!_opt.printImplementation) {
         _printLibraryDeclaration(o);
@@ -2143,7 +2143,7 @@ int PrintSystemCVisitor::visitLibraryDef(hif::LibraryDef &o)
         _printLibraryImplementation(o);
     }
 
-    _LibraryDefScope = restore;
+    _library_def_scope = restore;
     return 0;
 }
 
@@ -2226,7 +2226,7 @@ int PrintSystemCVisitor::visitPort(Port &o)
             if (isArray) {
                 // print as sc_vector
                 *(_outstream) << "sc_core::sc_vector< ";
-                ++_leftAngular;
+                ++_left_angular;
             }
 
             switch (o.getDirection()) {
@@ -2251,29 +2251,29 @@ int PrintSystemCVisitor::visitPort(Port &o)
                     *(_outstream) << "_resolved ";
                 else {
                     *(_outstream) << "_rv< ";
-                    ++_leftAngular;
+                    ++_left_angular;
                     _printTypeSpanSize(hif::typeGetSpan(o.getType(), _sem));
-                    --_leftAngular;
+                    --_left_angular;
                     *(_outstream) << " > ";
                 }
             } else if (dontExpand) {
                 *(_outstream) << "< ";
-                ++_leftAngular;
+                ++_left_angular;
                 o.getType()->acceptVisitor(*this);
-                --_leftAngular;
+                --_left_angular;
                 *(_outstream) << " > ";
             } else {
                 *(_outstream) << "< ";
-                ++_leftAngular;
+                ++_left_angular;
                 // First of 2-step to achieve a correct composite-type print
                 _visitType(baseType, false);
-                --_leftAngular;
+                --_left_angular;
                 *(_outstream) << " > ";
             }
 
             if (isArray) {
                 // end of sc_vector template type
-                --_leftAngular;
+                --_left_angular;
                 *(_outstream) << "> ";
             }
         }
@@ -2358,7 +2358,7 @@ int PrintSystemCVisitor::visitProcedure(Procedure &o)
 
         if (_isCppDestructor(&o)) {
             *(_outstream) << "~";
-            _printSubProgramImplementation(o, _DesignUnitScope.back()->getName());
+            _printSubProgramImplementation(o, _design_unit_scope.back()->getName());
         } else
             _printSubProgramImplementation(o);
         _outstream->closeBlock();
@@ -3205,8 +3205,8 @@ void PrintSystemCVisitor::_printSensitivityItem(Value *name, bool *freshStart, b
 
 PrintSystemCVisitor::BackupOpt::BackupOpt()
     : _opt()
-    , _DesignUnitScope()
-    , _LibraryDefScope()
+    , _design_unit_scope()
+    , _library_def_scope()
 {
 }
 
@@ -3214,8 +3214,8 @@ PrintSystemCVisitor::BackupOpt::~BackupOpt() {}
 
 PrintSystemCVisitor::BackupOpt::BackupOpt(const BackupOpt &b)
     : _opt(b._opt)
-    , _DesignUnitScope(b._DesignUnitScope)
-    , _LibraryDefScope(b._LibraryDefScope)
+    , _design_unit_scope(b._design_unit_scope)
+    , _library_def_scope(b._library_def_scope)
 {
 }
 
@@ -3224,8 +3224,8 @@ PrintSystemCVisitor::BackupOpt &PrintSystemCVisitor::BackupOpt::operator=(const 
     if (this == &b)
         return *this;
     _opt             = b._opt;
-    _DesignUnitScope = b._DesignUnitScope;
-    _LibraryDefScope = b._LibraryDefScope;
+    _design_unit_scope = b._design_unit_scope;
+    _library_def_scope = b._library_def_scope;
     return *this;
 }
 
@@ -3935,7 +3935,7 @@ void PrintSystemCVisitor::_printSignalTypeAndName(Signal *o)
             while (tmp != nullptr) {
                 // print as sc_vector
                 *(_outstream) << "sc_core::sc_vector< ";
-                ++_leftAngular;
+                ++_left_angular;
                 tmp = dynamic_cast<Array *>(hif::semantics::getBaseType(tmp->getType(), false, _sem, true));
             }
         }
@@ -3946,18 +3946,18 @@ void PrintSystemCVisitor::_printSignalTypeAndName(Signal *o)
             Bit *bT = dynamic_cast<Bit *>(o->getType());
             if (bT == nullptr) {
                 *(_outstream) << "_rv< ";
-                ++_leftAngular;
+                ++_left_angular;
                 _printTypeSpanSize(hif::typeGetSpan(o->getType(), _sem));
-                --_leftAngular;
+                --_left_angular;
                 *(_outstream) << " > ";
             } else
                 *(_outstream) << "_resolved ";
         } else {
             *(_outstream) << "< ";
-            ++_leftAngular;
+            ++_left_angular;
             // First of 2-step to achieve a correct composite-type print
             _visitType(o->getType(), false);
-            --_leftAngular;
+            --_left_angular;
             *(_outstream) << " > ";
         }
 
@@ -3965,7 +3965,7 @@ void PrintSystemCVisitor::_printSignalTypeAndName(Signal *o)
             Array *tmp = array;
             while (tmp != nullptr) {
                 // end of sc_vector template type
-                --_leftAngular;
+                --_left_angular;
                 *(_outstream) << "> ";
                 tmp = dynamic_cast<Array *>(hif::semantics::getBaseType(tmp->getType(), false, _sem, true));
             }
@@ -4572,15 +4572,15 @@ void PrintSystemCVisitor::_printModuleDeclaration(DesignUnit &o)
     messageDebugAssert(!o.views.empty() && o.views.size() == 1, "Unexpected number of views", &o, _sem);
     View *duView = o.views.front();
 
-    if (_DesignUnitScope.size() == 1) // Top module.
+    if (_design_unit_scope.size() == 1) // Top module.
     {
         _printCommonHeader(o.getName(), duView->getLanguageID());
         _printHeaderGuardBegin(o.getName());
         _printIncludes(duView->libraries, &o);
 
         // If the DesignUnit is part of a LibraryDef, put it in the proper namespace.
-        if (!_LibraryDefScope.empty() && _LibraryDefScope.back() != nullptr)
-            _openLibraryDefNamespace(_LibraryDefScope.back());
+        if (!_library_def_scope.empty() && _library_def_scope.back() != nullptr)
+            _openLibraryDefNamespace(_library_def_scope.back());
     } else
         _outstream->newLine(2); // Inner module.
 
@@ -4629,11 +4629,11 @@ void PrintSystemCVisitor::_printModuleDeclaration(DesignUnit &o)
     _outstream->unindent();
     _printModuleEnd();
 
-    if (_DesignUnitScope.size() == 1) // Top module
+    if (_design_unit_scope.size() == 1) // Top module
     {
         // If the DesignUnit is part of a LibraryDef, put it in the proper namespace.
-        if (!_LibraryDefScope.empty() && _LibraryDefScope.back() != nullptr)
-            _closeLibraryDefNamespace(_LibraryDefScope.back());
+        if (!_library_def_scope.empty() && _library_def_scope.back() != nullptr)
+            _closeLibraryDefNamespace(_library_def_scope.back());
 
         _printHeaderGuardEnd(o);
     }
@@ -4645,7 +4645,7 @@ void PrintSystemCVisitor::_printModuleBegin(View *duView)
     if (!duView->templateParameters.empty())
         _outstream->newLine();
 
-    *(_outstream) << "class " << _DesignUnitScope.back()->getName();
+    *(_outstream) << "class " << _design_unit_scope.back()->getName();
     _outstream->indent();
 
     if ((duView->getLanguageID() == hif::rtl || duView->getLanguageID() == hif::tlm) || !duView->inheritances.empty()) {
@@ -4702,23 +4702,23 @@ void PrintSystemCVisitor::_printModuleCtorDtor(View *duView)
     if (!_opt.printImplementation) {
         // Constructor
         _outstream->newLine();
-        *(_outstream) << "SC_HAS_PROCESS( " << _DesignUnitScope.back()->getName() << " );";
+        *(_outstream) << "SC_HAS_PROCESS( " << _design_unit_scope.back()->getName() << " );";
         _outstream->newLine(2);
-        *(_outstream) << _DesignUnitScope.back()->getName() << "( sc_core::sc_module_name name_";
+        *(_outstream) << _design_unit_scope.back()->getName() << "( sc_core::sc_module_name name_";
         _printNotCompileTimeTemplates(duView, CONST_TEMPL_CTOR_DECL);
         *(_outstream) << " );";
 
         _outstream->newLine();
 
         // Destructor
-        *(_outstream) << "~" << _DesignUnitScope.back()->getName() << "();";
+        *(_outstream) << "~" << _design_unit_scope.back()->getName() << "();";
         _outstream->newLine(2);
     } else {
         // Constructor
         _outstream->newLine();
         _printScopeTemplate();
         _printScopeHierarchy();
-        *(_outstream) << _DesignUnitScope.back()->getName() << "( sc_core::sc_module_name name_";
+        *(_outstream) << _design_unit_scope.back()->getName() << "( sc_core::sc_module_name name_";
         _printNotCompileTimeTemplates(duView, CONST_TEMPL_CTOR_IMPL);
         *(_outstream) << " )";
 
@@ -4735,7 +4735,7 @@ void PrintSystemCVisitor::_printModuleCtorDtor(View *duView)
         // Destructor
         _printScopeTemplate();
         _printScopeHierarchy();
-        *(_outstream) << "~" << _DesignUnitScope.back()->getName() << "()";
+        *(_outstream) << "~" << _design_unit_scope.back()->getName() << "()";
         _outstream->newLine();
         *(_outstream) << "{";
         _outstream->indent();
@@ -4750,12 +4750,12 @@ void PrintSystemCVisitor::_printModuleCtorDtor(View *duView)
 void PrintSystemCVisitor::_printModuleCopyCtorAssignOp()
 {
     // Copy constructor
-    *(_outstream) << _DesignUnitScope.back()->getName() << "( const " << _DesignUnitScope.back()->getName() << " & );";
+    *(_outstream) << _design_unit_scope.back()->getName() << "( const " << _design_unit_scope.back()->getName() << " & );";
     _outstream->newLine();
 
     // Assignment operator
-    *(_outstream) << "const " << _DesignUnitScope.back()->getName() << "& operator= ( const "
-                  << _DesignUnitScope.back()->getName() << " & );";
+    *(_outstream) << "const " << _design_unit_scope.back()->getName() << "& operator= ( const "
+                  << _design_unit_scope.back()->getName() << " & );";
     _outstream->newLine();
 }
 
@@ -5379,7 +5379,7 @@ void PrintSystemCVisitor::_printModuleImplementation(DesignUnit &o)
     _outstream->openCommonTopBlock();
 
     // If nested in another DesignUnit, does not require some info.
-    const bool requireInclusions = (_DesignUnitScope.size() == 1);
+    const bool requireInclusions = (_design_unit_scope.size() == 1);
     if (requireInclusions) {
         _printImplementationBegin(&o);
 
@@ -5391,8 +5391,8 @@ void PrintSystemCVisitor::_printModuleImplementation(DesignUnit &o)
     }
 
     // Open namespace related to LibraryDef (if needed).
-    if (requireInclusions && !_LibraryDefScope.empty())
-        _openLibraryDefNamespace(_LibraryDefScope.back());
+    if (requireInclusions && !_library_def_scope.empty())
+        _openLibraryDefNamespace(_library_def_scope.back());
 
     _outstream->closeCommonTopBlock();
 
@@ -5400,8 +5400,8 @@ void PrintSystemCVisitor::_printModuleImplementation(DesignUnit &o)
     _outstream->openCommonBottomBlock();
     *_outstream << std::endl;
     // Close namespace related to LibraryDef (if needed).
-    if (requireInclusions && !_LibraryDefScope.empty())
-        _closeLibraryDefNamespace(_LibraryDefScope.back());
+    if (requireInclusions && !_library_def_scope.empty())
+        _closeLibraryDefNamespace(_library_def_scope.back());
 
     if (requireInclusions && _opt.printImplementation_ihh)
         _printHeaderGuardEnd(o);
@@ -5442,7 +5442,7 @@ void PrintSystemCVisitor::_printLibraryImplementation(LibraryDef &o)
     if (isIHH)
         filename += ".i";
     hif::backends::IndentedStream *const restore = _outstream;
-    _outstream                                   = new hif::backends::IndentedStream(filename, _currentFileExtension);
+    _outstream                                   = new hif::backends::IndentedStream(filename, _current_file_extension);
     _outstream->setComment("// ", "// ", "");
     // Useless cast to int64_t is to shutup a gcc 4.9.x compile warning
     const hif::backends::IndentedStream::Size maxLines = hif::backends::IndentedStream::Size(int64_t(_opt.maxLines));
@@ -5460,7 +5460,7 @@ void PrintSystemCVisitor::_printLibraryImplementation(LibraryDef &o)
     _printImplementationBegin(&o);
     if (!isIndependentComps) {
         // Open namespace related to LibraryDef.
-        _openLibraryDefNamespace(_LibraryDefScope.back(), o.getName());
+        _openLibraryDefNamespace(_library_def_scope.back(), o.getName());
         _outstream->closeCommonTopBlock();
     }
     _outstream->closeCommonTopBlock();
@@ -5523,8 +5523,8 @@ void PrintSystemCVisitor::_printSystemImplementation(System &o)
 void PrintSystemCVisitor::_openLibraryDefNamespace(LibraryDef *ld, const std::string &libraryName)
 {
     auto _library_name = libraryName;
-    if (_library_name.empty() && !_LibraryDefScope.empty()) {
-        _library_name = _LibraryDefScope.back()->getName();
+    if (_library_name.empty() && !_library_def_scope.empty()) {
+        _library_name = _library_def_scope.back()->getName();
     }
 
     if (ld->getLanguageID() == hif::c || (ld->getLanguageID() == hif::cpp && ld->hasCLinkage())) {
@@ -5542,8 +5542,8 @@ void PrintSystemCVisitor::_closeLibraryDefNamespace(LibraryDef *ld, const std::s
 {
     auto _library_name = libraryName;
 
-    if (_library_name.empty() && !_LibraryDefScope.empty()) {
-        _library_name = _LibraryDefScope.back()->getName();
+    if (_library_name.empty() && !_library_def_scope.empty()) {
+        _library_name = _library_def_scope.back()->getName();
     }
 
     if (ld->getLanguageID() == hif::c || (ld->getLanguageID() == hif::cpp && ld->hasCLinkage())) {
@@ -6245,7 +6245,7 @@ template <class T> void PrintSystemCVisitor::_printList(BList<T> &list, PrintLis
     if (!opt._mandatoryNoParen) {
         if (opt._angularParen) {
             *(_outstream) << "<";
-            ++_leftAngular;
+            ++_left_angular;
         } else if (opt._curlyParen)
             *(_outstream) << "{";
         else
@@ -6276,7 +6276,7 @@ template <class T> void PrintSystemCVisitor::_printList(BList<T> &list, PrintLis
             *(_outstream) << " ";
         if (opt._angularParen) {
             *(_outstream) << ">";
-            --_leftAngular;
+            --_left_angular;
         } else if (opt._curlyParen)
             *(_outstream) << "}";
         else
@@ -6345,7 +6345,7 @@ void PrintSystemCVisitor::_printScopeTemplate()
 {
     // Note: libraries are managed using namespaces.
 
-    for (std::list<DesignUnit *>::iterator it(_DesignUnitScope.begin()); it != _DesignUnitScope.end(); ++it) {
+    for (std::list<DesignUnit *>::iterator it(_design_unit_scope.begin()); it != _design_unit_scope.end(); ++it) {
         messageDebugAssert(!(*it)->views.empty() && (*it)->views.size() == 1, "Unexpected number of views", *it, _sem);
 
         View *v = (*it)->views.front();
@@ -6359,7 +6359,7 @@ void PrintSystemCVisitor::_printScopeTemplate()
 
 void PrintSystemCVisitor::_printScopeHierarchy()
 {
-    for (std::list<DesignUnit *>::iterator it(_DesignUnitScope.begin()); it != _DesignUnitScope.end(); ++it) {
+    for (std::list<DesignUnit *>::iterator it(_design_unit_scope.begin()); it != _design_unit_scope.end(); ++it) {
         (*_outstream) << (*it)->getName();
 
         messageDebugAssert(!(*it)->views.empty() && (*it)->views.size() == 1, "Unexpected number of views", *it, _sem);

@@ -105,7 +105,7 @@ struct PrintSystemCVisitorOptions {
     ~PrintSystemCVisitorOptions();
 
     PrintSystemCVisitorOptions(const PrintSystemCVisitorOptions &);
-    PrintSystemCVisitorOptions &operator=(const PrintSystemCVisitorOptions &);
+    auto operator=(const PrintSystemCVisitorOptions &) -> PrintSystemCVisitorOptions &;
 };
 
 /// @brief Visitor that actually prints the code. Basically 3 print modes can
@@ -122,8 +122,8 @@ struct PrintSystemCVisitorOptions {
 class PrintSystemCVisitor : public hif::GuideVisitor
 {
 public:
-    typedef std::list<hif::Object *> ObjectList;
-    typedef std::map<hif::Object *, ObjectList> ConstTemplateMap;
+    using ObjectList       = std::list<hif::Object *>;
+    using ConstTemplateMap = std::map<hif::Object *, ObjectList>;
 
     enum ConstTemplateContext {
         CONST_TEMPL_CTOR_DECL,
@@ -143,7 +143,7 @@ public:
     PrintSystemCVisitor(ConstTemplateMap &ctmList);
 
     /// Destructor.
-    virtual ~PrintSystemCVisitor();
+    ~PrintSystemCVisitor() override;
 
     enum OperatorPecedenceEnum {
         prec_min = 0,
@@ -176,16 +176,16 @@ public:
     /// @name Accessories.
     /// @{
 
-    hif::DesignUnit *getCurrentDesignUnit();
+    auto getCurrentDesignUnit() -> hif::DesignUnit *;
     void setCurrentDesignUnit(hif::DesignUnit *du);
 
-    hif::LibraryDef *getCurrentLibraryDef();
+    auto getCurrentLibraryDef() -> hif::LibraryDef *;
     void setCurrentLibraryDef(hif::LibraryDef *libDef);
 
-    std::list<hif::DesignUnit *> &getDesignUnitScope();
+    auto getDesignUnitScope() -> std::list<hif::DesignUnit *> &;
     void setDesignUnitScope(std::list<hif::DesignUnit *> &DUScope);
 
-    std::list<hif::LibraryDef *> &getLibraryDefScope();
+    auto getLibraryDefScope() -> std::list<hif::LibraryDef *> &;
     void setLibraryDefScope(std::list<hif::LibraryDef *> &LDScope);
 
     /// @}
@@ -195,91 +195,91 @@ public:
     /// @name Refinement methods.
     /// @{
 
-    virtual int visitAggregate(hif::Aggregate &o);
-    virtual int visitAggregateAlt(hif::AggregateAlt &o);
-    virtual int visitAlias(hif::Alias &o);
-    virtual int visitArray(hif::Array &o);
-    virtual int visitAssign(hif::Assign &o);
-    virtual int visitBit(hif::Bit &o);
-    virtual int visitBitValue(hif::BitValue &o);
-    virtual int visitBitvector(hif::Bitvector &o);
-    virtual int visitBitvectorValue(hif::BitvectorValue &o);
-    virtual int visitBool(hif::Bool &o);
-    virtual int visitBoolValue(hif::BoolValue &o);
-    virtual int visitBreak(hif::Break &o);
-    virtual int visitCast(hif::Cast &o);
-    virtual int visitChar(hif::Char &o);
-    virtual int visitCharValue(hif::CharValue &o);
-    virtual int visitConst(hif::Const &o);
-    virtual int visitContents(hif::Contents &o);
-    virtual int visitContinue(hif::Continue &o);
-    virtual int visitDesignUnit(hif::DesignUnit &o);
-    virtual int visitEntity(hif::Entity &o);
-    virtual int visitEnum(hif::Enum &o);
-    virtual int visitEvent(hif::Event &o);
-    virtual int visitExpression(hif::Expression &o);
-    virtual int visitField(hif::Field &o);
-    virtual int visitFieldReference(hif::FieldReference &o);
-    virtual int visitFile(hif::File &o);
-    virtual int visitFor(hif::For &o);
-    virtual int visitFunction(hif::Function &o);
-    virtual int visitFunctionCall(hif::FunctionCall &o);
-    virtual int visitForGenerate(hif::ForGenerate &o);
-    virtual int visitGlobalAction(hif::GlobalAction &o);
-    virtual int visitIdentifier(hif::Identifier &o);
-    virtual int visitIf(hif::If &o);
-    virtual int visitIfAlt(hif::IfAlt &o);
-    virtual int visitIfGenerate(hif::IfGenerate &o);
-    virtual int visitInstance(hif::Instance &o);
-    virtual int visitInt(hif::Int &o);
-    virtual int visitIntValue(hif::IntValue &o);
-    virtual int visitLibrary(hif::Library &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitMember(hif::Member &o);
-    virtual int visitTransition(hif::Transition &o);
-    virtual int visitNull(hif::Null &o);
-    virtual int visitParameter(hif::Parameter &o);
-    virtual int visitParameterAssign(hif::ParameterAssign &o);
-    virtual int visitPointer(hif::Pointer &o);
-    virtual int visitPort(hif::Port &o);
-    virtual int visitProcedure(hif::Procedure &o);
-    virtual int visitProcedureCall(hif::ProcedureCall &o);
-    virtual int visitReal(hif::Real &o);
-    virtual int visitRealValue(hif::RealValue &o);
-    virtual int visitRecord(hif::Record &o);
-    virtual int visitRecordValue(hif::RecordValue &o);
-    virtual int visitRecordValueAlt(hif::RecordValueAlt &o);
-    virtual int visitReference(hif::Reference &o);
-    virtual int visitReturn(hif::Return &o);
-    virtual int visitSignal(hif::Signal &o);
-    virtual int visitSigned(hif::Signed &o);
-    virtual int visitSlice(hif::Slice &o);
-    virtual int visitState(hif::State &o);
-    virtual int visitStateTable(hif::StateTable &o);
-    virtual int visitString(hif::String &o);
-    virtual int visitSystem(hif::System &o);
-    virtual int visitSwitch(hif::Switch &o);
-    virtual int visitSwitchAlt(hif::SwitchAlt &o);
-    virtual int visitStringValue(hif::StringValue &o);
-    virtual int visitTime(hif::Time &o);
-    virtual int visitTimeValue(hif::TimeValue &o);
-    virtual int visitTypeDef(hif::TypeDef &o);
-    virtual int visitTypeReference(hif::TypeReference &o);
-    virtual int visitTypeTP(hif::TypeTP &o);
-    virtual int visitTypeTPAssign(hif::TypeTPAssign &o);
-    virtual int visitUnsigned(hif::Unsigned &o);
-    virtual int visitValueStatement(hif::ValueStatement &o);
-    virtual int visitValueTP(hif::ValueTP &o);
-    virtual int visitValueTPAssign(hif::ValueTPAssign &o);
-    virtual int visitVariable(hif::Variable &o);
-    virtual int visitView(hif::View &o);
-    virtual int visitViewReference(hif::ViewReference &o);
-    virtual int visitWait(hif::Wait &o);
-    virtual int visitWhen(hif::When &o);
-    virtual int visitWhenAlt(hif::WhenAlt &o);
-    virtual int visitWhile(hif::While &o);
-    virtual int visitWith(hif::With &o); // includes VisitWithAlt.
-    virtual int visitWithAlt(hif::WithAlt &o);
+    auto visitAggregate(hif::Aggregate &o) -> int override;
+    auto visitAggregateAlt(hif::AggregateAlt &o) -> int override;
+    auto visitAlias(hif::Alias &o) -> int override;
+    auto visitArray(hif::Array &o) -> int override;
+    auto visitAssign(hif::Assign &o) -> int override;
+    auto visitBit(hif::Bit &o) -> int override;
+    auto visitBitValue(hif::BitValue &o) -> int override;
+    auto visitBitvector(hif::Bitvector &o) -> int override;
+    auto visitBitvectorValue(hif::BitvectorValue &o) -> int override;
+    auto visitBool(hif::Bool &o) -> int override;
+    auto visitBoolValue(hif::BoolValue &o) -> int override;
+    auto visitBreak(hif::Break &o) -> int override;
+    auto visitCast(hif::Cast &o) -> int override;
+    auto visitChar(hif::Char &o) -> int override;
+    auto visitCharValue(hif::CharValue &o) -> int override;
+    auto visitConst(hif::Const &o) -> int override;
+    auto visitContents(hif::Contents &o) -> int override;
+    auto visitContinue(hif::Continue &o) -> int override;
+    auto visitDesignUnit(hif::DesignUnit &o) -> int override;
+    auto visitEntity(hif::Entity &o) -> int override;
+    auto visitEnum(hif::Enum &o) -> int override;
+    auto visitEvent(hif::Event &o) -> int override;
+    auto visitExpression(hif::Expression &o) -> int override;
+    auto visitField(hif::Field &o) -> int override;
+    auto visitFieldReference(hif::FieldReference &o) -> int override;
+    auto visitFile(hif::File &o) -> int override;
+    auto visitFor(hif::For &o) -> int override;
+    auto visitFunction(hif::Function &o) -> int override;
+    auto visitFunctionCall(hif::FunctionCall &o) -> int override;
+    auto visitForGenerate(hif::ForGenerate &o) -> int override;
+    auto visitGlobalAction(hif::GlobalAction &o) -> int override;
+    auto visitIdentifier(hif::Identifier &o) -> int override;
+    auto visitIf(hif::If &o) -> int override;
+    auto visitIfAlt(hif::IfAlt &o) -> int override;
+    auto visitIfGenerate(hif::IfGenerate &o) -> int override;
+    auto visitInstance(hif::Instance &o) -> int override;
+    auto visitInt(hif::Int &o) -> int override;
+    auto visitIntValue(hif::IntValue &o) -> int override;
+    auto visitLibrary(hif::Library &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitMember(hif::Member &o) -> int override;
+    auto visitTransition(hif::Transition &o) -> int override;
+    auto visitNull(hif::Null &o) -> int override;
+    auto visitParameter(hif::Parameter &o) -> int override;
+    auto visitParameterAssign(hif::ParameterAssign &o) -> int override;
+    auto visitPointer(hif::Pointer &o) -> int override;
+    auto visitPort(hif::Port &o) -> int override;
+    auto visitProcedure(hif::Procedure &o) -> int override;
+    auto visitProcedureCall(hif::ProcedureCall &o) -> int override;
+    auto visitReal(hif::Real &o) -> int override;
+    auto visitRealValue(hif::RealValue &o) -> int override;
+    auto visitRecord(hif::Record &o) -> int override;
+    auto visitRecordValue(hif::RecordValue &o) -> int override;
+    auto visitRecordValueAlt(hif::RecordValueAlt &o) -> int override;
+    auto visitReference(hif::Reference &o) -> int override;
+    auto visitReturn(hif::Return &o) -> int override;
+    auto visitSignal(hif::Signal &o) -> int override;
+    auto visitSigned(hif::Signed &o) -> int override;
+    auto visitSlice(hif::Slice &o) -> int override;
+    auto visitState(hif::State &o) -> int override;
+    auto visitStateTable(hif::StateTable &o) -> int override;
+    auto visitString(hif::String &o) -> int override;
+    auto visitSystem(hif::System &o) -> int override;
+    auto visitSwitch(hif::Switch &o) -> int override;
+    auto visitSwitchAlt(hif::SwitchAlt &o) -> int override;
+    auto visitStringValue(hif::StringValue &o) -> int override;
+    auto visitTime(hif::Time &o) -> int override;
+    auto visitTimeValue(hif::TimeValue &o) -> int override;
+    auto visitTypeDef(hif::TypeDef &o) -> int override;
+    auto visitTypeReference(hif::TypeReference &o) -> int override;
+    auto visitTypeTP(hif::TypeTP &o) -> int override;
+    auto visitTypeTPAssign(hif::TypeTPAssign &o) -> int override;
+    auto visitUnsigned(hif::Unsigned &o) -> int override;
+    auto visitValueStatement(hif::ValueStatement &o) -> int override;
+    auto visitValueTP(hif::ValueTP &o) -> int override;
+    auto visitValueTPAssign(hif::ValueTPAssign &o) -> int override;
+    auto visitVariable(hif::Variable &o) -> int override;
+    auto visitView(hif::View &o) -> int override;
+    auto visitViewReference(hif::ViewReference &o) -> int override;
+    auto visitWait(hif::Wait &o) -> int override;
+    auto visitWhen(hif::When &o) -> int override;
+    auto visitWhenAlt(hif::WhenAlt &o) -> int override;
+    auto visitWhile(hif::While &o) -> int override;
+    auto visitWith(hif::With &o) -> int override; // includes VisitWithAlt.
+    auto visitWithAlt(hif::WithAlt &o) -> int override;
 
     /// @}
 
@@ -287,22 +287,22 @@ protected:
     /// @brief Support struct used to backup current visit mode.
     struct BackupOpt {
         PrintSystemCVisitorOptions _opt;
-        std::list<hif::DesignUnit *> _DesignUnitScope;
-        std::list<hif::LibraryDef *> _LibraryDefScope;
+        std::list<hif::DesignUnit *> _design_unit_scope;
+        std::list<hif::LibraryDef *> _library_def_scope;
 
         BackupOpt();
         ~BackupOpt();
 
         BackupOpt(const BackupOpt &);
-        BackupOpt &operator=(const BackupOpt &);
+        auto operator=(const BackupOpt &) -> BackupOpt &;
     };
 
 private:
-    PrintSystemCVisitor(const PrintSystemCVisitor &);
-    const PrintSystemCVisitor &operator=(PrintSystemCVisitor &);
+    PrintSystemCVisitor(const PrintSystemCVisitor &)               = delete;
+    auto operator=(PrintSystemCVisitor &) -> PrintSystemCVisitor & = delete;
 
     /// @brief Backup the current visit mode.
-    BackupOpt _backupVisitMode();
+    auto _backupVisitMode() -> BackupOpt;
 
     /// @brief Restore the previous visit mode.
     void _restoreVisitMode(BackupOpt &backupOtions);
@@ -316,29 +316,29 @@ private:
     ///
     /// We assume that a port/signal has at most type array packed (not nested array)
     /// Signal/port visit will take care to understand if the type is sc_logic or sc_lv
-    bool _isSystemCResolved(hif::Type *type);
+    auto _isSystemCResolved(hif::Type *type) -> bool;
 
     /// @brief Function that check if add ";" ad end of statement. At the moment
     /// it checks only functions.
-    bool _isStatement(hif::Object *obj);
+    auto _isStatement(hif::Object *obj) -> bool;
 
     /// @brief Check if the component is related to TLM, since they need a different
     /// management from other components.
-    bool _isTLMComponent(hif::DataDeclaration *obj);
+    auto _isTLMComponent(hif::DataDeclaration *obj) -> bool;
 
     /// @brief Check if a Function actually represents a C++ class constructor,
     /// or if a FunctionCall represents the call to a C++ class constructor.
-    bool _isCppConstructor(hif::Object *obj);
+    auto _isCppConstructor(hif::Object *obj) -> bool;
 
     /// @brief Check if the function is actually the C++ class destructor.
     /// By convention, it is named __hif_destructor
-    bool _isCppDestructor(hif::Object *obj);
+    auto _isCppDestructor(hif::Object *obj) -> bool;
 
     /// @brief Check if the function is native of HIF.
-    bool _isNativeHifFunction(hif::Object *obj);
+    auto _isNativeHifFunction(hif::Object *obj) -> bool;
 
     /// @brief Check if the procedure is native of HIF.
-    bool _isNativeHifProcedure(hif::Object *obj);
+    auto _isNativeHifProcedure(hif::Object *obj) -> bool;
 
     /// @brief Return true if the function call need the additional qualifier
     /// ".template". It is required in this situation:
@@ -353,14 +353,14 @@ private:
     /// 2) "i" assignment must be explicit.
     /// 3) At least a parent scope is templated.
     ///
-    template <typename T> bool _needTemplateAsQualifier(T *o);
+    template <typename T> auto _needTemplateAsQualifier(T *o) -> bool;
 
     /// @brief Check if the LibraryDef does not contain anything else than
     /// DesignUnits or other LibraryDefs, that are printed into independent files.
-    bool _containsOnlyIndependentComponents(hif::LibraryDef &o);
+    auto _containsOnlyIndependentComponents(hif::LibraryDef &o) -> bool;
 
     /// @brief Return true if given value is template.
-    bool _isTemplateInstance(hif::Value *o);
+    auto _isTemplateInstance(hif::Value *o) -> bool;
 
     /// @}
 
@@ -409,7 +409,7 @@ private:
     /// @brief Close pre-processor guard.
     void _printHeaderGuardEnd(hif::Object &o, const std::string &suggestedName = "");
 
-    std::string _calculateInclude(hif::Object *where, hif::Library *lib);
+    auto _calculateInclude(hif::Object *where, hif::Library *lib) -> std::string;
 
     /// @brief Print the inclusion of Library and other components (already managed
     /// in PostRefine_final Visitor).
@@ -441,7 +441,7 @@ private:
 
     /// @brief Different management for printing of SystemC-AMS ports.
     /// @return True if the port is actually a SystemC-AMS one, False otherwise.
-    bool _isAMSPort(hif::Port *o);
+    auto _isAMSPort(hif::Port *o) -> bool;
 
     /// @name Functions to print LibraryDef or System declarations.
     /// @param declarations The list to print.
@@ -484,14 +484,14 @@ private:
     void _printDestructorInstanceDelete(hif::View *duView);
 
     /// @brief Check if constructor has need of an initialization list.
-    bool _needInitializationList(hif::View *view);
+    auto _needInitializationList(hif::View *view) -> bool;
 
     /// @brief Print initialization list of constructor.
-    int _printInitializationList(hif::View *view);
+    auto _printInitializationList(hif::View *view) -> int;
 
     /// @brief Print initialization of variables that cannot be inserted in the
     /// module initialization list, or ones that need extra operations.
-    int _printOtherInitializations(hif::View *view);
+    auto _printOtherInitializations(hif::View *view) -> int;
 
     /// @brief Manage print of constants.
     /// @param declarations is the list of declarations to print.
@@ -499,7 +499,7 @@ private:
     /// of the constants (DesignUnit, LibraryDef, System).
     /// @param onlyDefines is the flag set by the caller, distinguishing if
     /// defines or "normal" constants have to be printed in that point
-    void _printConstants(hif::BList<hif::Declaration> &declarations, hif::Object *scope, const bool onlyDefines);
+    void _printConstants(hif::BList<hif::Declaration> &declarations, hif::Object *scope, bool onlyDefines);
 
     /// @brief Entry point for LibraryDef.
     void _printLibraryImplementation(hif::LibraryDef &o);
@@ -508,7 +508,7 @@ private:
     void _printSystemImplementation(hif::System &o);
 
     /// @brief Print initialization for output ports.
-    void _printInitialize(hif::Port &o, hif::Type *portType, std::list<std::string> &indexes, const bool isAMS);
+    void _printInitialize(hif::Port &o, hif::Type *portType, std::list<std::string> &indexes, bool isAMS);
 
     /// @brief Same of _printInitialize(), on port bindings.
     void
@@ -533,7 +533,7 @@ private:
     /// 1. If the type is Array of Array, or a TypeReference of type Array.
     /// @param ddo The DataDeclaration to be analyzed.
     /// @return the Type to be considered for print.
-    hif::Type *_needIndividualInit(hif::DataDeclaration *ddo);
+    auto _needIndividualInit(hif::DataDeclaration *ddo) -> hif::Type *;
 
     /// @brief Perform individual initialization for declarations that need it.
     /// @param ddo The DataDeclaration involved.
@@ -542,7 +542,7 @@ private:
 
     /// @brief Wrapper function for all cases of "normal" initialization.
     /// @return <tt>true</tt> if something is actually printed.
-    bool _printNormalInit(hif::DataDeclaration *o);
+    auto _printNormalInit(hif::DataDeclaration *o) -> bool;
 
     /// @brief Prints the type of a signal.
     void _printSignalTypeAndName(hif::Signal *o);
@@ -550,14 +550,14 @@ private:
     /// @brief Particular cases of initialization: TLM components.
     /// @param o The variable to analyze.
     /// @return True if this is the case, False otherwise.
-    bool _printTLMInit(hif::DataDeclaration *o);
+    auto _printTLMInit(hif::DataDeclaration *o) -> bool;
 
     /// @brief Manage the particular double-initialization of Signal and Port,
     /// considering also variation for AMS.
-    bool _initListInitializationSignalPort(hif::DataDeclaration *dd);
+    auto _initListInitializationSignalPort(hif::DataDeclaration *dd) -> bool;
 
     /// TODO
-    bool _isFullySpecifiedArrayConst(hif::Const *c);
+    auto _isFullySpecifiedArrayConst(hif::Const *c) -> bool;
 
     /// @brief Print fake class-fashion methods inside the Record declaration directly:
     /// 1- A constructor without parameters setting default values for all fields.
@@ -572,7 +572,7 @@ private:
     void _printRecordSignalMethods(hif::Record *obj);
 
     /// @brief Print aggregate other in case of record value and using of cpp 98.
-    std::string _printAggregateRecordValue(hif::RecordValue *rv, hif::DataDeclaration *ddo);
+    auto _printAggregateRecordValue(hif::RecordValue *rv, hif::DataDeclaration *ddo) -> std::string;
 
     //	/// In case of Assign from Aggregate to XX introduce a new variable, move the
     //	/// assign to init.value, and assign the new variable to the previous one
@@ -606,7 +606,7 @@ private:
 
     /// @brief Check whether print the keyword "typename" is necessary (i.e., if
     /// the list of TP assigns contains an identifier which is a template parameter in its turn).
-    bool _isNeededTypename(hif::ReferencedType *refType);
+    auto _isNeededTypename(hif::ReferencedType *refType) -> bool;
 
     /// @name Functions related to native HIF constructs.
     /// @{
@@ -618,15 +618,15 @@ private:
 
     /// @brief Manage native FunctionCalls.
     void _printNativeFunctionCall(hif::FunctionCall &o);
-    bool _printNativeFunctionCall_new(hif::FunctionCall &o);
-    bool _printNativeFunctionCall_malloc(hif::FunctionCall &o);
+    auto _printNativeFunctionCall_new(hif::FunctionCall &o) -> bool;
+    auto _printNativeFunctionCall_malloc(hif::FunctionCall &o) -> bool;
 
     /// @brief Manage native ProcedureCalls.
     void _printNativeProcedureCall(hif::ProcedureCall &o);
 
-    void _printInstanceBindingStatements(hif::Instance *inst, hif::Object *o, const bool useArrow);
+    void _printInstanceBindingStatements(hif::Instance *inst, hif::Object *o, bool useArrow);
 
-    template <typename T> int _printCall(T &o);
+    template <typename T> auto _printCall(T &o) -> int;
 
     /// @}
 
@@ -637,7 +637,7 @@ private:
     /// This function is a wrapper for the print of actual StateTable code
     /// that can be exploited by other visits (e.g., Function, Procedure.
     /// Note: header and trailer of StateTable are managed here.
-    int _printStateTable(hif::StateTable *st, hif::DesignUnit *du);
+    auto _printStateTable(hif::StateTable *st, hif::DesignUnit *du) -> int;
 
     /// @brief Print a for loop into the generated code.
     /// This is useful for operations like initialization of array, etc.
@@ -699,15 +699,10 @@ private:
         bool _breakLine;
 
         PrintListOpt();
-        PrintListOpt(
-            const bool mandatoryParen,
-            const bool mandatoryNoParen,
-            const bool angularParen,
-            const bool curlyParen,
-            const bool breakLine);
+        PrintListOpt(bool mandatoryParen, bool mandatoryNoParen, bool angularParen, bool curlyParen, bool breakLine);
         ~PrintListOpt();
         PrintListOpt(const PrintListOpt &other);
-        PrintListOpt &operator=(const PrintListOpt &other);
+        auto operator=(const PrintListOpt &other) -> PrintListOpt &;
     };
 
     /// @brief Print a list of objects.
@@ -733,16 +728,16 @@ private:
     void _printScopeHierarchy();
 
     /// @brief Return the given string in capital letters.
-    std::string _capitalize(const char *str);
+    auto _capitalize(const char *str) -> std::string;
 
     /// @brief Returns true if given expression type is native int 32 bits.
-    bool _isInt32Type(hif::Expression *e);
+    auto _isInt32Type(hif::Expression *e) -> bool;
 
     /// @brief Returns true if printing of given IntValue may be ambiguous.
-    bool _mayBeAmbiguous(hif::IntValue *o);
+    auto _mayBeAmbiguous(hif::IntValue *o) -> bool;
 
     /// @brief Returns true if printing of given StringValue may be ambiguous.
-    bool _mayBeAmbiguous(hif::StringValue *o);
+    auto _mayBeAmbiguous(hif::StringValue *o) -> bool;
 
     /// @}
 
@@ -751,25 +746,26 @@ private:
 
     /// @brief Print template parameters complete of their type and initial value.
     // Example: < int ticks = 3, bool last_in_chain = true >
-    int _printFullTP(hif::BList<hif::Declaration> &temp_params);
+    auto _printFullTP(hif::BList<hif::Declaration> &temp_params) -> int;
 
     /// @brief Print template parameters with their type but without initial value.
     // Example: < int ticks, bool last_in_chain >
-    bool _printTypedTP(hif::BList<hif::Declaration> &temp_params);
+    auto _printTypedTP(hif::BList<hif::Declaration> &temp_params) -> bool;
 
     /// @brief Print template parameters without their type and initial value.
     // Example: < ticks, last_in_chain >
-    int _printUntypedTP(hif::BList<hif::Declaration> &temp_params);
+    auto _printUntypedTP(hif::BList<hif::Declaration> &temp_params) -> int;
 
     /// @brief Prints template parameters in different modes.
-    bool _printTemplateParameters(hif::BList<hif::Declaration> &temp_params, bool typed = false, bool init = false);
+    auto
+    _printTemplateParameters(hif::BList<hif::Declaration> &temp_params, bool typed = false, bool init = false) -> bool;
 
     void _printNotCompileTimeTemplates(hif::Object *o, ConstTemplateContext c);
 
     /// @}
 
-    bool _needWrapParen(hif::Object *v);
-    OperatorPecedenceEnum _getOperatorPrecedence(hif::Object *v);
+    auto _needWrapParen(hif::Object *v) -> bool;
+    auto _getOperatorPrecedence(hif::Object *v) -> OperatorPecedenceEnum;
 
     /// @brief Visit options
     PrintSystemCVisitorOptions _opt;
@@ -784,13 +780,13 @@ private:
     hif::backends::IndentedStream *_outstream;
 
     /// @brief Keep trace of DesignUnit scope.
-    std::list<hif::DesignUnit *> _DesignUnitScope;
+    std::list<hif::DesignUnit *> _design_unit_scope;
 
     /// @brief Keep trace of LibraryDef scope.
-    std::list<hif::LibraryDef *> _LibraryDefScope;
+    std::list<hif::LibraryDef *> _library_def_scope;
 
     /// @brief The number of left angular brachets opened.
-    long long int _leftAngular;
+    long long int _left_angular;
 
     /// @brief The data types string used for library defs.
     const std::string _dataTypesString;
@@ -799,5 +795,5 @@ private:
     const std::string _baseName;
 
     /// @brief The base name of output file extension;
-    const std::string _currentFileExtension;
+    const std::string _current_file_extension;
 };
