@@ -73,8 +73,7 @@ std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &
     return ret;
 }
 
-template <typename T>
-std::vector<T> hif_vector_slice(const std::vector<T> &array, const int left, const int right)
+template <typename T> std::vector<T> hif_vector_slice(const std::vector<T> &array, const int left, const int right)
 {
     assert(right >= 0);
     assert(right <= left);
@@ -163,8 +162,7 @@ std::vector<std::vector<T>> hif_vector_slice(
     return ret;
 }
 
-template <typename T>
-T *hif_vector_slice(T *array, const int /*left*/, const int right)
+template <typename T> T *hif_vector_slice(T *array, const int /*left*/, const int right)
 {
     assert(right >= 0);
     return array + right;

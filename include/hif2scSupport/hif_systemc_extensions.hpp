@@ -82,8 +82,7 @@ bool hif_xorrd(const unsigned long long int v);
 /// @param last The last value of the port.
 /// @param prev The previous value of the port.
 /// @return The last value o the port.
-template <typename T, typename P>
-T hif_lastValue(P &s, T &last, T &prev);
+template <typename T, typename P> T hif_lastValue(P &s, T &last, T &prev);
 
 /// @brief This method return the last value of given variable performing
 /// the checking on given last and prev parameters. This function is used
@@ -93,23 +92,18 @@ T hif_lastValue(P &s, T &last, T &prev);
 /// @param last The last value of the port.
 /// @param prev The previous value of the port.
 /// @return The last value o the port.
-template <typename T, typename P>
-T hif_lastValue_var(const P &s, T &last, T &prev);
+template <typename T, typename P> T hif_lastValue_var(const P &s, T &last, T &prev);
 
 /// @name Wrapper functions for sign extensions.
 /// @{
-template <int size2, int size1>
-sc_dt::sc_lv<size2> hif_sxt(sc_dt::sc_lv<size1> arg);
+template <int size2, int size1> sc_dt::sc_lv<size2> hif_sxt(sc_dt::sc_lv<size1> arg);
 
-template <int size2, int size1>
-sc_dt::sc_bv<size2> hif_sxt(sc_dt::sc_bv<size1> arg);
+template <int size2, int size1> sc_dt::sc_bv<size2> hif_sxt(sc_dt::sc_bv<size1> arg);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int size2, int size1>
-hdtlib::hl_lv_t<size2> hif_sxt(hdtlib::hl_lv_t<size1> arg);
+template <int size2, int size1> hdtlib::hl_lv_t<size2> hif_sxt(hdtlib::hl_lv_t<size1> arg);
 
-template <int size2, int size1>
-hdtlib::hl_bv_t<size2> hif_sxt(hdtlib::hl_bv_t<size1> arg);
+template <int size2, int size1> hdtlib::hl_bv_t<size2> hif_sxt(hdtlib::hl_bv_t<size1> arg);
 #endif
 /// @}
 
@@ -125,22 +119,14 @@ sc_dt::sc_logic hif__op_le(const sc_dt::sc_logic &v1, const sc_dt::sc_logic &v2)
 HIF2SCSUPPORT_EXPORT
 sc_dt::sc_logic hif__op_ge(const sc_dt::sc_logic &v1, const sc_dt::sc_logic &v2);
 
-template <int W>
-sc_dt::sc_logic hif__op_lt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_gt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_le_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_ge_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_lt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_gt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_le_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
-template <int W>
-sc_dt::sc_logic hif__op_ge_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_lt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_gt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_le_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_ge_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_lt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_gt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_le_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
+template <int W> sc_dt::sc_logic hif__op_ge_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 HIF2SCSUPPORT_EXPORT
@@ -152,14 +138,10 @@ hdtlib::hl_logic_t hif__op_le(const hdtlib::hl_logic_t &v1, const hdtlib::hl_log
 HIF2SCSUPPORT_EXPORT
 hdtlib::hl_logic_t hif__op_ge(const hdtlib::hl_logic_t &v1, const hdtlib::hl_logic_t &v2);
 
-template <int W>
-hdtlib::hl_logic_t hif__op_lt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
-template <int W>
-hdtlib::hl_logic_t hif__op_gt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
-template <int W>
-hdtlib::hl_logic_t hif__op_le_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
-template <int W>
-hdtlib::hl_logic_t hif__op_ge_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
+template <int W> hdtlib::hl_logic_t hif__op_lt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
+template <int W> hdtlib::hl_logic_t hif__op_gt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
+template <int W> hdtlib::hl_logic_t hif__op_le_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
+template <int W> hdtlib::hl_logic_t hif__op_ge_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2);
 #endif
 
 /// @}
@@ -203,32 +185,28 @@ hif_arrayEquals(T param1, typename std::remove_pointer<T>::type (&param2)[size])
 /// @param param1 The inner type of first array.
 /// @param param2 The inner type of second array.
 /// @return True if they are equal, False otherwise.
-template <typename T>
-bool hif_arrayEquals(T *const &param1, T *const &param2);
+template <typename T> bool hif_arrayEquals(T *const &param1, T *const &param2);
 
 /// @brief This method allow to compare two bi-dimensional equal-size arrays
 /// element by element to check whether they are equal.
 /// @param param1 The first array.
 /// @param param2 The second array.
 /// @return True if they are equal, False otherwise.
-template <typename T, size_t size>
-bool hif_arrayEquals(T (&param1)[size], T (&param2)[size]);
+template <typename T, size_t size> bool hif_arrayEquals(T (&param1)[size], T (&param2)[size]);
 
 /// @brief This method allow to compare two bi-dimensional equal-size arrays
 /// element by element to check whether they are equal.
 /// @param param1 The first array.
 /// @param param2 The second array.
 /// @return True if they are equal, False otherwise.
-template <typename P, typename T, size_t size>
-bool hif_arrayEquals(sc_core::sc_vector<P> &param1, T (&param2)[size]);
+template <typename P, typename T, size_t size> bool hif_arrayEquals(sc_core::sc_vector<P> &param1, T (&param2)[size]);
 
 /// @brief This method allow to compare two bi-dimensional equal-size arrays
 /// element by element to check whether they are equal.
 /// @param param1 The first array.
 /// @param param2 The second array.
 /// @return True if they are equal, False otherwise.
-template <typename P, typename T, size_t size>
-bool hif_arrayEquals(T (&param1)[size], sc_core::sc_vector<P> &param2);
+template <typename P, typename T, size_t size> bool hif_arrayEquals(T (&param1)[size], sc_core::sc_vector<P> &param2);
 
 ///@}
 
@@ -355,19 +333,15 @@ hdtlib::hl_lv_t<size1> hif_op_shift_right_logic(hdtlib::hl_lv_t<size1> param1, h
 HIF2SCSUPPORT_EXPORT
 std::string hif_reverse(const std::string &p);
 
-template <int W>
-sc_dt::sc_bv<W> hif_reverse(const sc_dt::sc_bv<W> &p);
+template <int W> sc_dt::sc_bv<W> hif_reverse(const sc_dt::sc_bv<W> &p);
 
-template <int W>
-sc_dt::sc_lv<W> hif_reverse(const sc_dt::sc_lv<W> &p);
+template <int W> sc_dt::sc_lv<W> hif_reverse(const sc_dt::sc_lv<W> &p);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int W>
-hdtlib::hl_bv_t<W> hif_reverse(const hdtlib::hl_bv_t<W> &p);
+template <int W> hdtlib::hl_bv_t<W> hif_reverse(const hdtlib::hl_bv_t<W> &p);
 
-template <int W>
-hdtlib::hl_lv_t<W> hif_reverse(const hdtlib::hl_lv_t<W> &p);
+template <int W> hdtlib::hl_lv_t<W> hif_reverse(const hdtlib::hl_lv_t<W> &p);
 
 #endif
 

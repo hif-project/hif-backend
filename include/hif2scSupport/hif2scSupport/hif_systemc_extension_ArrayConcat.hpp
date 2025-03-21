@@ -14,37 +14,28 @@
 namespace hif_systemc_extensions
 {
 
-template <class RetElementType>
-class ArrayConcat
+template <class RetElementType> class ArrayConcat
 {
 public:
     ArrayConcat();
     ~ArrayConcat();
 
-    template <int s1, int s2, typename T1, typename T2>
-    RetElementType *concatArrays(const T1 &p1, const T2 &p2);
+    template <int s1, int s2, typename T1, typename T2> RetElementType *concatArrays(const T1 &p1, const T2 &p2);
 
-    template <int s2, typename T1, typename T2>
-    RetElementType *concatValueWithArray(T1 p1, const T2 &p2);
+    template <int s2, typename T1, typename T2> RetElementType *concatValueWithArray(T1 p1, const T2 &p2);
 
-    template <int s1, typename T1, typename T2>
-    RetElementType *concatArrayWithValue(const T1 &p1, T2 p2);
+    template <int s1, typename T1, typename T2> RetElementType *concatArrayWithValue(const T1 &p1, T2 p2);
 
 private:
-    template <typename T>
-    T _getValue(T ret);
+    template <typename T> T _getValue(T ret);
 
-    template <typename T>
-    T _getValue(sc_core::sc_signal<T> &ret);
+    template <typename T> T _getValue(sc_core::sc_signal<T> &ret);
 
-    template <typename T>
-    T _getValue(sc_core::sc_inout<T> &ret);
+    template <typename T> T _getValue(sc_core::sc_inout<T> &ret);
 
-    template <typename T>
-    T _getValue(sc_core::sc_in<T> &ret);
+    template <typename T> T _getValue(sc_core::sc_in<T> &ret);
 
-    template <typename T>
-    T _getValue(sc_core::sc_out<T> &ret);
+    template <typename T> T _getValue(sc_core::sc_out<T> &ret);
 
     RetElementType *_result;
 

@@ -567,8 +567,7 @@ void PreRefine_misc::addRequiredLibraries()
     if (_addVhdlStandardLib) {
         hif::manipulation::AddUniqueObjectOptions addOpt;
         addOpt.equalsOptions.checkOnlyNames = true;
-        hif::manipulation::addUniqueObject(
-            _sem->getStandardLibrary("hif_vhdl_standard"), _system->libraryDefs, addOpt);
+        hif::manipulation::addUniqueObject(_sem->getStandardLibrary("hif_vhdl_standard"), _system->libraryDefs, addOpt);
     }
 }
 

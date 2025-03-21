@@ -13,8 +13,7 @@
 namespace hif_systemc_extensions
 {
 
-template <typename T, typename P>
-T hif_lastValue(P &s, T &last, T &prev)
+template <typename T, typename P> T hif_lastValue(P &s, T &last, T &prev)
 {
     if (s.read() != prev) {
         T m  = s.read() ^ prev;
@@ -25,8 +24,7 @@ T hif_lastValue(P &s, T &last, T &prev)
     return last;
 }
 
-template <typename T, typename P>
-T hif_lastValue_var(const P &s, T &last, T &prev)
+template <typename T, typename P> T hif_lastValue_var(const P &s, T &last, T &prev)
 {
     if (s != prev) {
         T m  = s ^ prev;
@@ -37,8 +35,7 @@ T hif_lastValue_var(const P &s, T &last, T &prev)
     return last;
 }
 
-template <int size2, int size1>
-sc_dt::sc_lv<size2> hif_sxt(sc_dt::sc_lv<size1> arg)
+template <int size2, int size1> sc_dt::sc_lv<size2> hif_sxt(sc_dt::sc_lv<size1> arg)
 {
     if (size2 <= 0)
         return sc_dt::sc_lv<size2>();
@@ -53,15 +50,13 @@ sc_dt::sc_lv<size2> hif_sxt(sc_dt::sc_lv<size1> arg)
     return sc_dt::sc_lv<size2>(xStr.c_str());
 }
 
-template <int size2, int size1>
-sc_dt::sc_bv<size2> hif_sxt(sc_dt::sc_bv<size1> arg)
+template <int size2, int size1> sc_dt::sc_bv<size2> hif_sxt(sc_dt::sc_bv<size1> arg)
 {
     return sc_dt::sc_bv<size2>(hif_sxt<size2>(sc_dt::sc_lv<size1>(arg)));
 }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int size2, int size1>
-hdtlib::hl_lv_t<size2> hif_sxt(hdtlib::hl_lv_t<size1> arg)
+template <int size2, int size1> hdtlib::hl_lv_t<size2> hif_sxt(hdtlib::hl_lv_t<size1> arg)
 {
     if (size2 <= 0)
         return hdtlib::hl_lv_t<size2>();
@@ -76,8 +71,7 @@ hdtlib::hl_lv_t<size2> hif_sxt(hdtlib::hl_lv_t<size1> arg)
     return hdtlib::hl_lv_t<size2>(xStr.c_str());
 }
 
-template <int size2, int size1>
-hdtlib::hl_bv_t<size2> hif_sxt(hdtlib::hl_bv_t<size1> arg)
+template <int size2, int size1> hdtlib::hl_bv_t<size2> hif_sxt(hdtlib::hl_bv_t<size1> arg)
 {
     return hdtlib::hl_bv_t<size2>(hif_sxt<size2>(hdtlib::hl_lv_t<size1>(arg)));
 }
@@ -87,64 +81,56 @@ hdtlib::hl_bv_t<size2> hif_sxt(hdtlib::hl_bv_t<size1> arg)
 // Relationals for logics
 // ///////////////////////////////////////////////////////////////////
 
-template <int W>
-sc_dt::sc_logic hif__op_lt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_lt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_bigint<W>(v1) < sc_dt::sc_bigint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_gt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_gt_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_bigint<W>(v1) > sc_dt::sc_bigint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_le_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_le_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_bigint<W>(v1) <= sc_dt::sc_bigint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_ge_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_ge_signed(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_bigint<W>(v1) >= sc_dt::sc_bigint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_lt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_lt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_biguint<W>(v1) < sc_dt::sc_biguint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_gt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_gt_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_biguint<W>(v1) > sc_dt::sc_biguint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_le_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_le_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
     return sc_dt::sc_logic(sc_dt::sc_biguint<W>(v1) <= sc_dt::sc_biguint<W>(v2));
 }
 
-template <int W>
-sc_dt::sc_logic hif__op_ge_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
+template <int W> sc_dt::sc_logic hif__op_ge_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_lv<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return sc_dt::sc_logic('X');
@@ -152,64 +138,56 @@ sc_dt::sc_logic hif__op_ge_unsigned(const sc_dt::sc_lv<W> &v1, const sc_dt::sc_l
 }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int W>
-hdtlib::hl_logic_t hif__op_lt_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_lt_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_int_t<W>(v1) < hdtlib::hl_int_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_gt_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_gt_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_int_t<W>(v1) > hdtlib::hl_int_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_le_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_le_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_int_t<W>(v1) <= hdtlib::hl_int_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_ge_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_ge_signed(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_int_t<W>(v1) >= hdtlib::hl_int_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_lt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_lt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_uint_t<W>(v1) < hdtlib::hl_uint_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_gt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_gt_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_uint_t<W>(v1) > hdtlib::hl_uint_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_le_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_le_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
     return hdtlib::hl_logic_t(hdtlib::hl_uint_t<W>(v1) <= hdtlib::hl_uint_t<W>(v2));
 }
 
-template <int W>
-hdtlib::hl_logic_t hif__op_ge_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
+template <int W> hdtlib::hl_logic_t hif__op_ge_unsigned(const hdtlib::hl_lv_t<W> &v1, const hdtlib::hl_lv_t<W> &v2)
 {
     if (!v1.is_01() || !v2.is_01())
         return hdtlib::hl_logic_t('X');
@@ -249,15 +227,13 @@ hif_arrayEquals(T param1, typename std::remove_pointer<T>::type (&param2)[size])
     return true;
 }
 
-template <typename T>
-bool hif_arrayEquals(T *const & /*param1*/, T *const & /*param2*/)
+template <typename T> bool hif_arrayEquals(T *const & /*param1*/, T *const & /*param2*/)
 {
     assert(false);
     return false;
 }
 
-template <typename T, size_t size>
-bool hif_arrayEquals(T (&param1)[size], T (&param2)[size])
+template <typename T, size_t size> bool hif_arrayEquals(T (&param1)[size], T (&param2)[size])
 {
     for (size_t i = 0; i < size; ++i) {
         if (!hif_arrayEquals(param1[i], param2[i]))
@@ -266,8 +242,7 @@ bool hif_arrayEquals(T (&param1)[size], T (&param2)[size])
     return true;
 }
 
-template <typename P, typename T, size_t size>
-bool hif_arrayEquals(sc_core::sc_vector<P> &param1, T (&param2)[size])
+template <typename P, typename T, size_t size> bool hif_arrayEquals(sc_core::sc_vector<P> &param1, T (&param2)[size])
 {
     for (size_t i = 0; i < size; ++i) {
         if (!hif_arrayEquals(param1[i].read(), param2[i]))
@@ -276,8 +251,7 @@ bool hif_arrayEquals(sc_core::sc_vector<P> &param1, T (&param2)[size])
     return true;
 }
 
-template <typename P, typename T, size_t size>
-bool hif_arrayEquals(T (&param1)[size], sc_core::sc_vector<P> &param2)
+template <typename P, typename T, size_t size> bool hif_arrayEquals(T (&param1)[size], sc_core::sc_vector<P> &param2)
 {
     for (size_t i = 0; i < size; ++i) {
         if (!hif_arrayEquals(param1[i], param2[i].read()))
@@ -535,15 +509,13 @@ hdtlib::hl_lv_t<size1> hif_op_shift_right_logic(hdtlib::hl_lv_t<size1> param1, h
 
 // Reverse operations
 
-template <int W>
-sc_dt::sc_bv<W> hif_reverse(const sc_dt::sc_bv<W> &p)
+template <int W> sc_dt::sc_bv<W> hif_reverse(const sc_dt::sc_bv<W> &p)
 {
     sc_dt::sc_bv<W> ret = p;
     return ret.reverse();
 }
 
-template <int W>
-sc_dt::sc_lv<W> hif_reverse(const sc_dt::sc_lv<W> &p)
+template <int W> sc_dt::sc_lv<W> hif_reverse(const sc_dt::sc_lv<W> &p)
 {
     sc_dt::sc_lv<W> ret = p;
     return ret.reverse();
@@ -551,8 +523,7 @@ sc_dt::sc_lv<W> hif_reverse(const sc_dt::sc_lv<W> &p)
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int W>
-hdtlib::hl_bv_t<W> hif_reverse(const hdtlib::hl_bv_t<W> &p)
+template <int W> hdtlib::hl_bv_t<W> hif_reverse(const hdtlib::hl_bv_t<W> &p)
 {
     std::string s = p.to_string();
     std::reverse(s.begin(), s.end());
@@ -560,8 +531,7 @@ hdtlib::hl_bv_t<W> hif_reverse(const hdtlib::hl_bv_t<W> &p)
     return ret;
 }
 
-template <int W>
-hdtlib::hl_lv_t<W> hif_reverse(const hdtlib::hl_lv_t<W> &p)
+template <int W> hdtlib::hl_lv_t<W> hif_reverse(const hdtlib::hl_lv_t<W> &p)
 {
     std::string s = p.to_string();
     std::reverse(s.begin(), s.end());

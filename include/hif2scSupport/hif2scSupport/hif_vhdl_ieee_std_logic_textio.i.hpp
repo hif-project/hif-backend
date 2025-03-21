@@ -13,16 +13,14 @@ namespace hif_vhdl_ieee_std_logic_textio
 {
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int W>
-void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
+template <int W> void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
 {
     sc_dt::sc_lv<W> tmp = value.to_string().c_str();
     hif_vhdl_read(l, tmp, good);
     value = tmp.to_string().c_str();
 }
 
-template <int W>
-void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
+template <int W> void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
 {
     bool good;
     hif_vhdl_read(l, value, good);
@@ -39,16 +37,14 @@ void hif_vhdl_write(
     hif_vhdl_write(l, tmp, justified, field);
 }
 
-template <int W>
-void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
+template <int W> void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
 {
     sc_dt::sc_lv<W> tmp = value.to_string().c_str();
     hif_vhdl_hread(l, tmp, good);
     value = tmp.to_string().c_str();
 }
 
-template <int W>
-void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
+template <int W> void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
 {
     bool good;
     hif_vhdl_hread(l, value, good);
@@ -65,16 +61,14 @@ void hif_vhdl_hwrite(
     hif_vhdl_hwrite(l, tmp, justified, field);
 }
 
-template <int W>
-void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
+template <int W> void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good)
 {
     sc_dt::sc_lv<W> tmp = value.to_string().c_str();
     hif_vhdl_oread(l, tmp, good);
     value = tmp.to_string().c_str();
 }
 
-template <int W>
-void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
+template <int W> void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value)
 {
     bool good;
     hif_vhdl_oread(l, value, good);

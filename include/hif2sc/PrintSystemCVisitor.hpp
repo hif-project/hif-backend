@@ -641,7 +641,8 @@ private:
 
     /// @brief Print a for loop into the generated code.
     /// This is useful for operations like initialization of array, etc.
-    void _printForLoopHeader(const std::string & indexName, hif::Type *indexType, hif::Range *range, hif::Object *treeObject);
+    void
+    _printForLoopHeader(const std::string &indexName, hif::Type *indexType, hif::Range *range, hif::Object *treeObject);
 
     /// @brief Print sensitivity list of a Statetable.
     /// @param isPos is used to know if positive-related keyword must be printed.
@@ -663,18 +664,22 @@ private:
 
     /// @brief In case of arrays, print a loop (or a series of nested loops) to
     /// manage sensitivity on each element.
-    void
-    _printSensitivityLoop(hif::Value *name, hif::Type *nameType, bool isPos, bool isNeg, std::list<std::string> &indexes);
+    void _printSensitivityLoop(
+        hif::Value *name,
+        hif::Type *nameType,
+        bool isPos,
+        bool isNeg,
+        std::list<std::string> &indexes);
 
     /// @brief Print SubProgram declaration.
     /// @param altName allows to specify a different name to be printed if
     /// necessary.
-    void _printSubProgramDeclaration(hif::SubProgram &o, const std::string & altName = std::string());
+    void _printSubProgramDeclaration(hif::SubProgram &o, const std::string &altName = std::string());
 
     /// @brief Print SubProgram implementation.
     /// @param altName allows to specify a different name to be printed if
     /// necessary.
-    void _printSubProgramImplementation(hif::SubProgram &o, const std::string & altName = std::string());
+    void _printSubProgramImplementation(hif::SubProgram &o, const std::string &altName = std::string());
 
     /// @brief Temporary replace a bound to print the size of given span
     /// @param span The span.

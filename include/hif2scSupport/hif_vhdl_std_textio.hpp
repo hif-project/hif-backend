@@ -144,12 +144,10 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value);
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
 //  procedure READ (L: inout LINE; VALUE: out BIT_VECTOR; GOOD: out BOOLEAN);
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good);
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good);
 
 //  procedure READ (L: inout LINE; VALUE: out BIT_VECTOR);
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value);
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value);
 
 #endif
 

@@ -12,12 +12,7 @@
 namespace hif_systemc_extensions
 {
 
-template <class RetElementType>
-template <typename T>
-T ArrayConcat<RetElementType>::_getValue(T ret)
-{
-    return ret;
-}
+template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(T ret) { return ret; }
 
 template <class RetElementType>
 template <typename T>
@@ -33,16 +28,12 @@ T ArrayConcat<RetElementType>::_getValue(sc_core::sc_inout<T> &ret)
     return ret.read();
 }
 
-template <class RetElementType>
-template <typename T>
-T ArrayConcat<RetElementType>::_getValue(sc_core::sc_in<T> &ret)
+template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(sc_core::sc_in<T> &ret)
 {
     return ret.read();
 }
 
-template <class RetElementType>
-template <typename T>
-T ArrayConcat<RetElementType>::_getValue(sc_core::sc_out<T> &ret)
+template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(sc_core::sc_out<T> &ret)
 {
     return ret.read();
 }
@@ -54,11 +45,7 @@ ArrayConcat<RetElementType>::ArrayConcat()
     // ntd
 }
 
-template <class RetElementType>
-ArrayConcat<RetElementType>::~ArrayConcat()
-{
-    delete[] _result;
-}
+template <class RetElementType> ArrayConcat<RetElementType>::~ArrayConcat() { delete[] _result; }
 
 template <class RetElementType>
 template <int s1, int s2, typename T1, typename T2>

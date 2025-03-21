@@ -36,8 +36,7 @@ private:
     IHifAfter &operator=(const IHifAfter &);
 };
 
-template <class Target, class Value>
-class HifAfter : public IHifAfter
+template <class Target, class Value> class HifAfter : public IHifAfter
 {
 public:
     HifAfter(Target &t, const Value v, const char *file, const int line);

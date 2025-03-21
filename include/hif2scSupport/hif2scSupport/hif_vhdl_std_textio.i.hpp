@@ -14,16 +14,14 @@ namespace hif_vhdl_std_textio
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good)
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good)
 {
     sc_dt::sc_bv<W> tmp = value.to_string().c_str();
     hif_vhdl_read(l, tmp, good);
     value = tmp.to_string().c_str();
 }
 
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value)
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value)
 {
     bool good;
     hif_vhdl_read(l, value, good);

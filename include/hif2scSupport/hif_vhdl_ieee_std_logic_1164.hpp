@@ -30,24 +30,20 @@ sc_dt::sc_logic hif_vhdl_resolved(const sc_dt::sc_lv_base &s);
 HIF2SCSUPPORT_EXPORT
 bool hif_vhdl_to_bit(const sc_dt::sc_logic s, const bool xmap = false);
 
-template <int size>
-sc_dt::sc_bv<size> hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap = false);
+template <int size> sc_dt::sc_bv<size> hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap = false);
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl_to_x01(const sc_dt::sc_lv<size> &s);
+template <int size> sc_dt::sc_lv<size> hif_vhdl_to_x01(const sc_dt::sc_lv<size> &s);
 
 HIF2SCSUPPORT_EXPORT
 sc_dt::sc_logic hif_vhdl_to_x01(const sc_dt::sc_logic &s);
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl_to_ux01(const sc_dt::sc_lv<size> &s);
+template <int size> sc_dt::sc_lv<size> hif_vhdl_to_ux01(const sc_dt::sc_lv<size> &s);
 
 HIF2SCSUPPORT_EXPORT
 sc_dt::sc_logic hif_vhdl_to_ux01(const sc_dt::sc_logic &s);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int size>
-hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s);
+template <int size> hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s);
 
 HIF2SCSUPPORT_EXPORT
 bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap = false);
@@ -55,14 +51,12 @@ bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap = false);
 template <int size>
 hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, const bool xmap = false);
 
-template <int size>
-hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s);
+template <int size> hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s);
 
 HIF2SCSUPPORT_EXPORT
 hdtlib::hl_logic_t hif_vhdl_to_x01(const hdtlib::hl_logic_t &s);
 
-template <int size>
-hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s);
+template <int size> hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s);
 
 HIF2SCSUPPORT_EXPORT
 hdtlib::hl_logic_t hif_vhdl_to_ux01(const hdtlib::hl_logic_t &s);
@@ -83,8 +77,7 @@ bool hif_vhdl_is_x(const sc_dt::sc_lv_base s);
 HIF2SCSUPPORT_EXPORT
 bool hif_vhdl_is_x(const hdtlib::hl_logic_t s);
 
-template <int size>
-bool hif_vhdl_is_x(const hdtlib::hl_lv_t<size> s);
+template <int size> bool hif_vhdl_is_x(const hdtlib::hl_lv_t<size> s);
 #endif
 
 } // namespace hif_vhdl_ieee_std_logic_1164

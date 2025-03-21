@@ -46,11 +46,9 @@ HIF2SCSUPPORT_EXPORT
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &value);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int W>
-void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
+template <int W> void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
 
-template <int W>
-void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
+template <int W> void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
 #endif
 
 HIF2SCSUPPORT_EXPORT
@@ -144,11 +142,9 @@ HIF2SCSUPPORT_EXPORT
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &value);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int W>
-void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
+template <int W> void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
 
-template <int W>
-void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
+template <int W> void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
 #endif
 
 HIF2SCSUPPORT_EXPORT
@@ -226,11 +222,9 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &va
 //                  JUSTIFIED:in SIDE := RIGHT; FIELD:in WIDTH := 0);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int W>
-void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
+template <int W> void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value, bool &good);
 
-template <int W>
-void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
+template <int W> void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, hdtlib::hl_lv_t<W> &value);
 #endif
 
 HIF2SCSUPPORT_EXPORT

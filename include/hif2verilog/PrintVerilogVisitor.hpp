@@ -278,11 +278,9 @@ private:
     /// element.
     /// @{
 
-    template <class T>
-    void _printList(hif::BList<T> &list, const char separator, const bool needNewLine);
+    template <class T> void _printList(hif::BList<T> &list, const char separator, const bool needNewLine);
 
-    template <class T>
-    void _printList(hif::BList<T> &list, const std::string &separator, const bool needNewLine);
+    template <class T> void _printList(hif::BList<T> &list, const std::string &separator, const bool needNewLine);
 
     void _printList(hif::BList<hif::Object> &list, const std::string &separator, const bool needNewLine);
 

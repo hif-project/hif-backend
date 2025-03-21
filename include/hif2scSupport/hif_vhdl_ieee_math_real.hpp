@@ -88,8 +88,7 @@ double hif_vhdl_sign(double x);
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_uniform(int &seed1, int &seed2, double &x);
 
-template <typename T1, typename T2>
-void hif_vhdl_uniform(T1 &seed1, T2 &seed2, double &x)
+template <typename T1, typename T2> void hif_vhdl_uniform(T1 &seed1, T2 &seed2, double &x)
 {
     int s1 = seed1.to_int();
     int s2 = seed2.to_int();

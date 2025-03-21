@@ -136,9 +136,8 @@ int WhenSplitter::visitWhen(When &o)
     o.replace(fCall);
 
     // func
-    SubProgram *func =
-        _factory.subprogram(hif::copy(whenType), fname, _factory.noTemplates(), _factory.noParameters());
-    StateTable *st = _factory.stateTable(fname, _factory.noDeclarations(), _factory.retStmt(&o));
+    SubProgram *func = _factory.subprogram(hif::copy(whenType), fname, _factory.noTemplates(), _factory.noParameters());
+    StateTable *st   = _factory.stateTable(fname, _factory.noDeclarations(), _factory.retStmt(&o));
     func->setStateTable(st);
     BList<Declaration> *decls = hif::objectGetDeclarationList(scope);
     decls->push_front(func);
@@ -238,8 +237,7 @@ public:
     void generateIncludes();
 
 protected:
-    template <typename T>
-    bool _fixOverloadedOperatos(T *call);
+    template <typename T> bool _fixOverloadedOperatos(T *call);
 
     bool _isInsideStandarLibDef(DesignUnit *du);
 
@@ -760,8 +758,7 @@ void FinalRefineVisitor::_addHifGlobalsLibrary(Object *declarationScope)
     if (s == _currentScope)
         return;
 
-    Library *globLib =
-        _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, nullptr, false, false);
+    Library *globLib = _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, nullptr, false, false);
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
     addOpt.deleteIfNotAdded             = true;
@@ -1150,8 +1147,7 @@ void FinalRefineVisitor::_generateInclude(Scope *destination, BList<Library> &de
     destLibraries.push_back(lib);
 }
 
-template <typename T>
-bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
+template <typename T> bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
 {
     if (call->getInstance() == nullptr)
         return false;

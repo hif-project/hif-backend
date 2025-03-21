@@ -12,8 +12,7 @@
 namespace hif_systemc_extensions
 {
 
-template <typename C>
-struct HifAggregateVectorTraits;
+template <typename C> struct HifAggregateVectorTraits;
 
 // /////////////////////////////////////////////////////////////////////////
 // HifAggregateVector
@@ -21,8 +20,7 @@ struct HifAggregateVectorTraits;
 
 /// @brief This class creates a vector value, mapping VHDL aggregate.
 /// @tparam C The type-size of returned vector
-template <class C>
-class HifAggregateVector
+template <class C> class HifAggregateVector
 {
 public:
     /// @name Traits
@@ -85,8 +83,7 @@ private:
 /// @brief This class creates an array value, mapping VHDL aggregate.
 /// @tparam T The type of returned array
 /// @tparam size The type-size of returned array
-template <class T, int size>
-class HifAggregateArray : public HifAggregateVector<HifAggregateArray<T, size>>
+template <class T, int size> class HifAggregateArray : public HifAggregateVector<HifAggregateArray<T, size>>
 {
 public:
     typedef HifAggregateArray<T, size> ThisType;
@@ -107,8 +104,7 @@ private:
     HifAggregateArray<T, size> &operator=(const HifAggregateArray<T, size> &);
 };
 
-template <class T, int size>
-struct HifAggregateVectorTraits<HifAggregateArray<T, size>> {
+template <class T, int size> struct HifAggregateVectorTraits<HifAggregateArray<T, size>> {
     typedef T VectorType[size_t(size)];
     typedef T *VectorTypeReturn;
     typedef T ValueType;
@@ -121,8 +117,7 @@ struct HifAggregateVectorTraits<HifAggregateArray<T, size>> {
 
 /// @brief This class creates a vector value, mapping VHDL aggregate.
 /// @tparam size The type-size of returned vector
-template <int size>
-class HifAggregateBitVector : public HifAggregateVector<HifAggregateBitVector<size>>
+template <int size> class HifAggregateBitVector : public HifAggregateVector<HifAggregateBitVector<size>>
 {
 public:
     typedef HifAggregateBitVector<size> ThisType;
@@ -143,8 +138,7 @@ private:
     HifAggregateBitVector<size> &operator=(const HifAggregateBitVector<size> &);
 };
 
-template <int size>
-struct HifAggregateVectorTraits<HifAggregateBitVector<size>> {
+template <int size> struct HifAggregateVectorTraits<HifAggregateBitVector<size>> {
     typedef sc_dt::sc_bv<size> VectorType;
     typedef VectorType VectorTypeReturn;
     typedef bool ValueType;
@@ -157,8 +151,7 @@ struct HifAggregateVectorTraits<HifAggregateBitVector<size>> {
 
 /// @brief This class creates a vector value, mapping VHDL aggregate.
 /// @tparam size The type-size of returned vector
-template <int size>
-class HifAggregateLogicVector : public HifAggregateVector<HifAggregateLogicVector<size>>
+template <int size> class HifAggregateLogicVector : public HifAggregateVector<HifAggregateLogicVector<size>>
 {
 public:
     typedef HifAggregateLogicVector<size> ThisType;
@@ -179,8 +172,7 @@ private:
     HifAggregateLogicVector<size> &operator=(const HifAggregateLogicVector<size> &);
 };
 
-template <int size>
-struct HifAggregateVectorTraits<HifAggregateLogicVector<size>> {
+template <int size> struct HifAggregateVectorTraits<HifAggregateLogicVector<size>> {
     typedef sc_dt::sc_lv<size> VectorType;
     typedef VectorType VectorTypeReturn;
     typedef sc_dt::sc_logic ValueType;
@@ -195,8 +187,7 @@ struct HifAggregateVectorTraits<HifAggregateLogicVector<size>> {
 
 /// @brief This class creates a hdtlib vector value, mapping VHDL aggregate.
 /// @tparam size The type-size of returned vector
-template <int size>
-class HifAggregateHlBv : public HifAggregateVector<HifAggregateHlBv<size>>
+template <int size> class HifAggregateHlBv : public HifAggregateVector<HifAggregateHlBv<size>>
 {
 public:
     typedef HifAggregateHlBv<size> ThisType;
@@ -217,8 +208,7 @@ private:
     HifAggregateHlBv<size> &operator=(const HifAggregateHlBv<size> &);
 };
 
-template <int size>
-struct HifAggregateVectorTraits<HifAggregateHlBv<size>> {
+template <int size> struct HifAggregateVectorTraits<HifAggregateHlBv<size>> {
     typedef hdtlib::hl_bv_t<size> VectorType;
     typedef VectorType VectorTypeReturn;
     typedef bool ValueType;
@@ -231,8 +221,7 @@ struct HifAggregateVectorTraits<HifAggregateHlBv<size>> {
 
 /// @brief This class creates a hdtlib vector value, mapping VHDL aggregate.
 /// @tparam size The type-size of returned vector
-template <int size>
-class HifAggregateHlLv : public HifAggregateVector<HifAggregateHlLv<size>>
+template <int size> class HifAggregateHlLv : public HifAggregateVector<HifAggregateHlLv<size>>
 {
 public:
     typedef HifAggregateHlLv<size> ThisType;
@@ -253,8 +242,7 @@ private:
     HifAggregateHlLv<size> &operator=(const HifAggregateHlLv<size> &);
 };
 
-template <int size>
-struct HifAggregateVectorTraits<HifAggregateHlLv<size>> {
+template <int size> struct HifAggregateVectorTraits<HifAggregateHlLv<size>> {
     typedef hdtlib::hl_lv_t<size> VectorType;
     typedef VectorType VectorTypeReturn;
     typedef hdtlib::hl_logic_t ValueType;

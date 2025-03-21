@@ -17,8 +17,7 @@ namespace /*anon*/
 #define Abs(x)    ((x) < 0 ? -(x) : (x))
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 
-template <typename Real>
-inline constexpr bool is_real_equal(const Real v1, const Real v2, const Real tol)
+template <typename Real> inline constexpr bool is_real_equal(const Real v1, const Real v2, const Real tol)
 {
     const auto abs1 = Abs(v1);
     const auto abs2 = Abs(v2);

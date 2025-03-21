@@ -1812,15 +1812,13 @@ void VHDLPrinter::_printTypeInstance(ReferencedType *v)
     *(_outstream) << ".";
 }
 
-template <typename T>
-void VHDLPrinter::_printList(BList<T> &list, const char separator, const bool needNewLine)
+template <typename T> void VHDLPrinter::_printList(BList<T> &list, const char separator, const bool needNewLine)
 {
     BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, std::string() + separator, needNewLine);
 }
 
-template <typename T>
-void VHDLPrinter::_printList(BList<T> &list, const std::string &separator, const bool needNewLine)
+template <typename T> void VHDLPrinter::_printList(BList<T> &list, const std::string &separator, const bool needNewLine)
 {
     BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, separator, needNewLine);

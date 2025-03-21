@@ -27,8 +27,7 @@ HifAfter<Target, Value>::HifAfter(Target &t, const Value v, const char *file, co
     // ntd
 }
 
-template <class Target, class Value>
-HifAfter<Target, Value>::~HifAfter()
+template <class Target, class Value> HifAfter<Target, Value>::~HifAfter()
 {
     // ntd
 }
@@ -50,16 +49,14 @@ HifAfter<Target, Value> &HifAfter<Target, Value>::operator=(const HifAfter<Targe
     return *this;
 }
 
-template <class Target, class Value>
-void HifAfter<Target, Value>::swap(HifAfter<Target, Value> &other)
+template <class Target, class Value> void HifAfter<Target, Value>::swap(HifAfter<Target, Value> &other)
 {
     IHifAfter::swap(other);
     std::swap(_target, other._target);
     std::swap(_value, other._value);
 }
 
-template <class Target, class Value>
-void HifAfter<Target, Value>::operator()()
+template <class Target, class Value> void HifAfter<Target, Value>::operator()()
 {
     if (IHifAfter::_isActive)
         *_target = _value;

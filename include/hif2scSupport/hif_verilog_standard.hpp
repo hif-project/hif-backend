@@ -19,8 +19,7 @@
 namespace hif_verilog_standard
 {
 
-template <int times, int size>
-sc_dt::sc_lv<times * size> hif_verilog_iterated_concat(sc_dt::sc_lv<size> expression);
+template <int times, int size> sc_dt::sc_lv<times * size> hif_verilog_iterated_concat(sc_dt::sc_lv<size> expression);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 template <int times, int size>
