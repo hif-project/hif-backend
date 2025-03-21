@@ -47,7 +47,7 @@
 #include <hdtlib/hdtlib.hh>
 #endif
 //#ifdef HIF_USE_SYSTEMC
-#include <stdint.h>
+#include <cstdint>
 #include <systemc>
 //#endif
 

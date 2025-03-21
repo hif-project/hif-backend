@@ -30,20 +30,20 @@ public:
     PrintImplementationVisitor(hif2scParseLine &cLine, PrintSystemCVisitor::ConstTemplateMap &ctmList);
 
     /// @brief Destructor.
-    virtual ~PrintImplementationVisitor();
+    ~PrintImplementationVisitor() override;
 
     /// @name Refinement methods.
     //@{
 
-    virtual int visitDesignUnit(hif::DesignUnit &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitSystem(hif::System &o);
+    auto visitDesignUnit(hif::DesignUnit &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitSystem(hif::System &o) -> int override;
 
     //@}
 
 private:
-    PrintImplementationVisitor(const PrintImplementationVisitor &);
-    PrintImplementationVisitor &operator=(const PrintImplementationVisitor &);
+    PrintImplementationVisitor(const PrintImplementationVisitor &)                     = delete;
+    auto operator=(const PrintImplementationVisitor &) -> PrintImplementationVisitor & = delete;
 
     /// @brief Wrapper for calls to PrintSystemCVisitor.
     /// @param o The object to print.
@@ -53,20 +53,20 @@ private:
     /// templated and non-templated components.
     void _printImplementation(hif::Object &o, string fileName, bool headerImplementation);
 
-    std::string _getSourceExtensionByLanguage(Object *obj);
-    std::string _getSourceFilename(
+    auto _getSourceExtensionByLanguage(Object *obj) -> std::string;
+    auto _getSourceFilename(
         const std::string &outDir,
         const std::string &libDefName,
         Object *obj,
-        const std::string &fileName);
-    std::string _getHeaderInlineFilename(
+        const std::string &fileName) -> std::string;
+    auto _getHeaderInlineFilename(
         const std::string &outDir,
         const std::string &libDefName,
         Object *obj,
-        const std::string &fileName);
+        const std::string &fileName) -> std::string;
 
     /// @brief The output stream to write on.
-    hif::backends::IndentedStream *_outstream;
+    hif::backends::IndentedStream *_outstream{nullptr};
 
     /// @brief The main output directory, used to create the directory hierarchy
     /// related to this HIF tree.
@@ -76,7 +76,7 @@ private:
     //@{
 
     /// @brief The subdirectory relative to the library definition (if any).
-    hif::LibraryDef *_currentLibraryDef;
+    hif::LibraryDef *_currentLibraryDef{nullptr};
 
     //@}
 
@@ -102,9 +102,7 @@ private:
 PrintImplementationVisitor::PrintImplementationVisitor(
     hif2scParseLine &cLine,
     PrintSystemCVisitor::ConstTemplateMap &ctmList)
-    : _outstream(nullptr)
-    , _outdirName(cLine.getOutputDirectory())
-    , _currentLibraryDef(nullptr)
+    : _outdirName(cLine.getOutputDirectory())
     , _useResolved(cLine.useResolved())
     , _useCpp98(cLine.useCpp98())
     , _useHDTLib(cLine.useHDTLib())
@@ -123,14 +121,15 @@ PrintImplementationVisitor::~PrintImplementationVisitor()
     delete _outstream;
 }
 
-int PrintImplementationVisitor::visitDesignUnit(DesignUnit &o)
+auto PrintImplementationVisitor::visitDesignUnit(DesignUnit &o) -> int
 {
     messageAssert(!o.views.empty() && o.views.size() == 1, "Unsupported more than one view", &o, nullptr);
     View *duView = o.views.front();
 
     // skip standard ones
-    if (duView->isStandard())
+    if (duView->isStandard()) {
         return 0;
+    }
 
     std::string ldName;
     if (_currentLibraryDef != nullptr) {
@@ -149,11 +148,12 @@ int PrintImplementationVisitor::visitDesignUnit(DesignUnit &o)
     return 0;
 }
 
-int PrintImplementationVisitor::visitLibraryDef(LibraryDef &o)
+auto PrintImplementationVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
     // Standard libraries (e.g., tlm)
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     // Note: even if LibraryDef contains only DesignUnits or other LibraryDef,
     // the file is still generated to preserve the hierarchical structure.
@@ -180,13 +180,14 @@ int PrintImplementationVisitor::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int PrintImplementationVisitor::visitSystem(System &o)
+auto PrintImplementationVisitor::visitSystem(System &o) -> int
 {
     // Recursive call.
     GuideVisitor::visitSystem(o);
 
-    if (o.declarations.empty() && o.actions.empty())
+    if (o.declarations.empty() && o.actions.empty()) {
         return 0;
+    }
 
     // If the System declarations contain components that own TPs, print their
     // implementation.
@@ -204,8 +205,9 @@ int PrintImplementationVisitor::visitSystem(System &o)
 
 void PrintImplementationVisitor::_printImplementation(Object &o, string fileName, bool headerImplementation)
 {
-    if (fileName.empty())
+    if (fileName.empty()) {
         return;
+    }
 
     if (_outstream != nullptr) {
         delete _outstream;
@@ -216,19 +218,20 @@ void PrintImplementationVisitor::_printImplementation(Object &o, string fileName
     std::string ext;
     hif::backends::splitFileName(fileName, f, ext);
 
-    LibraryDef *lib = dynamic_cast<LibraryDef *>(&o);
+    auto *lib = dynamic_cast<LibraryDef *>(&o);
     if (lib == nullptr) {
         std::ofstream ofs;
-        if (!hif::backends::openFileStream(fileName.data(), &ofs)) {
+        if (hif::backends::openFileStream(fileName, &ofs) == 0) {
             messageError("Unable to create implementation output stream for " + fileName, nullptr, nullptr);
         }
         ofs.close();
 
         _outstream = new hif::backends::IndentedStream(f, ext);
         _outstream->setComment("// ", "// ", "");
-        const hif::backends::IndentedStream::Size maxLines = hif::backends::IndentedStream::Size(_maxLines);
-        if (!headerImplementation)
+        const auto maxLines = hif::backends::IndentedStream::Size(_maxLines);
+        if (!headerImplementation) {
             _outstream->setMaxLines(maxLines);
+        }
     }
 
     PrintSystemCVisitorOptions opt;
@@ -246,42 +249,46 @@ void PrintImplementationVisitor::_printImplementation(Object &o, string fileName
     o.acceptVisitor(vis);
 
     if (_outstream != nullptr) {
-        *(_outstream) << std::endl; // Flush the stream buffer.
+        *(_outstream) << '\n'; // Flush the stream buffer.
     }
 }
 
-std::string PrintImplementationVisitor::_getSourceExtensionByLanguage(Object *obj)
+auto PrintImplementationVisitor::_getSourceExtensionByLanguage(Object *obj) -> std::string
 {
     const hif::LanguageID lang = objectGetLanguage(obj);
 
-    if (lang == hif::c)
+    if (lang == hif::c) {
         return ".c";
+    }
 
     // rtl, tlm, psl, cpp
     return "." + _sourcesExtension;
 }
 
-std::string PrintImplementationVisitor::_getSourceFilename(
+auto PrintImplementationVisitor::_getSourceFilename(
     const std::string &outDir,
     const std::string &libDefName,
     Object *obj,
-    const std::string &fileName)
+    const std::string &fileName) -> std::string
 {
-    string ret("");
-    if (obj == nullptr)
+    string ret;
+    if (obj == nullptr) {
         return ret;
+    }
 
     // A template DesignUnit will always be printed in .i.hpp file.
     // A non-template DesignUnit will always have a .cc containing at least
     // its ctor and dtor.
     // LibraryDef and System must check their children.
 
-    if (ownTemplate(obj, false))
+    if (ownTemplate(obj, false)) {
         return ret;
+    }
 
-    DesignUnit *du = dynamic_cast<DesignUnit *>(obj);
-    if (du == nullptr && ownTemplateOnly(obj, true))
+    auto *du = dynamic_cast<DesignUnit *>(obj);
+    if (du == nullptr && ownTemplateOnly(obj, true)) {
         return ret;
+    }
     messageAssert(du != nullptr || !fileName.empty(), "Unexpected case", nullptr, nullptr);
     string fn = (du == nullptr) ? fileName : du->getName();
     string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
@@ -290,25 +297,28 @@ std::string PrintImplementationVisitor::_getSourceFilename(
     return ret;
 }
 
-std::string PrintImplementationVisitor::_getHeaderInlineFilename(
+auto PrintImplementationVisitor::_getHeaderInlineFilename(
     const std::string &outDir,
     const std::string &libDefName,
     Object *obj,
-    const std::string &fileName)
+    const std::string &fileName) -> std::string
 {
-    string ret("");
-    if (obj == nullptr)
+    string ret;
+    if (obj == nullptr) {
         return ret;
+    }
 
     // A template DesignUnit will always be printed in .i.hpp file.
     // A non-template DesignUnit must check its children.
     // LibraryDef and System must check their children.
 
-    DesignUnit *du = dynamic_cast<DesignUnit *>(obj);
-    if (du != nullptr && !ownTemplate(obj, false) && !ownTemplate(obj, true))
+    auto *du = dynamic_cast<DesignUnit *>(obj);
+    if (du != nullptr && !ownTemplate(obj, false) && !ownTemplate(obj, true)) {
         return ret;
-    if (du == nullptr && !ownTemplate(obj, true))
+    }
+    if (du == nullptr && !ownTemplate(obj, true)) {
         return ret;
+    }
 
     messageAssert(du != nullptr || !fileName.empty(), "Unexpected case", nullptr, nullptr);
 

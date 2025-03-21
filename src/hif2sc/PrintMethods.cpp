@@ -31,14 +31,14 @@ public:
     CollectConstTemplatesVisitor(
         PrintSystemCVisitor::ConstTemplateMap &ctmList,
         hif::semantics::ILanguageSemantics *sem);
-    ~CollectConstTemplatesVisitor();
+    ~CollectConstTemplatesVisitor() override;
 
-    int visitView(View &o);
-    int visitViewReference(ViewReference &o);
+    auto visitView(View &o) -> int override;
+    auto visitViewReference(ViewReference &o) -> int override;
 
 private:
-    CollectConstTemplatesVisitor(const CollectConstTemplatesVisitor &);
-    CollectConstTemplatesVisitor &operator=(const CollectConstTemplatesVisitor &);
+    CollectConstTemplatesVisitor(const CollectConstTemplatesVisitor &)                     = delete;
+    auto operator=(const CollectConstTemplatesVisitor &) -> CollectConstTemplatesVisitor & = delete;
 
     hif::semantics::ILanguageSemantics *_sem;
     hif::HifFactory _f;
@@ -62,12 +62,12 @@ CollectConstTemplatesVisitor::~CollectConstTemplatesVisitor()
     // ntd
 }
 
-int CollectConstTemplatesVisitor::visitView(View &o)
+auto CollectConstTemplatesVisitor::visitView(View &o) -> int
 {
     GuideVisitor::visitView(o);
 
     for (BList<Declaration>::iterator i = o.templateParameters.begin(); i != o.templateParameters.end();) {
-        ValueTP *vtp = dynamic_cast<ValueTP *>(*i);
+        auto *vtp = dynamic_cast<ValueTP *>(*i);
         if (vtp == nullptr || vtp->isCompileTimeConstant()) {
             ++i;
             continue;
@@ -80,12 +80,12 @@ int CollectConstTemplatesVisitor::visitView(View &o)
     return 0;
 }
 
-int CollectConstTemplatesVisitor::visitViewReference(ViewReference &o)
+auto CollectConstTemplatesVisitor::visitViewReference(ViewReference &o) -> int
 {
     GuideVisitor::visitViewReference(o);
 
     for (BList<TPAssign>::iterator i = o.templateParameterAssigns.begin(); i != o.templateParameterAssigns.end();) {
-        ValueTPAssign *vtpa = dynamic_cast<ValueTPAssign *>(*i);
+        auto *vtpa = dynamic_cast<ValueTPAssign *>(*i);
         if (vtpa == nullptr) {
             ++i;
             continue;
@@ -117,44 +117,43 @@ class FindTemplateVisitor_t : public GuideVisitor
 {
 public:
     explicit FindTemplateVisitor_t(bool subTreeOnly);
-    ~FindTemplateVisitor_t();
+    ~FindTemplateVisitor_t() override;
 
     void clean();
-    bool TPregardless();
-    bool ownTemplate();
-    bool ownTemplateOnly();
+    auto TPregardless() const -> bool;
+    auto ownTemplate() const -> bool;
+    auto ownTemplateOnly() const -> bool;
 
-    virtual int visitFunction(Function &o);
-    virtual int visitLibraryDef(LibraryDef &o);
-    virtual int visitProcedure(Procedure &o);
-    virtual int visitSystem(System &o);
-    virtual int visitTypeDef(TypeDef &o);
-    virtual int visitView(View &o);
+    auto visitFunction(Function &o) -> int override;
+    auto visitLibraryDef(LibraryDef &o) -> int override;
+    auto visitProcedure(Procedure &o) -> int override;
+    auto visitSystem(System &o) -> int override;
+    auto visitTypeDef(TypeDef &o) -> int override;
+    auto visitView(View &o) -> int override;
 
 private:
-    FindTemplateVisitor_t(const FindTemplateVisitor_t &other);
-    FindTemplateVisitor_t &operator=(const FindTemplateVisitor_t &other);
+    FindTemplateVisitor_t(const FindTemplateVisitor_t &other)                     = delete;
+    auto operator=(const FindTemplateVisitor_t &other) -> FindTemplateVisitor_t & = delete;
 
     // If set, result concerns the object subtree only (root is not included).
     // If not set, result concerns the root object only.
     bool _subTreeOnly;
 
     // Indicates whether the subtree contains objects that own TP.
-    bool _ownTemplate;
+    bool _ownTemplate{false};
 
     // Indicates whether the subtree contains only objects that own TP.
     // Note: to be checked only after _ownTemplate.
-    bool _ownTemplateOnly;
+    bool _ownTemplateOnly{true};
 };
 
 FindTemplateVisitor_t::FindTemplateVisitor_t(bool subTreeOnly)
     : _subTreeOnly(subTreeOnly)
-    , _ownTemplate(false)
-    , _ownTemplateOnly(true)
+
 {
 }
 
-FindTemplateVisitor_t::~FindTemplateVisitor_t() {}
+FindTemplateVisitor_t::~FindTemplateVisitor_t() = default;
 
 void FindTemplateVisitor_t::clean()
 {
@@ -162,18 +161,18 @@ void FindTemplateVisitor_t::clean()
     _ownTemplateOnly = true;
 }
 
-bool FindTemplateVisitor_t::TPregardless() { return _ownTemplate == false; }
+auto FindTemplateVisitor_t::TPregardless() const -> bool { return !_ownTemplate; }
 
-bool FindTemplateVisitor_t::ownTemplate() { return _ownTemplate; }
+auto FindTemplateVisitor_t::ownTemplate() const -> bool { return _ownTemplate; }
 
-bool FindTemplateVisitor_t::ownTemplateOnly()
+auto FindTemplateVisitor_t::ownTemplateOnly() const -> bool
 {
     // Note: _ownTemplateOnly is init to true until it is falsified. Here
     // _ownTemplate acts as a safety check.
     return _ownTemplate && _ownTemplateOnly;
 }
 
-int FindTemplateVisitor_t::visitFunction(Function &o)
+auto FindTemplateVisitor_t::visitFunction(Function &o) -> int
 {
     messageDebugAssert(!_subTreeOnly, "Unexpected case", &o, nullptr); // leaf
 
@@ -185,10 +184,11 @@ int FindTemplateVisitor_t::visitFunction(Function &o)
     return 0;
 }
 
-int FindTemplateVisitor_t::visitLibraryDef(LibraryDef &o)
+auto FindTemplateVisitor_t::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (!_subTreeOnly)
+    if (!_subTreeOnly) {
         return 0;
+    }
 
     // Considering System as entry point, we are only interested in its declarations.
     _subTreeOnly = false;
@@ -198,7 +198,7 @@ int FindTemplateVisitor_t::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int FindTemplateVisitor_t::visitProcedure(Procedure &o)
+auto FindTemplateVisitor_t::visitProcedure(Procedure &o) -> int
 {
     messageDebugAssert(!_subTreeOnly, "Unexpected case", &o, nullptr); // leaf
 
@@ -210,10 +210,11 @@ int FindTemplateVisitor_t::visitProcedure(Procedure &o)
     return 0;
 }
 
-int FindTemplateVisitor_t::visitSystem(System &o)
+auto FindTemplateVisitor_t::visitSystem(System &o) -> int
 {
-    if (!_subTreeOnly)
+    if (!_subTreeOnly) {
         return 0;
+    }
 
     // Considering System as entry point, we are only interested in its declarations.
     _subTreeOnly = false;
@@ -223,7 +224,7 @@ int FindTemplateVisitor_t::visitSystem(System &o)
     return 0;
 }
 
-int FindTemplateVisitor_t::visitTypeDef(TypeDef &o)
+auto FindTemplateVisitor_t::visitTypeDef(TypeDef &o) -> int
 {
     assert(!_subTreeOnly); // leaf
 
@@ -235,7 +236,7 @@ int FindTemplateVisitor_t::visitTypeDef(TypeDef &o)
     return 0;
 }
 
-int FindTemplateVisitor_t::visitView(View &o)
+auto FindTemplateVisitor_t::visitView(View &o) -> int
 {
     if (_subTreeOnly) {
         _subTreeOnly = false;
@@ -265,38 +266,37 @@ void collectConstTemplates(
     o->acceptVisitor(v);
 }
 
-bool ownTemplate(Object *obj, bool subTreeOnly)
+auto ownTemplate(Object *obj, bool subTreeOnly) -> bool
 {
     FindTemplateVisitor_t vis(subTreeOnly);
     obj->acceptVisitor(vis);
     return vis.ownTemplate();
 }
 
-bool ownTemplateOnly(Object *obj, bool subTreeOnly)
+auto ownTemplateOnly(Object *obj, bool subTreeOnly) -> bool
 {
     FindTemplateVisitor_t vis(subTreeOnly);
     obj->acceptVisitor(vis);
     return vis.ownTemplateOnly();
 }
 
-bool checkLanguage(Object *obj, LanguageID language)
+auto checkLanguage(Object *obj, LanguageID language) -> bool
 {
     View *view = hif::getNearestParent<View>(obj, true);
-    if (view != nullptr && view->getLanguageID() == language)
+    if (view != nullptr && view->getLanguageID() == language) {
         return true;
+    }
 
-    LibraryDef *libD = hif::getNearestParent<LibraryDef>(obj, true);
-    if (libD != nullptr && libD->getLanguageID() == language)
+    auto *libD = hif::getNearestParent<LibraryDef>(obj, true);
+    if (libD != nullptr && libD->getLanguageID() == language) {
         return true;
+    }
 
-    System *sys = hif::getNearestParent<System>(obj, true);
-    if (sys != nullptr && sys->getLanguageID() == language)
-        return true;
-
-    return false;
+    auto *sys = hif::getNearestParent<System>(obj, true);
+    return sys != nullptr && sys->getLanguageID() == language;
 }
 
-std::string getLanguage(LanguageID language)
+auto getLanguage(LanguageID language) -> std::string
 {
     switch (language) {
     case hif::rtl:

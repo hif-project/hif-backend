@@ -12,28 +12,35 @@
 namespace hif_systemc_extensions
 {
 
-template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(T ret) { return ret; }
-
-template <class RetElementType>
-template <typename T>
-T ArrayConcat<RetElementType>::_getValue(sc_core::sc_signal<T> &ret)
+template <class RetElementType> template <typename T> auto ArrayConcat<RetElementType>::_getValue(T ret) -> T
 {
-    return ret.read();
+    return ret;
 }
 
 template <class RetElementType>
 template <typename T>
-T ArrayConcat<RetElementType>::_getValue(sc_core::sc_inout<T> &ret)
+auto ArrayConcat<RetElementType>::_getValue(sc_core::sc_signal<T> &ret) -> T
 {
     return ret.read();
 }
 
-template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(sc_core::sc_in<T> &ret)
+template <class RetElementType>
+template <typename T>
+auto ArrayConcat<RetElementType>::_getValue(sc_core::sc_inout<T> &ret) -> T
 {
     return ret.read();
 }
 
-template <class RetElementType> template <typename T> T ArrayConcat<RetElementType>::_getValue(sc_core::sc_out<T> &ret)
+template <class RetElementType>
+template <typename T>
+auto ArrayConcat<RetElementType>::_getValue(sc_core::sc_in<T> &ret) -> T
+{
+    return ret.read();
+}
+
+template <class RetElementType>
+template <typename T>
+auto ArrayConcat<RetElementType>::_getValue(sc_core::sc_out<T> &ret) -> T
 {
     return ret.read();
 }
@@ -49,7 +56,7 @@ template <class RetElementType> ArrayConcat<RetElementType>::~ArrayConcat() { de
 
 template <class RetElementType>
 template <int s1, int s2, typename T1, typename T2>
-RetElementType *ArrayConcat<RetElementType>::concatArrays(const T1 &p1, const T2 &p2)
+auto ArrayConcat<RetElementType>::concatArrays(const T1 &p1, const T2 &p2) -> RetElementType *
 {
     _result = new RetElementType[s1 + s2];
     for (int i = 0; i < s1; ++i) {
@@ -65,7 +72,7 @@ RetElementType *ArrayConcat<RetElementType>::concatArrays(const T1 &p1, const T2
 
 template <class RetElementType>
 template <int s2, typename T1, typename T2>
-RetElementType *ArrayConcat<RetElementType>::concatValueWithArray(T1 p1, const T2 &p2)
+auto ArrayConcat<RetElementType>::concatValueWithArray(T1 p1, const T2 &p2) -> RetElementType *
 {
     _result = new RetElementType[1 + s2];
 
@@ -80,7 +87,7 @@ RetElementType *ArrayConcat<RetElementType>::concatValueWithArray(T1 p1, const T
 
 template <class RetElementType>
 template <int s1, typename T1, typename T2>
-RetElementType *ArrayConcat<RetElementType>::concatArrayWithValue(const T1 &p1, T2 p2)
+auto ArrayConcat<RetElementType>::concatArrayWithValue(const T1 &p1, T2 p2) -> RetElementType *
 {
     _result = new RetElementType[s1 + 1];
     for (int i = 0; i < s1; ++i) {

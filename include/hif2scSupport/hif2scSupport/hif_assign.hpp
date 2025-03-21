@@ -21,13 +21,13 @@ namespace hif_systemc_extensions
 // /////////////////////////////////////////////////////////////////////////
 
 HIF2SCSUPPORT_EXPORT
-sc_dt::sc_logic_value_t to_bit(sc_dt::sc_logic v);
+auto to_bit(sc_dt::sc_logic v) -> sc_dt::sc_logic_value_t;
 
 HIF2SCSUPPORT_EXPORT
-sc_dt::sc_logic_value_t to_bit(sc_dt::sc_bit v);
+auto to_bit(sc_dt::sc_bit v) -> sc_dt::sc_logic_value_t;
 
 HIF2SCSUPPORT_EXPORT
-bool to_bit(bool v);
+auto to_bit(bool v) -> bool;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 HIF2SCSUPPORT_EXPORT

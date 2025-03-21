@@ -42,14 +42,14 @@ HifAfter<Target, Value>::HifAfter(const HifAfter<Target, Value> &other)
 }
 
 template <class Target, class Value>
-HifAfter<Target, Value> &HifAfter<Target, Value>::operator=(const HifAfter<Target, Value> &other)
+auto HifAfter<Target, Value>::operator=(const HifAfter<Target, Value> &other) -> HifAfter<Target, Value> &
 {
     HifAfter<Target, Value> tmp(other);
     swap(tmp);
     return *this;
 }
 
-template <class Target, class Value> void HifAfter<Target, Value>::swap(HifAfter<Target, Value> &other)
+template <class Target, class Value> void HifAfter<Target, Value>::swap(HifAfter<Target, Value> &other) noexcept
 {
     IHifAfter::swap(other);
     std::swap(_target, other._target);
@@ -58,8 +58,9 @@ template <class Target, class Value> void HifAfter<Target, Value>::swap(HifAfter
 
 template <class Target, class Value> void HifAfter<Target, Value>::operator()()
 {
-    if (IHifAfter::_isActive)
+    if (IHifAfter::_isActive) {
         *_target = _value;
+    }
 }
 
 // ///////////////////////////////////////////////////////////////////
@@ -67,7 +68,7 @@ template <class Target, class Value> void HifAfter<Target, Value>::operator()()
 // ///////////////////////////////////////////////////////////////////
 
 template <typename Target, typename Value>
-void _hif_after(Target &target, const Value v, const sc_core::sc_time &delay, const char *file, const int line)
+void _hif_after(Target &target, Value v, const sc_core::sc_time &delay, const char *file, const int line)
 {
     HifAfter<Target, Value> func(target, v, file, line);
     sc_core::sc_event *event = func._event;

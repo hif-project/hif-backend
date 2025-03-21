@@ -138,8 +138,8 @@ public:
         hif::backends::IndentedStream *stream,
         PrintSystemCVisitorOptions &opt,
         PrintSystemCVisitor::ConstTemplateMap &ctmList,
-        const std::string &baseName,
-        const std::string &extension);
+        std::string baseName,
+        std::string extension);
     PrintSystemCVisitor(ConstTemplateMap &ctmList);
 
     /// Destructor.
@@ -324,21 +324,21 @@ private:
 
     /// @brief Check if the component is related to TLM, since they need a different
     /// management from other components.
-    auto _isTLMComponent(hif::DataDeclaration *obj) -> bool;
+    static auto _isTLMComponent(hif::DataDeclaration *obj) -> bool;
 
     /// @brief Check if a Function actually represents a C++ class constructor,
     /// or if a FunctionCall represents the call to a C++ class constructor.
-    auto _isCppConstructor(hif::Object *obj) -> bool;
+    static auto _isCppConstructor(hif::Object *obj) -> bool;
 
     /// @brief Check if the function is actually the C++ class destructor.
     /// By convention, it is named __hif_destructor
-    auto _isCppDestructor(hif::Object *obj) -> bool;
+    static auto _isCppDestructor(hif::Object *obj) -> bool;
 
     /// @brief Check if the function is native of HIF.
-    auto _isNativeHifFunction(hif::Object *obj) -> bool;
+    static auto _isNativeHifFunction(hif::Object *obj) -> bool;
 
     /// @brief Check if the procedure is native of HIF.
-    auto _isNativeHifProcedure(hif::Object *obj) -> bool;
+    static auto _isNativeHifProcedure(hif::Object *obj) -> bool;
 
     /// @brief Return true if the function call need the additional qualifier
     /// ".template". It is required in this situation:
@@ -357,7 +357,7 @@ private:
 
     /// @brief Check if the LibraryDef does not contain anything else than
     /// DesignUnits or other LibraryDefs, that are printed into independent files.
-    auto _containsOnlyIndependentComponents(hif::LibraryDef &o) -> bool;
+    static auto _containsOnlyIndependentComponents(hif::LibraryDef &o) -> bool;
 
     /// @brief Return true if given value is template.
     auto _isTemplateInstance(hif::Value *o) -> bool;
@@ -728,7 +728,7 @@ private:
     void _printScopeHierarchy();
 
     /// @brief Return the given string in capital letters.
-    auto _capitalize(const char *str) -> std::string;
+    static auto _capitalize(const char *str) -> std::string;
 
     /// @brief Returns true if given expression type is native int 32 bits.
     auto _isInt32Type(hif::Expression *e) -> bool;

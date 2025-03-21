@@ -14,7 +14,8 @@ namespace hif_systemc_extensions
 {
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_signal<T>> &array, const int left, const int right)
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_signal<T>> &array, const int left, const int right)
+    -> std::vector<T>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -29,7 +30,8 @@ std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_signal<T>> 
 }
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_in<T>> &array, const int left, const int right)
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_in<T>> &array, const int left, const int right)
+    -> std::vector<T>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -44,7 +46,8 @@ std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_in<T>> &arr
 }
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_out<T>> &array, const int left, const int right)
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_out<T>> &array, const int left, const int right)
+    -> std::vector<T>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -59,7 +62,8 @@ std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_out<T>> &ar
 }
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &array, const int left, const int right)
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &array, const int left, const int right)
+    -> std::vector<T>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -73,7 +77,8 @@ std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &
     return ret;
 }
 
-template <typename T> std::vector<T> hif_vector_slice(const std::vector<T> &array, const int left, const int right)
+template <typename T>
+auto hif_vector_slice(const std::vector<T> &array, const int left, const int right) -> std::vector<T>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -88,10 +93,10 @@ template <typename T> std::vector<T> hif_vector_slice(const std::vector<T> &arra
 }
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
+auto hif_vector_slice(
     const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_signal<T>>> &array,
     const int left,
-    const int right)
+    const int right) -> std::vector<std::vector<T>>
 
 {
     assert(right >= 0);
@@ -107,10 +112,10 @@ std::vector<std::vector<T>> hif_vector_slice(
 }
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
+auto hif_vector_slice(
     const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_in<T>>> &array,
     const int left,
-    const int right)
+    const int right) -> std::vector<std::vector<T>>
 
 {
     assert(right >= 0);
@@ -126,10 +131,10 @@ std::vector<std::vector<T>> hif_vector_slice(
 }
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
+auto hif_vector_slice(
     const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_out<T>>> &array,
     const int left,
-    const int right)
+    const int right) -> std::vector<std::vector<T>>
 
 {
     assert(right >= 0);
@@ -145,10 +150,10 @@ std::vector<std::vector<T>> hif_vector_slice(
 }
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
+auto hif_vector_slice(
     const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_inout<T>>> &array,
     const int left,
-    const int right)
+    const int right) -> std::vector<std::vector<T>>
 {
     assert(right >= 0);
     assert(right <= left);
@@ -162,7 +167,7 @@ std::vector<std::vector<T>> hif_vector_slice(
     return ret;
 }
 
-template <typename T> T *hif_vector_slice(T *array, const int /*left*/, const int right)
+template <typename T> auto hif_vector_slice(T *array, const int /*left*/, const int right) -> T *
 {
     assert(right >= 0);
     return array + right;

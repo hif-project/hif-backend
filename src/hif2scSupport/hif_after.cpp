@@ -79,7 +79,7 @@ hif_systemc_extensions::IHifAfter::IHifAfter(const hif_systemc_extensions::IHifA
     _hif_after_register(this);
 }
 
-void hif_systemc_extensions::IHifAfter::swap(hif_systemc_extensions::IHifAfter &other)
+void hif_systemc_extensions::IHifAfter::swap(hif_systemc_extensions::IHifAfter &other) noexcept
 {
     std::swap(_event, other._event);
     std::swap(_file, other._file);

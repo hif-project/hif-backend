@@ -17,17 +17,17 @@ namespace hif_vhdl_ieee_std_logic_arith
 // Relational operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size> bool hif_vhdl__op_eq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_eq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return (hif_vhdl_conv_signed_signed<size>(v1) == hif_vhdl_conv_signed_signed<size>(v2));
 }
 
-template <int size> bool hif_vhdl__op_neq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_neq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return !hif_vhdl__op_eq_signed(v1, v2);
 }
 
-template <typename T, size_t size> bool hif_vhdl__op_eq_signed(T (&v1)[size], T (&v2)[size])
+template <typename T, size_t size> auto hif_vhdl__op_eq_signed(T (&v1)[size], T (&v2)[size]) -> bool
 {
     bool res = hif_vhdl__op_eq_signed(v1[0], v2[0]);
     for (size_t i = 1; i < size; ++i) {
@@ -37,22 +37,22 @@ template <typename T, size_t size> bool hif_vhdl__op_eq_signed(T (&v1)[size], T 
     return res;
 }
 
-template <typename T, size_t size> bool hif_vhdl__op_neq_signed(T (&v1)[size], T (&v2)[size])
+template <typename T, size_t size> auto hif_vhdl__op_neq_signed(T (&v1)[size], T (&v2)[size]) -> bool
 {
     return !hif_vhdl__op_eq_signed(v1, v2);
 }
 
-template <int size> bool hif_vhdl__op_eq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_eq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return (hif_vhdl_conv_unsigned_unsigned<size>(v1) == hif_vhdl_conv_unsigned_unsigned<size>(v2));
 }
 
-template <int size> bool hif_vhdl__op_neq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_neq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return !hif_vhdl__op_eq_unsigned(v1, v2);
 }
 
-template <typename T, size_t size> bool hif_vhdl__op_eq_unsigned(T (&v1)[size], T (&v2)[size])
+template <typename T, size_t size> auto hif_vhdl__op_eq_unsigned(T (&v1)[size], T (&v2)[size]) -> bool
 {
     bool res = hif_vhdl__op_eq_unsigned(v1[0], v2[0]);
     for (size_t i = 1; i < size; ++i) {
@@ -62,7 +62,7 @@ template <typename T, size_t size> bool hif_vhdl__op_eq_unsigned(T (&v1)[size], 
     return res;
 }
 
-template <typename T, size_t size> bool hif_vhdl__op_neq_unsigned(T (&v1)[size], T (&v2)[size])
+template <typename T, size_t size> auto hif_vhdl__op_neq_unsigned(T (&v1)[size], T (&v2)[size]) -> bool
 {
     return !hif_vhdl__op_eq_unsigned(v1, v2);
 }
@@ -162,33 +162,35 @@ template <int size> bool hif_vhdl__op_neq_unsigned(const hdtlib::hl_bv_t<size> &
 // /////////////////////////////////////////////////////////////////////////////
 
 template <int size, template <int> class T1, template <int> class T2>
-typename RetType<size, T1>::Type hif_vhdl__op_plus_signed(const T1<size> &v1, const T2<size> &v2)
+auto hif_vhdl__op_plus_signed(const T1<size> &v1, const T2<size> &v2) -> typename RetType<size, T1>::Type
 {
     typedef typename RetType<size, T1>::Type Type;
     typedef typename RetType<size, T1>::Int Int;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<Int>(v1) + static_cast<Int>(v2));
     return ret;
 }
 
 template <int size, template <int> class T1, template <int> class T2>
-typename RetType<size, T1>::Type hif_vhdl__op_minus_signed(const T1<size> &v1, const T2<size> &v2)
+auto hif_vhdl__op_minus_signed(const T1<size> &v1, const T2<size> &v2) -> typename RetType<size, T1>::Type
 {
     typedef typename RetType<size, T1>::Type Type;
     typedef typename RetType<size, T1>::Int Int;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<Int>(v1) - static_cast<Int>(v2));
     return ret;
 }
 
 template <int size1, int size2, template <int> class T1, template <int> class T2>
-typename RetType<size1 + size2, T1>::Type hif_vhdl__op_mult_signed(const T1<size1> &v1, const T2<size2> &v2)
+auto hif_vhdl__op_mult_signed(const T1<size1> &v1, const T2<size2> &v2) -> typename RetType<size1 + size2, T1>::Type
 {
     typedef typename RetType<size1 + size2, T1>::Type Type;
     typedef typename RetType<size1 + size2, T1>::Int Int;
@@ -197,63 +199,69 @@ typename RetType<size1 + size2, T1>::Type hif_vhdl__op_mult_signed(const T1<size
     typedef typename RetType<size2, T1>::Int Int2;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<Int>(static_cast<Int1>(v1)) * static_cast<Int>(static_cast<Int2>(v2)));
     return ret;
 }
 
 template <int size, template <int> class T1, template <int> class T2>
-typename RetType<size, T1>::Type hif_vhdl__op_plus_unsigned(const T1<size> &v1, const T2<size> &v2)
+auto hif_vhdl__op_plus_unsigned(const T1<size> &v1, const T2<size> &v2) -> typename RetType<size, T1>::Type
 {
     typedef typename RetType<size, T1>::Type Type;
     typedef typename RetType<size, T1>::UInt UInt;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<UInt>(v1) + static_cast<UInt>(v2));
     return ret;
 }
 
 template <int size, template <int> class T1, template <int> class T2>
-typename RetType<size, T1>::Type hif_vhdl__op_minus_unsigned(const T1<size> &v1, const T2<size> &v2)
+auto hif_vhdl__op_minus_unsigned(const T1<size> &v1, const T2<size> &v2) -> typename RetType<size, T1>::Type
 {
     typedef typename RetType<size, T1>::Type Type;
     typedef typename RetType<size, T1>::UInt UInt;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<UInt>(v1) - static_cast<UInt>(v2));
     return ret;
 }
 
 template <int size1, int size2, template <int> class T1, template <int> class T2>
-typename RetType<size1 + size2, T1>::Type hif_vhdl__op_mult_unsigned(const T1<size1> &v1, const T2<size2> &v2)
+auto hif_vhdl__op_mult_unsigned(const T1<size1> &v1, const T2<size2> &v2) -> typename RetType<size1 + size2, T1>::Type
 {
     typedef typename RetType<size1 + size2, T1>::Type Type;
     typedef typename RetType<size1 + size2, T1>::UInt UInt;
 
     Type ret;
-    if (!v1.is_01() || !v2.is_01())
+    if (!v1.is_01() || !v2.is_01()) {
         return ret;
+    }
     ret = static_cast<Type>(static_cast<UInt>(v1) * static_cast<UInt>(v2));
     return ret;
 }
 
-template <int size, template <int> class T1> typename RetType<size, T1>::Type hif_vhdl__op_abs(T1<size> arg)
+template <int size, template <int> class T1> auto hif_vhdl__op_abs(T1<size> arg) -> typename RetType<size, T1>::Type
 {
     typedef typename RetType<size, T1>::Type Type;
     typedef typename RetType<size, T1>::Int Int;
 
     Type x;
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return x;
+    }
 
     Int tmp(static_cast<Int>(arg));
-    if (tmp < 0)
+    if (tmp < 0) {
         tmp = -tmp;
+    }
 
     return static_cast<Type>(tmp);
 }
@@ -262,14 +270,17 @@ template <int size, template <int> class T1> typename RetType<size, T1>::Type hi
 // Sign-extension operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size2, int size1> sc_dt::sc_lv<size2> hif_vhdl_sxt(sc_dt::sc_lv<size1> arg)
+template <int size2, int size1> auto hif_vhdl_sxt(sc_dt::sc_lv<size1> arg) -> sc_dt::sc_lv<size2>
 {
-    if (size2 <= 0)
+    if (size2 <= 0) {
         return sc_dt::sc_lv<size2>();
-    if (!arg.is_01())
+    }
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<size2>('X');
-    if (size2 <= arg.length())
+    }
+    if (size2 <= arg.length()) {
         return arg.range(size2 - 1, 0);
+    }
 
     std::string xStr = arg.to_string();
     char c           = arg[arg.length() - 1].to_char();
@@ -279,14 +290,17 @@ template <int size2, int size1> sc_dt::sc_lv<size2> hif_vhdl_sxt(sc_dt::sc_lv<si
     return sc_dt::sc_lv<size2>(xStr.c_str());
 }
 
-template <int size2, int size1> sc_dt::sc_lv<size2> hif_vhdl_ext(sc_dt::sc_lv<size1> arg)
+template <int size2, int size1> auto hif_vhdl_ext(sc_dt::sc_lv<size1> arg) -> sc_dt::sc_lv<size2>
 {
-    if (size2 <= 0)
+    if (size2 <= 0) {
         return sc_dt::sc_lv<size2>();
-    if (!arg.is_01())
+    }
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<size2>('X');
-    if (size2 <= arg.length())
+    }
+    if (size2 <= arg.length()) {
         return arg.range(size2 - 1, 0);
+    }
 
     std::string xStr = arg.to_string();
     for (int i = arg.length(); i < size2; ++i) {
@@ -346,10 +360,12 @@ template <int size2, int size1> hdtlib::hl_lv_t<size2> hif_vhdl_ext(hdtlib::hl_b
 // Shift operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size1, int size2> sc_dt::sc_lv<size1> hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count)
+template <int size1, int size2>
+auto hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>
 {
-    if (!count.is_01())
+    if (!count.is_01()) {
         return sc_dt::sc_lv<size1>(sc_dt::SC_LOGIC_X);
+    }
 
     sc_dt::sc_lv<size1> ret;
     ret = arg << count.to_int();
@@ -357,17 +373,19 @@ template <int size1, int size2> sc_dt::sc_lv<size1> hif_vhdl_shl(sc_dt::sc_lv<si
 }
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shr_signed(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count)
+auto hif_vhdl_shr_signed(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>
 {
-    if (!count.is_01())
+    if (!count.is_01()) {
         return sc_dt::sc_lv<size1>(sc_dt::SC_LOGIC_X);
+    }
 
     sc_dt::sc_logic signBit(arg[size1 - 1]);
     sc_dt::sc_lv<size1> sign(signBit);
 
     int i = size1 - count.to_int();
-    if (i <= 0)
+    if (i <= 0) {
         return sign;
+    }
 
     sc_dt::sc_lv<size1> ret;
     ret = arg >> count.to_int();
@@ -376,17 +394,19 @@ sc_dt::sc_lv<size1> hif_vhdl_shr_signed(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<si
 }
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shr_unsigned(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count)
+auto hif_vhdl_shr_unsigned(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>
 {
-    if (!count.is_01())
+    if (!count.is_01()) {
         return sc_dt::sc_lv<size1>(sc_dt::SC_LOGIC_X);
+    }
 
     sc_dt::sc_logic signBit(sc_dt::SC_LOGIC_0);
     sc_dt::sc_lv<size1> sign(signBit);
 
     int i = static_cast<int>(size1 - count.to_uint());
-    if (i <= 0)
+    if (i <= 0) {
         return sign;
+    }
 
     sc_dt::sc_lv<size1> ret;
     ret = arg >> count.to_int();
@@ -476,82 +496,95 @@ hdtlib::hl_lv_t<size1> hif_vhdl_shr_unsigned(hdtlib::hl_lv_t<size1> arg, hdtlib:
 // Conversion operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size> long long int hif_vhdl_conv_integer_signed(sc_dt::sc_lv<size> arg)
+template <int size> auto hif_vhdl_conv_integer_signed(sc_dt::sc_lv<size> arg) -> long long int
 {
     // Modelsim implementation:
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return 0;
+    }
     return arg.to_int64();
 }
 
-template <int size> long long int hif_vhdl_conv_integer_unsigned(sc_dt::sc_lv<size> arg)
+template <int size> auto hif_vhdl_conv_integer_unsigned(sc_dt::sc_lv<size> arg) -> long long int
 {
     // Modelsim implementation:
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return 0;
+    }
     return arg.to_uint64();
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_std_logic_vector_signed(sc_dt::sc_lv<size> arg)
+template <int newsize, int size>
+auto hif_vhdl_conv_std_logic_vector_signed(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return hif_vhdl_sxt<newsize>(arg);
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_std_logic_vector_unsigned(sc_dt::sc_lv<size> arg)
+template <int newsize, int size>
+auto hif_vhdl_conv_std_logic_vector_unsigned(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(arg); // zero-extension
 }
 
-template <int newsize> sc_dt::sc_lv<newsize> hif_vhdl_conv_std_logic_vector(sc_dt::sc_logic arg)
+template <int newsize> auto hif_vhdl_conv_std_logic_vector(sc_dt::sc_logic arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(sc_dt::sc_lv<1>(arg)); // zero-extension
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_signed_signed(sc_dt::sc_lv<size> arg)
+template <int newsize, int size> auto hif_vhdl_conv_signed_signed(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return hif_vhdl_sxt<newsize>(arg);
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_signed_unsigned(sc_dt::sc_lv<size> arg)
+template <int newsize, int size> auto hif_vhdl_conv_signed_unsigned(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(arg); // zero-extension
 }
 
-template <int newsize> sc_dt::sc_lv<newsize> hif_vhdl_conv_signed(sc_dt::sc_logic arg)
+template <int newsize> auto hif_vhdl_conv_signed(sc_dt::sc_logic arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(sc_dt::sc_lv<1>(arg)); // zero-extension
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_unsigned_signed(sc_dt::sc_lv<size> arg)
+template <int newsize, int size> auto hif_vhdl_conv_unsigned_signed(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return hif_vhdl_sxt<newsize>(arg);
 }
 
-template <int newsize, int size> sc_dt::sc_lv<newsize> hif_vhdl_conv_unsigned_unsigned(sc_dt::sc_lv<size> arg)
+template <int newsize, int size> auto hif_vhdl_conv_unsigned_unsigned(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(arg); // zero-extension
 }
 
-template <int newsize> sc_dt::sc_lv<newsize> hif_vhdl_conv_unsigned(sc_dt::sc_logic arg)
+template <int newsize> auto hif_vhdl_conv_unsigned(sc_dt::sc_logic arg) -> sc_dt::sc_lv<newsize>
 {
-    if (!arg.is_01())
+    if (!arg.is_01()) {
         return sc_dt::sc_lv<newsize>('X');
+    }
     return sc_dt::sc_lv<newsize>(sc_dt::sc_lv<1>(arg)); // zero-extension
 }
 

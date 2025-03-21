@@ -23,18 +23,18 @@ namespace
 class PimpCodeVisitor : public hif::GuideVisitor
 {
 public:
-    PimpCodeVisitor(semantics::ILanguageSemantics *sem, const bool useHdtlib, const bool useCpp98);
-    virtual ~PimpCodeVisitor();
+    PimpCodeVisitor(semantics::ILanguageSemantics *sem, bool useHdtlib, bool useCpp98);
+    ~PimpCodeVisitor() override;
 
-    virtual int visitExpression(Expression &o);
+    auto visitExpression(Expression &o) -> int override;
 
-    bool hasBeenOptimized();
+    auto hasBeenOptimized() const -> bool;
 
 private:
-    PimpCodeVisitor(const PimpCodeVisitor &);
-    PimpCodeVisitor &operator=(const PimpCodeVisitor &);
+    PimpCodeVisitor(const PimpCodeVisitor &)                     = delete;
+    auto operator=(const PimpCodeVisitor &) -> PimpCodeVisitor & = delete;
 
-    bool _pimpConcat(Expression *o);
+    auto _pimpConcat(Expression *o) -> bool;
 
     semantics::ILanguageSemantics *_sem;
     HifFactory _factory;
@@ -46,7 +46,7 @@ private:
     const bool _useCpp98;
 
     /// @brief True is at least an optimization is performed.
-    bool _optimized;
+    bool _optimized{false};
 };
 
 PimpCodeVisitor::PimpCodeVisitor(semantics::ILanguageSemantics *sem, const bool useHdtlib, const bool useCpp98)
@@ -55,7 +55,7 @@ PimpCodeVisitor::PimpCodeVisitor(semantics::ILanguageSemantics *sem, const bool 
     , _factory(sem)
     , _useHdtlib(useHdtlib)
     , _useCpp98(useCpp98)
-    , _optimized(false)
+
 {
     // ntd
 }
@@ -65,7 +65,7 @@ PimpCodeVisitor::~PimpCodeVisitor()
     // ntd
 }
 
-int PimpCodeVisitor::visitExpression(Expression &o)
+auto PimpCodeVisitor::visitExpression(Expression &o) -> int
 {
     GuideVisitor::visitExpression(o);
 
@@ -77,19 +77,21 @@ int PimpCodeVisitor::visitExpression(Expression &o)
     return 0;
 }
 
-bool PimpCodeVisitor::hasBeenOptimized() { return _optimized; }
+auto PimpCodeVisitor::hasBeenOptimized() const -> bool { return _optimized; }
 
-bool PimpCodeVisitor::_pimpConcat(Expression *o)
+auto PimpCodeVisitor::_pimpConcat(Expression *o) -> bool
 {
-    if (o->getOperator() != op_concat)
+    if (o->getOperator() != op_concat) {
         return false;
+    }
 
     Type *exprType = hif::semantics::getBaseType(hif::semantics::getSemanticType(o, _sem), false, _sem);
     messageAssert(exprType != nullptr, "Cannot type expression", o, _sem);
 
-    Expression *parentExpr = dynamic_cast<Expression *>(o->getParent());
-    if (parentExpr != nullptr && parentExpr->getOperator() != op_concat)
+    auto *parentExpr = dynamic_cast<Expression *>(o->getParent());
+    if (parentExpr != nullptr && parentExpr->getOperator() != op_concat) {
         return false;
+    }
 
     Cast *c = new Cast();
     Type *t = hif::copy(exprType);

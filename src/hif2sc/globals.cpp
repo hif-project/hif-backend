@@ -37,7 +37,7 @@ void manageIdentifierTP(Identifier &o)
     DataDeclaration *decl = hif::semantics::getDeclaration(&o, hif::semantics::HIFSemantics::getInstance());
 
     // type is not string: add cast to declaration type.
-    String *str = dynamic_cast<String *>(decl->getType());
+    auto *str = dynamic_cast<String *>(decl->getType());
     if (str == nullptr) {
         Cast *c = new Cast();
         o.replace(c);
@@ -48,10 +48,11 @@ void manageIdentifierTP(Identifier &o)
     }
 
     // type is a string: get the other text operator.
-    Expression *exp = dynamic_cast<Expression *>(o.getParent());
+    auto *exp = dynamic_cast<Expression *>(o.getParent());
     // Could be the right hand side of an assignment.
-    if (exp == nullptr)
+    if (exp == nullptr) {
         return;
+    }
 
     StringValue *text = nullptr;
     if (exp->getValue1() == &o) {
@@ -62,7 +63,7 @@ void manageIdentifierTP(Identifier &o)
     messageAssert(text != nullptr, "Unexpected case", exp, nullptr);
 
     // replace text with an identifier with name of text.
-    Identifier *id = new Identifier();
+    auto *id = new Identifier();
     id->setName(text->getValue());
     text->replace(id);
 
@@ -72,13 +73,13 @@ void manageIdentifierTP(Identifier &o)
     delete text;
 }
 
-Enum *addAndGetStringEnum(Object *o)
+auto addAndGetStringEnum(Object *o) -> Enum *
 {
-    System *sys = hif::getNearestParent<System>(o);
+    auto *sys = hif::getNearestParent<System>(o);
     messageAssert(sys != nullptr, "System not found", o, nullptr);
 
     // add enum if not already exists.
-    TypeDef *td = new TypeDef();
+    auto *td = new TypeDef();
     td->setName(NameTable::getInstance()->hifStringNames());
     td->setType(new Enum());
     td->setOpaque(true);
@@ -87,16 +88,17 @@ Enum *addAndGetStringEnum(Object *o)
     bool ins                            = hif::manipulation::addUniqueObject(td, sys->declarations, addOpt);
 
     // if not already present return the enum
-    if (ins)
-        return static_cast<Enum *>(td->getType());
+    if (ins) {
+        return dynamic_cast<Enum *>(td->getType());
+    }
 
     // otherwise get and return the enum
     delete td;
-    TypeReference *tr = new TypeReference();
+    auto *tr = new TypeReference();
     tr->setName(NameTable::getInstance()->hifStringNames());
     hif::semantics::DeclarationOptions dopt;
     dopt.location = o;
-    TypeDef *tde =
+    auto *tde =
         dynamic_cast<TypeDef *>(hif::semantics::getDeclaration(tr, hif::semantics::HIFSemantics::getInstance(), dopt));
     messageAssert(tde != nullptr, "Unexpected declaration", tr, nullptr);
     Enum *e = dynamic_cast<Enum *>(tde->getType());
@@ -110,10 +112,10 @@ void addStringEnumEntry(Object *o, const std::string &enum_name)
     Enum *e = addAndGetStringEnum(o);
 
     // create the enum value
-    TypeReference *tr = new TypeReference();
+    auto *tr = new TypeReference();
     tr->setName(NameTable::getInstance()->hifStringNames());
 
-    EnumValue *ev = new EnumValue();
+    auto *ev = new EnumValue();
     ev->setName(enum_name);
     ev->setType(tr);
 
@@ -126,7 +128,7 @@ void addStringEnumEntry(Object *o, const std::string &enum_name)
 
 void addStringEnumValue(Object *o, ValueTP *vtp)
 {
-    StringValue *text = dynamic_cast<StringValue *>(vtp->getValue());
+    auto *text = dynamic_cast<StringValue *>(vtp->getValue());
     if (text == nullptr) {
         // We support only string constants for the moment:
         messageDebugAssert(vtp->getValue() == nullptr, "Unexpected init val", vtp, nullptr);
@@ -140,7 +142,7 @@ void addStringEnumValue(Object *o, ValueTP *vtp)
     addStringEnumEntry(o, text->getValue());
 
     // change initial value to the new enum constant.
-    Identifier *id = new Identifier();
+    auto *id = new Identifier();
     id->setName(text->getValue());
     delete vtp->setValue(id);
 }

@@ -25,17 +25,17 @@ template <class C> class HifAggregateVector
 public:
     /// @name Traits
     /// @{
-    typedef HifAggregateVector<C> ThisType;
+    using ThisType = HifAggregateVector<C>;
 
-    typedef C ChildType;
+    using ChildType = C;
 
-    typedef typename HifAggregateVectorTraits<C>::VectorType VectorType;
+    using VectorType = typename HifAggregateVectorTraits<C>::VectorType;
 
     // Note: introduced for Array specialization, since VectorType as array
     // cannot be the returned type of a method.
-    typedef typename HifAggregateVectorTraits<C>::VectorTypeReturn VectorTypeReturn;
+    using VectorTypeReturn = typename HifAggregateVectorTraits<C>::VectorTypeReturn;
 
-    typedef typename HifAggregateVectorTraits<C>::ValueType ValueType;
+    using ValueType = typename HifAggregateVectorTraits<C>::ValueType;
 
     enum VectorSize { SIZE = HifAggregateVectorTraits<C>::SIZE };
     /// @}
@@ -47,12 +47,12 @@ public:
     ~HifAggregateVector();
 
     /// @brief Return the resulting array value
-    VectorTypeReturn getResult();
+    auto getResult() -> VectorTypeReturn;
 
     /// @brief Create a new pair (index, value).
     /// @param index The pair index
     /// @param value The value to set
-    ChildType &addPair(const int index, const ValueType value);
+    auto addPair(int index, ValueType value) -> ChildType &;
 
     /// @brief Create a set of pairs (index, value) based on a range.
     /// The value will be replied for indexes from lbound to rbound.
@@ -60,11 +60,11 @@ public:
     /// @param rbound The right bound of the range.
     /// @param value The value to set
     ///
-    ChildType &addPairSet(const int lbound, const int rbound, const ValueType value);
+    auto addPairSet(int lbound, int rbound, ValueType value) -> ChildType &;
 
     /// @brief Assign a value to undefined pairs
     /// @param others The value to set
-    ChildType &setOthers(const ValueType others);
+    auto setOthers(ValueType others) -> ChildType &;
 
 protected:
     /// @brief The internal storage of result
@@ -72,8 +72,8 @@ protected:
 
 private:
     // Disabled
-    HifAggregateVector(const HifAggregateVector<C> &);
-    HifAggregateVector<C> &operator=(const HifAggregateVector<C> &);
+    HifAggregateVector(const HifAggregateVector<C> &)                        = delete;
+    auto operator=(const HifAggregateVector<C> &) -> HifAggregateVector<C> & = delete;
 };
 
 // /////////////////////////////////////////////////////////////////////////
@@ -86,9 +86,9 @@ private:
 template <class T, int size> class HifAggregateArray : public HifAggregateVector<HifAggregateArray<T, size>>
 {
 public:
-    typedef HifAggregateArray<T, size> ThisType;
-    typedef HifAggregateVectorTraits<ThisType> Traits;
-    typedef typename Traits::ValueType ValueType;
+    using ThisType  = HifAggregateArray<T, size>;
+    using Traits    = HifAggregateVectorTraits<ThisType>;
+    using ValueType = typename Traits::ValueType;
 
     /// @brief Constructor
     HifAggregateArray();
@@ -100,14 +100,14 @@ public:
 
 private:
     // Disabled
-    HifAggregateArray(const HifAggregateArray<T, size> &);
-    HifAggregateArray<T, size> &operator=(const HifAggregateArray<T, size> &);
+    HifAggregateArray(const HifAggregateArray<T, size> &)                              = delete;
+    auto operator=(const HifAggregateArray<T, size> &) -> HifAggregateArray<T, size> & = delete;
 };
 
 template <class T, int size> struct HifAggregateVectorTraits<HifAggregateArray<T, size>> {
     typedef T VectorType[size_t(size)];
-    typedef T *VectorTypeReturn;
-    typedef T ValueType;
+    using VectorTypeReturn = T *;
+    using ValueType        = T;
     enum VectorSize { SIZE = size };
 };
 
@@ -120,9 +120,9 @@ template <class T, int size> struct HifAggregateVectorTraits<HifAggregateArray<T
 template <int size> class HifAggregateBitVector : public HifAggregateVector<HifAggregateBitVector<size>>
 {
 public:
-    typedef HifAggregateBitVector<size> ThisType;
-    typedef HifAggregateVectorTraits<ThisType> Traits;
-    typedef typename Traits::ValueType ValueType;
+    using ThisType  = HifAggregateBitVector<size>;
+    using Traits    = HifAggregateVectorTraits<ThisType>;
+    using ValueType = typename Traits::ValueType;
 
     /// @brief Constructor
     HifAggregateBitVector();
@@ -134,14 +134,14 @@ public:
 
 private:
     // Disabled
-    HifAggregateBitVector(const HifAggregateBitVector<size> &);
-    HifAggregateBitVector<size> &operator=(const HifAggregateBitVector<size> &);
+    HifAggregateBitVector(const HifAggregateBitVector<size> &)                           = delete;
+    auto operator=(const HifAggregateBitVector<size> &) -> HifAggregateBitVector<size> & = delete;
 };
 
 template <int size> struct HifAggregateVectorTraits<HifAggregateBitVector<size>> {
-    typedef sc_dt::sc_bv<size> VectorType;
-    typedef VectorType VectorTypeReturn;
-    typedef bool ValueType;
+    using VectorType       = sc_dt::sc_bv<size>;
+    using VectorTypeReturn = VectorType;
+    using ValueType        = bool;
     enum VectorSize { SIZE = size };
 };
 
@@ -154,9 +154,9 @@ template <int size> struct HifAggregateVectorTraits<HifAggregateBitVector<size>>
 template <int size> class HifAggregateLogicVector : public HifAggregateVector<HifAggregateLogicVector<size>>
 {
 public:
-    typedef HifAggregateLogicVector<size> ThisType;
-    typedef HifAggregateVectorTraits<ThisType> Traits;
-    typedef typename Traits::ValueType ValueType;
+    using ThisType  = HifAggregateLogicVector<size>;
+    using Traits    = HifAggregateVectorTraits<ThisType>;
+    using ValueType = typename Traits::ValueType;
 
     /// @brief Constructor
     HifAggregateLogicVector();
@@ -168,14 +168,14 @@ public:
 
 private:
     // Disabled
-    HifAggregateLogicVector(const HifAggregateLogicVector<size> &);
-    HifAggregateLogicVector<size> &operator=(const HifAggregateLogicVector<size> &);
+    HifAggregateLogicVector(const HifAggregateLogicVector<size> &)                           = delete;
+    auto operator=(const HifAggregateLogicVector<size> &) -> HifAggregateLogicVector<size> & = delete;
 };
 
 template <int size> struct HifAggregateVectorTraits<HifAggregateLogicVector<size>> {
-    typedef sc_dt::sc_lv<size> VectorType;
-    typedef VectorType VectorTypeReturn;
-    typedef sc_dt::sc_logic ValueType;
+    using VectorType       = sc_dt::sc_lv<size>;
+    using VectorTypeReturn = VectorType;
+    using ValueType        = sc_dt::sc_logic;
     enum VectorSize { SIZE = size };
 };
 

@@ -17,13 +17,16 @@
 namespace hif_verilog_standard
 {
 
-template <int times, int size> sc_dt::sc_lv<times * size> hif_verilog_iterated_concat(sc_dt::sc_lv<size> expression)
+template <int times, int size>
+auto hif_verilog_iterated_concat(sc_dt::sc_lv<size> expression) -> sc_dt::sc_lv<times * size>
 {
     sc_dt::sc_lv<times * size> result;
     unsigned int res_i = 0;
-    for (int i = 0; i < times; ++i)
-        for (int j = 0; j < size; ++j, ++res_i)
+    for (int i = 0; i < times; ++i) {
+        for (int j = 0; j < size; ++j, ++res_i) {
             result[res_i] = expression[j];
+        }
+    }
     return result;
 }
 
@@ -40,11 +43,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -52,8 +57,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -63,17 +69,20 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
         // normal cell case:
         assert(str.size() == W);
 
-        if ((step > 0 && n > stopAddr) || (step < 0 && n < stopAddr))
+        if ((step > 0 && n > stopAddr) || (step < 0 && n < stopAddr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_bv<W>(str.c_str());
         n += step;
@@ -93,11 +102,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -105,8 +116,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -116,17 +128,20 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
         // normal cell case:
         assert(str.size() == W);
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<W>(str.c_str());
         n += step;
@@ -146,11 +161,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -158,8 +175,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -169,14 +187,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<8>(str.c_str()).to_uint64();
         n += step;
@@ -196,11 +217,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -208,8 +231,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -219,14 +243,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<16>(str.c_str()).to_uint64();
         n += step;
@@ -246,11 +273,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -258,8 +287,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -269,14 +299,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<32>(str.c_str()).to_uint64();
         n += step;
@@ -296,11 +329,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -308,8 +343,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -319,14 +355,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64();
         n += step;
@@ -346,11 +385,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -358,8 +399,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -369,14 +411,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<8>(str.c_str()).to_uint64();
         n += step;
@@ -396,11 +441,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -408,8 +455,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -419,14 +467,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<16>(str.c_str()).to_uint64();
         n += step;
@@ -446,11 +497,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -458,8 +511,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -469,14 +523,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<32>(str.c_str()).to_uint64();
         n += step;
@@ -496,11 +553,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -508,8 +567,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -519,14 +579,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64();
         n += step;
@@ -546,11 +609,13 @@ void hif_verilog__system_readmemb(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -558,8 +623,9 @@ void hif_verilog__system_readmemb(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -569,14 +635,17 @@ void hif_verilog__system_readmemb(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64() == 1;
         n += step;
@@ -596,11 +665,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -608,8 +679,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -619,17 +691,20 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
         // normal cell case:
         assert(str.size() == W / 4);
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_bv<W>(str.c_str());
@@ -650,11 +725,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -662,8 +739,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -673,17 +751,20 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
         // normal cell case:
         assert(str.size() == W / 4);
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<W>(str.c_str());
@@ -704,11 +785,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -716,8 +799,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -727,14 +811,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<8>(str.c_str()).to_uint64();
@@ -755,11 +842,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -767,8 +856,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -778,14 +868,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<16>(str.c_str()).to_uint64();
@@ -806,11 +899,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -818,8 +913,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -829,14 +925,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<32>(str.c_str()).to_uint64();
@@ -857,11 +956,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -869,8 +970,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -880,14 +982,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64();
@@ -908,11 +1013,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -920,8 +1027,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -931,14 +1039,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<8>(str.c_str()).to_uint64();
@@ -959,11 +1070,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -971,8 +1084,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -982,14 +1096,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<16>(str.c_str()).to_uint64();
@@ -1010,11 +1127,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -1022,8 +1141,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -1033,14 +1153,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<32>(str.c_str()).to_uint64();
@@ -1061,11 +1184,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -1073,8 +1198,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -1084,14 +1210,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64();
@@ -1112,11 +1241,13 @@ void hif_verilog__system_readmemh(
     assert(in.good());
 
     int startAddr = start_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         startAddr = L - startAddr;
+    }
     int stopAddr = stop_addr - min;
-    if (direction < 0)
+    if (direction < 0) {
         stopAddr = L - stopAddr;
+    }
 
     int n          = startAddr;
     const int step = startAddr <= stopAddr ? 1 : -1;
@@ -1124,8 +1255,9 @@ void hif_verilog__system_readmemh(
     while (in.good()) {
         std::string str;
         in >> str;
-        if (!in.good())
+        if (!in.good()) {
             break;
+        }
 
         if (str[0] == '@') {
             std::stringstream ss;
@@ -1135,14 +1267,17 @@ void hif_verilog__system_readmemh(
             in >> str;
 
             n = n - min;
-            if (direction < 0)
+            if (direction < 0) {
                 n = L - n;
+            }
         }
 
-        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr))
+        if ((step > 0 && n > stop_addr) || (step < 0 && n < stop_addr)) {
             break;
-        if (n > L - 1)
+        }
+        if (n > L - 1) {
             break;
+        }
 
         str            = "0x" + str;
         memory_name[n] = sc_dt::sc_lv<64>(str.c_str()).to_uint64() == 1;

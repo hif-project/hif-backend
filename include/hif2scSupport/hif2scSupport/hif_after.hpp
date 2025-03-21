@@ -19,6 +19,8 @@ class HIF2SCSUPPORT_EXPORT IHifAfter
 public:
     virtual ~IHifAfter();
 
+    auto operator=(const IHifAfter &) -> IHifAfter & = delete;
+
     void disable();
 
     sc_core::sc_event *_event;
@@ -28,22 +30,19 @@ public:
     sc_core::sc_time _time;
 
 protected:
-    IHifAfter(const char *file, const int line);
+    IHifAfter(const char *file, int line);
     IHifAfter(const IHifAfter &other);
-    void swap(IHifAfter &other);
-
-private:
-    IHifAfter &operator=(const IHifAfter &);
+    void swap(IHifAfter &other) noexcept;
 };
 
 template <class Target, class Value> class HifAfter : public IHifAfter
 {
 public:
-    HifAfter(Target &t, const Value v, const char *file, const int line);
-    virtual ~HifAfter();
+    HifAfter(Target &t, Value v, const char *file, int line);
+    ~HifAfter() override;
     HifAfter(const HifAfter<Target, Value> &other);
-    HifAfter<Target, Value> &operator=(const HifAfter<Target, Value> &other);
-    void swap(HifAfter<Target, Value> &other);
+    auto operator=(const HifAfter<Target, Value> &other) -> HifAfter<Target, Value> &;
+    void swap(HifAfter<Target, Value> &other) noexcept;
 
     void operator()();
 
@@ -53,7 +52,7 @@ private:
 };
 
 template <typename Target, typename Value>
-void _hif_after(Target &target, const Value v, const sc_core::sc_time &delay, const char *file, const int line);
+void _hif_after(Target &target, Value v, const sc_core::sc_time &delay, const char *file, int line);
 
 #define hif_after(target, v, delay) _hif_after(target, v, delay, __FILE__, __LINE__)
 

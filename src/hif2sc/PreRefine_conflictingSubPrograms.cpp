@@ -17,8 +17,8 @@ using namespace hif;
 namespace
 {
 
-typedef std::map<Declaration *, std::set<Object *>> RefMap;
-typedef std::set<SubProgram *> Signatures;
+using RefMap     = std::map<Declaration *, std::set<Object *>>;
+using Signatures = std::set<SubProgram *>;
 
 enum CompareType { COMPATIBLE, CONFLICTING, UNCOMPATIBLE };
 
@@ -27,30 +27,30 @@ class FixSubProgramVisitor : public hif::GuideVisitor
 
 public:
     /// @brief Default constructor.
-    FixSubProgramVisitor(RefMap &map, const bool keepBit, hif::semantics::ILanguageSemantics *sem);
+    FixSubProgramVisitor(RefMap &map, bool keepBit, hif::semantics::ILanguageSemantics *sem);
 
     /// @brief Destructor.
-    virtual ~FixSubProgramVisitor();
+    ~FixSubProgramVisitor() override;
 
-    virtual int visitFunction(hif::Function &o);
-    virtual int visitProcedure(hif::Procedure &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
+    auto visitFunction(hif::Function &o) -> int override;
+    auto visitProcedure(hif::Procedure &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
 
-    bool _found;
+    bool _found{false};
 
 private:
-    FixSubProgramVisitor(const FixSubProgramVisitor &);
-    FixSubProgramVisitor &operator=(const FixSubProgramVisitor &);
+    FixSubProgramVisitor(const FixSubProgramVisitor &)                     = delete;
+    auto operator=(const FixSubProgramVisitor &) -> FixSubProgramVisitor & = delete;
 
     template <typename T> void _checkCall(T *call, SubProgram *startingObj);
 
-    bool _areSigsConflict(SubProgram *s1, SubProgram *s2);
+    auto _areSigsConflict(SubProgram *s1, SubProgram *s2) -> bool;
 
     void _updateSignatures();
 
-    CompareType _areConflictingTypes(Type *t1, Type *t2);
+    auto _areConflictingTypes(Type *t1, Type *t2) -> CompareType const;
 
-    ProcedureCall *_createFakeCall(SubProgram *o);
+    static auto _createFakeCall(SubProgram *o) -> ProcedureCall *;
 
     RefMap _refMap;
     hif::semantics::ILanguageSemantics *_sem;
@@ -61,7 +61,6 @@ private:
 
 FixSubProgramVisitor::FixSubProgramVisitor(RefMap &map, const bool keepBit, hif::semantics::ILanguageSemantics *sem)
     : GuideVisitor()
-    , _found(false)
     , _refMap(map)
     , _sem(sem)
     , _sigToChange()
@@ -75,7 +74,7 @@ FixSubProgramVisitor::~FixSubProgramVisitor()
     // ntd
 }
 
-int FixSubProgramVisitor::visitFunction(hif::Function &o)
+auto FixSubProgramVisitor::visitFunction(hif::Function &o) -> int
 {
     GuideVisitor::visitFunction(o);
 
@@ -85,7 +84,7 @@ int FixSubProgramVisitor::visitFunction(hif::Function &o)
     return 0;
 }
 
-int FixSubProgramVisitor::visitProcedure(hif::Procedure &o)
+auto FixSubProgramVisitor::visitProcedure(hif::Procedure &o) -> int
 {
     GuideVisitor::visitProcedure(o);
 
@@ -95,10 +94,11 @@ int FixSubProgramVisitor::visitProcedure(hif::Procedure &o)
     return 0;
 }
 
-int FixSubProgramVisitor::visitLibraryDef(LibraryDef &o)
+auto FixSubProgramVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     GuideVisitor::visitLibraryDef(o);
 
@@ -116,22 +116,23 @@ template <typename T> void FixSubProgramVisitor::_checkCall(T *call, SubProgram 
     delete call;
 
     // check only when candidates are at least two
-    if (candidates.size() < 2)
+    if (candidates.size() < 2) {
         return;
+    }
 
     // If a couple of candidates are identical up to types of parameter
     // bit vector / signed / unsigned, change function name
-    for (typename std::list<typename T::DeclarationType *>::iterator i = candidates.begin(); i != candidates.end();
-         ++i) {
+    for (auto i = candidates.begin(); i != candidates.end(); ++i) {
         // TODO: add check candidate already fixed
-        typename std::list<typename T::DeclarationType *>::iterator j = i;
+        auto j = i;
         ++j;
         for (; j != candidates.end(); ++j) {
             typename T::DeclarationType *s1 = *i;
             typename T::DeclarationType *s2 = *j;
 
-            if (!_areSigsConflict(s1, s2))
+            if (!_areSigsConflict(s1, s2)) {
                 continue;
+            }
 
             _sigToChange.insert(s1);
             _sigToChange.insert(s2);
@@ -142,7 +143,7 @@ template <typename T> void FixSubProgramVisitor::_checkCall(T *call, SubProgram 
     _updateSignatures();
 }
 
-CompareType FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2)
+auto FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2) -> CompareType const
 {
     // Conflicting types in systemc are:
     // - bitvector (that is array packed of bit logic/not logic)
@@ -159,32 +160,31 @@ CompareType FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2)
 
         if (hif::equals(t1, t2, opt)) {
             return COMPATIBLE;
-        } else {
-            // handle case bitvector->signed vs bitvector->unsiged that conflicts!
-            // Using IsA to increase performance
-            if (dynamic_cast<Bitvector *>(t1) != nullptr && dynamic_cast<Bitvector *>(t2) != nullptr) {
-                Bitvector *arr1 = static_cast<Bitvector *>(t1);
-                Bitvector *arr2 = static_cast<Bitvector *>(t2);
-                if (arr1->isSigned() != arr2->isSigned()) {
-                    // Searched case!
-                    return CONFLICTING;
-                } else if (arr1->isResolved() != arr2->isResolved()) {
-                    // Searched case!
-                    return CONFLICTING;
-                }
+        } // handle case bitvector->signed vs bitvector->unsiged that conflicts!
+        // Using IsA to increase performance
+        if (dynamic_cast<Bitvector *>(t1) != nullptr && dynamic_cast<Bitvector *>(t2) != nullptr) {
+            Bitvector *arr1 = static_cast<Bitvector *>(t1);
+            Bitvector *arr2 = static_cast<Bitvector *>(t2);
+            if (arr1->isSigned() != arr2->isSigned()) {
+                // Searched case!
+                return CONFLICTING;
+            } else if (arr1->isResolved() != arr2->isResolved()) {
+                // Searched case!
+                return CONFLICTING;
             }
-            return UNCOMPATIBLE;
         }
+        return UNCOMPATIBLE;
+
         // Unreachable:
         //return hif::equals( t1, t2, opt ) ? COMPATIBLE : UNCOMPATIBLE;
     }
 
     // Otherwise we must check conflicting types:
-    Bit *b1       = dynamic_cast<Bit *>(t1);
-    Bool *bool1   = dynamic_cast<Bool *>(t1);
-    Bitvector *a1 = dynamic_cast<Bitvector *>(t1);
-    Signed *s1    = dynamic_cast<Signed *>(t1);
-    Unsigned *u1  = dynamic_cast<Unsigned *>(t1);
+    Bit *b1     = dynamic_cast<Bit *>(t1);
+    Bool *bool1 = dynamic_cast<Bool *>(t1);
+    auto *a1    = dynamic_cast<Bitvector *>(t1);
+    auto *s1    = dynamic_cast<Signed *>(t1);
+    auto *u1    = dynamic_cast<Unsigned *>(t1);
 
     if (b1 == nullptr && bool1 == nullptr && a1 == nullptr && s1 == nullptr && u1 == nullptr) {
         // Different types but not of conflicting types on t1 (e.g. int, signed)
@@ -192,11 +192,11 @@ CompareType FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2)
         return UNCOMPATIBLE;
     }
 
-    Bit *b2       = dynamic_cast<Bit *>(t2);
-    Bool *bool2   = dynamic_cast<Bool *>(t2);
-    Bitvector *a2 = dynamic_cast<Bitvector *>(t2);
-    Signed *s2    = dynamic_cast<Signed *>(t2);
-    Unsigned *u2  = dynamic_cast<Unsigned *>(t2);
+    Bit *b2     = dynamic_cast<Bit *>(t2);
+    Bool *bool2 = dynamic_cast<Bool *>(t2);
+    auto *a2    = dynamic_cast<Bitvector *>(t2);
+    auto *s2    = dynamic_cast<Signed *>(t2);
+    auto *u2    = dynamic_cast<Unsigned *>(t2);
 
     if (b2 == nullptr && bool2 == nullptr && a2 == nullptr && s2 == nullptr && u2 == nullptr) {
         // Different types but not of conflicting types on t2 (e.g. int, signed)
@@ -205,36 +205,45 @@ CompareType FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2)
     }
 
     if (b1 != nullptr && !_keepBit) {
-        if (bool2 != nullptr)
+        if (bool2 != nullptr) {
             return CONFLICTING;
+        }
     } else if (bool1 != nullptr && !_keepBit) {
-        if (b2 != nullptr)
+        if (b2 != nullptr) {
             return CONFLICTING;
+        }
     } else if (a1 != nullptr) {
-        if (s2 != nullptr)
+        if (s2 != nullptr) {
             return CONFLICTING;
-        if (u2 != nullptr)
+        }
+        if (u2 != nullptr) {
             return CONFLICTING;
+        }
     } else if (s1 != nullptr) {
-        if (a2 != nullptr)
+        if (a2 != nullptr) {
             return CONFLICTING;
-        if (u2 != nullptr)
+        }
+        if (u2 != nullptr) {
             return CONFLICTING;
+        }
     } else // u1 != nullptr
     {
-        if (a2 != nullptr)
+        if (a2 != nullptr) {
             return CONFLICTING;
-        if (s2 != nullptr)
+        }
+        if (s2 != nullptr) {
             return CONFLICTING;
+        }
     }
 
     return UNCOMPATIBLE;
 }
 
-bool FixSubProgramVisitor::_areSigsConflict(SubProgram *s1, SubProgram *s2)
+auto FixSubProgramVisitor::_areSigsConflict(SubProgram *s1, SubProgram *s2) -> bool
 {
-    if (s1->parameters.size() != s2->parameters.size())
+    if (s1->parameters.size() != s2->parameters.size()) {
         return false;
+    }
 
     bool conflicts      = false;
     bool all_compatible = true;
@@ -251,7 +260,8 @@ bool FixSubProgramVisitor::_areSigsConflict(SubProgram *s1, SubProgram *s2)
             // e.g. signed - signed
             // may conflicts on other params
             continue;
-        } else if (t == UNCOMPATIBLE) {
+        }
+        if (t == UNCOMPATIBLE) {
             // e.g. signed - bool
             //all_compatible = false;
             //conflicts = false;
@@ -283,10 +293,11 @@ bool FixSubProgramVisitor::_areSigsConflict(SubProgram *s1, SubProgram *s2)
 void FixSubProgramVisitor::_updateSignatures()
 {
     messageDebugAssert(_sigToChange.empty() || _sigToChange.size() >= 2, "Unexpected list size", nullptr, _sem);
-    for (Signatures::iterator i = _sigToChange.begin(); i != _sigToChange.end(); ++i) {
+    for (auto i = _sigToChange.begin(); i != _sigToChange.end(); ++i) {
         // skip first!
-        if (i == _sigToChange.begin())
+        if (i == _sigToChange.begin()) {
             continue;
+        }
 
         // Create new fresh name
         auto n = hif::NameTable::getInstance()->getFreshName((*i)->getName() + "_renamed");
@@ -301,12 +312,12 @@ void FixSubProgramVisitor::_updateSignatures()
         (*i)->setName(n);
 
         // Update references
-        for (std::set<Object *>::iterator j = _refMap[*i].begin(); j != _refMap[*i].end(); ++j) {
+        for (auto j = _refMap[*i].begin(); j != _refMap[*i].end(); ++j) {
             if (dynamic_cast<FunctionCall *>(*j) != nullptr) {
-                FunctionCall *call = static_cast<FunctionCall *>(*j);
+                auto *call = dynamic_cast<FunctionCall *>(*j);
                 call->setName(n);
             } else if (dynamic_cast<ProcedureCall *>(*j) != nullptr) {
-                ProcedureCall *call = static_cast<ProcedureCall *>(*j);
+                auto *call = dynamic_cast<ProcedureCall *>(*j);
                 call->setName(n);
             } else {
                 messageDebugAssert(false, "Unexpected case", *j, _sem);
@@ -317,9 +328,9 @@ void FixSubProgramVisitor::_updateSignatures()
     _sigToChange.clear();
 }
 
-ProcedureCall *FixSubProgramVisitor::_createFakeCall(SubProgram *o)
+auto FixSubProgramVisitor::_createFakeCall(SubProgram *o) -> ProcedureCall *
 {
-    ProcedureCall *pcall = new ProcedureCall();
+    auto *pcall = new ProcedureCall();
     pcall->setName(o->getName());
 
     return pcall;
@@ -327,7 +338,7 @@ ProcedureCall *FixSubProgramVisitor::_createFakeCall(SubProgram *o)
 
 } // namespace
 
-bool fixConflictingSubPrograms(hif::System *o, const bool keepBit, hif::semantics::ILanguageSemantics *sem)
+auto fixConflictingSubPrograms(hif::System *o, const bool keepBit, hif::semantics::ILanguageSemantics *sem) -> bool
 {
     hif::application_utils::initializeLogHeader("HIF2SC", "fixConflictingSubPrograms");
 
