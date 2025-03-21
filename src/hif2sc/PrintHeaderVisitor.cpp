@@ -52,12 +52,12 @@ private:
     auto _printHeader(hif::DesignUnit &o) -> int;
     auto _printHeader(hif::LibraryDef &o) -> int;
     auto _printHeader(hif::System &o) -> int;
-    auto _printHeader(hif::Object &o, string fileName) -> int;
+    auto _printHeader(hif::Object &o, const string &fileName) -> int;
 
     //@}
 
     static auto _createDirectory(const string &dirName) -> int;
-    auto _createDirectories(
+    static auto _createDirectories(
         const string &outdirName,
         const std::string &libDefName,
         PrintSystemCVisitor::ConstTemplateMap &ctmList) -> int;
@@ -240,7 +240,7 @@ auto PrintHeaderVisitor::_printHeader(System &o) -> int
     return 0;
 }
 
-auto PrintHeaderVisitor::_printHeader(Object &o, string fileName) -> int
+auto PrintHeaderVisitor::_printHeader(Object &o, const string &fileName) -> int
 {
     ofstream actualStream;
     if (hif::backends::openFileStream(fileName, &actualStream) == 0) {

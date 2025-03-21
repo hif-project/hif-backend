@@ -2249,9 +2249,10 @@ auto PreRefine_utilityLibraries::_inSignedUnsignedRelatedLibrary(const std::stri
         if (func == "hif_vhdl_shr") {
             return true;
         }
-        if (func == "hif_vhdl_conv_integer")
+        if (func == "hif_vhdl_conv_integer") {
             return true;
-        else if (func == "hif_vhdl_conv_std_logic_vector")
+        }
+        if (func == "hif_vhdl_conv_std_logic_vector")
             return true;
         else if (func == "hif_vhdl_conv_unsigned")
             return true;
@@ -2272,9 +2273,10 @@ auto PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib,
         if (func == "hif_verilog__system_finish") {
             return true;
         }
-        if (func == "hif_verilog__system_stop")
+        if (func == "hif_verilog__system_stop") {
             return true;
-        else if (func == "hif_verilog__system_stime")
+        }
+        if (func == "hif_verilog__system_stime")
             return true;
         else if (func == "hif_verilog__system_time")
             return true;

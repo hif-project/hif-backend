@@ -14,18 +14,20 @@ namespace hif_vhdl_ieee_numeric_std
 // Conversion operators
 // /////////////////////////////////////////////////////////////////////////////
 
-int32_t hif_vhdl_to_integer_signed(const sc_dt::sc_lv_base &param1)
+auto hif_vhdl_to_integer_signed(const sc_dt::sc_lv_base &param1) -> int32_t
 {
-    if (!param1.is_01())
+    if (!param1.is_01()) {
         return 0;
+    }
     return param1.to_int();
 }
 
 HIF2SCSUPPORT_EXPORT
-uint32_t hif_vhdl_to_integer_unsigned(const sc_dt::sc_lv_base &param1)
+auto hif_vhdl_to_integer_unsigned(const sc_dt::sc_lv_base &param1) -> uint32_t
 {
-    if (!param1.is_01())
+    if (!param1.is_01()) {
         return 0;
+    }
     return param1.to_uint();
 }
 
@@ -33,17 +35,19 @@ uint32_t hif_vhdl_to_integer_unsigned(const sc_dt::sc_lv_base &param1)
 // Support methods
 // /////////////////////////////////////////////////////////////////////////////
 
-bool hif_vhdl_std_match(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2)
+auto hif_vhdl_std_match(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2) -> bool
 {
     return (param1 == param2) && (param1 != 'X') && (param1 != 'Z');
 }
 
-bool hif_vhdl_std_match(const sc_dt::sc_lv_base &param1, const sc_dt::sc_lv_base &param2)
+auto hif_vhdl_std_match(const sc_dt::sc_lv_base &param1, const sc_dt::sc_lv_base &param2) -> bool
 {
-    if (param1.length() != param2.length())
+    if (param1.length() != param2.length()) {
         return false;
-    if (!param1.is_01() || !param2.is_01())
+    }
+    if (!param1.is_01() || !param2.is_01()) {
         return false;
+    }
     return (param1.to_string() == param2.to_string());
 }
 

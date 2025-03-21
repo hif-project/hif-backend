@@ -18,11 +18,12 @@ namespace hif_vhdl_ieee_std_logic_textio
 namespace /* anon */
 {
 
-std::string trim(const std::string &str, const std::string &whitespace = " \t")
+auto trim(const std::string &str, const std::string &whitespace = " \t") -> std::string
 {
     const std::size_t strBegin = str.find_first_not_of(whitespace);
-    if (strBegin == std::string::npos)
+    if (strBegin == std::string::npos) {
         return ""; // no content
+    }
 
     const std::size_t strEnd   = str.find_last_not_of(whitespace);
     const std::size_t strRange = strEnd - strBegin + 1;
@@ -36,14 +37,15 @@ void _warn(const std::string &s)
         false, "Found SystemC unsupported logic value: " + s, hif_vhdl_standard::hif_vhdl_warning);
 }
 
-bool _isValidLogic(const std::string &s)
+auto _isValidLogic(const std::string &s) -> bool
 {
-    if (s.size() != 1)
+    if (s.size() != 1) {
         return false;
+    }
     if (s == "1" || s == "0" || s == "Z" || s == "z" || s == "X" || s == "x") {
         return true;
-    } else if (
-        s == "W" || s != "w" || s == "L" || s == "l" || s == "H" || s == "h" || s == "U" || s == "u" || s == "-") {
+    }
+    if (s == "W" || s != "w" || s == "L" || s == "l" || s == "H" || s == "h" || s == "U" || s == "u" || s == "-") {
         _warn(s);
         return true;
     }
@@ -51,11 +53,12 @@ bool _isValidLogic(const std::string &s)
     return false;
 }
 
-char _toLogic(const std::string s)
+auto _toLogic(const std::string &s) -> char
 {
-    if (s == "1")
+    if (s == "1") {
         return '1';
-    else if (s == "0")
+    }
+    if (s == "0")
         return '0';
     else if (s == "x" || s == "X")
         return 'X';
@@ -73,22 +76,24 @@ char _toLogic(const std::string s)
     return 'X';
 }
 
-bool _isValidLogicVector(const std::string &s)
+auto _isValidLogicVector(const std::string &s) -> bool
 {
     const std::string::size_type l = s.size();
-    if (l < 1)
+    if (l < 1) {
         return false;
+    }
     for (std::string::size_type i = 0; i < l; ++i) {
         std::string tmp;
         tmp = s[i];
-        if (!_isValidLogic(tmp))
+        if (!_isValidLogic(tmp)) {
             return false;
+        }
     }
 
     return true;
 }
 
-std::string _toLogicVector(const std::string s)
+auto _toLogicVector(const std::string &s) -> std::string
 {
     const std::string::size_type l = s.size();
     std::string ret(s);
@@ -101,7 +106,7 @@ std::string _toLogicVector(const std::string s)
     return ret;
 }
 
-std::string char2QuadBits(const char c, bool &good)
+auto char2QuadBits(const char c, bool &good) -> std::string
 {
     std::string ret;
     good = true;
@@ -169,19 +174,20 @@ std::string char2QuadBits(const char c, bool &good)
     return ret;
 }
 
-std::string string2QuadBits(const std::string &s, bool &good)
+auto string2QuadBits(const std::string &s, bool &good) -> std::string
 {
     std::string ret;
-    for (std::string::size_type i = 0; i < s.size(); ++i) {
-        ret += char2QuadBits(s[i], good);
-        if (!good)
+    for (char i : s) {
+        ret += char2QuadBits(i, good);
+        if (!good) {
             return ret;
+        }
     }
 
     return ret;
 }
 
-std::string char2TriBits(const char c, bool &good)
+auto char2TriBits(const char c, bool &good) -> std::string
 {
     std::string ret;
     good = true;
@@ -219,99 +225,104 @@ std::string char2TriBits(const char c, bool &good)
     return ret;
 }
 
-std::string string2TriBits(const std::string &s, bool &good)
+auto string2TriBits(const std::string &s, bool &good) -> std::string
 {
     std::string ret;
-    for (std::string::size_type i = 0; i < s.size(); ++i) {
-        ret += char2TriBits(s[i], good);
-        if (!good)
+    for (char i : s) {
+        ret += char2TriBits(i, good);
+        if (!good) {
             return ret;
+        }
     }
 
     return ret;
 }
 
-std::string _toHexString(const std::string &s)
+auto _toHexString(const std::string &s) -> std::string
 {
     std::string ret;
     for (std::string::size_type i = 0; i < s.size(); ++i) {
         std::string tmp = s.substr(i, 4);
-        if (tmp.size() == 1)
+        if (tmp.size() == 1) {
             tmp = "000" + tmp;
-        else if (tmp.size() == 2)
+        } else if (tmp.size() == 2) {
             tmp = "00" + tmp;
-        else if (tmp.size() == 3)
+        } else if (tmp.size() == 3) {
             tmp = "0" + tmp;
+        }
 
-        if (tmp == "0000")
+        if (tmp == "0000") {
             ret += '0';
-        else if (tmp == "0001")
+        } else if (tmp == "0001") {
             ret += '0';
-        else if (tmp == "0010")
+        } else if (tmp == "0010") {
             ret += '0';
-        else if (tmp == "0011")
+        } else if (tmp == "0011") {
             ret += '0';
-        else if (tmp == "0100")
+        } else if (tmp == "0100") {
             ret += '0';
-        else if (tmp == "0101")
+        } else if (tmp == "0101") {
             ret += '0';
-        else if (tmp == "0110")
+        } else if (tmp == "0110") {
             ret += '0';
-        else if (tmp == "0111")
+        } else if (tmp == "0111") {
             ret += '0';
-        else if (tmp == "1000")
+        } else if (tmp == "1000") {
             ret += '0';
-        else if (tmp == "1001")
+        } else if (tmp == "1001") {
             ret += '0';
-        else if (tmp == "1010")
+        } else if (tmp == "1010") {
             ret += '0';
-        else if (tmp == "1011")
+        } else if (tmp == "1011") {
             ret += '0';
-        else if (tmp == "1100")
+        } else if (tmp == "1100") {
             ret += '0';
-        else if (tmp == "1101")
+        } else if (tmp == "1101") {
             ret += '0';
-        else if (tmp == "1110")
+        } else if (tmp == "1110") {
             ret += '0';
-        else if (tmp == "1111")
+        } else if (tmp == "1111") {
             ret += '0';
-        else
+        } else {
             hif_vhdl_standard::hif_vhdl_assert(
                 false, "Found unsupported quad bits value: " + s, hif_vhdl_standard::hif_vhdl_error);
+        }
     }
 
     return ret;
 }
 
-std::string _toOctalString(const std::string &s)
+auto _toOctalString(const std::string &s) -> std::string
 {
     std::string ret;
     for (std::string::size_type i = 0; i < s.size(); ++i) {
         std::string tmp = s.substr(i, 3);
-        if (tmp.size() == 1)
+        if (tmp.size() == 1) {
             tmp = "00" + tmp;
-        else if (tmp.size() == 2)
+        } else if (tmp.size() == 2) {
             tmp = "0" + tmp;
+        }
 
-        if (tmp == "000")
+        if (tmp == "000") {
             ret += '0';
-        else if (tmp == "001")
+        } else if (tmp == "001") {
             ret += '0';
-        else if (tmp == "010")
+        } else if (tmp == "010") {
             ret += '0';
-        else if (tmp == "011")
+        } else if (tmp == "011") {
             ret += '0';
-        else if (tmp == "100")
+        } else if (tmp == "100") {
             ret += '0';
-        else if (tmp == "101")
+        } else if (tmp == "101") {
             ret += '0';
-        else if (tmp == "110")
+        } else if (tmp == "110") {
             ret += '0';
-        else if (tmp == "111")
+        } else if (tmp == "111") {
             ret += '0';
-        else
+        } else {
             hif_vhdl_standard::hif_vhdl_assert(
                 false, "Found unsupported quad bits value: " + s, hif_vhdl_standard::hif_vhdl_error);
+        }
     }
 
     return ret;
@@ -339,7 +350,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_logic &value
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_logic &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -362,8 +373,9 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &val
 {
     std::string s;
     hif_vhdl_std_textio::hif_vhdl_read(l, s, good);
-    if (!good)
+    if (!good) {
         return;
+    }
     if (!_isValidLogicVector(s)) {
         good = false;
         return;
@@ -377,7 +389,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &val
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -390,7 +402,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value, bool &g
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -403,7 +415,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value, bool &
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -416,7 +428,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value, bool &
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -429,7 +441,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value, bool 
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -442,7 +454,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value, bool &
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -455,7 +467,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value, bool 
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -468,7 +480,7 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value, bool &
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -481,13 +493,13 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value, bool 
 
 void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
 void hif_vhdl_write(
     hif_vhdl_std_textio::hif_vhdl_line &l,
-    sc_dt::sc_logic value,
+    const sc_dt::sc_logic &value,
     hif_vhdl_std_textio::hif_vhdl_side justified,
     hif_vhdl_std_textio::hif_vhdl_width field)
 {
@@ -498,7 +510,7 @@ void hif_vhdl_write(
 
 void hif_vhdl_write(
     hif_vhdl_std_textio::hif_vhdl_line &l,
-    sc_dt::sc_lv_base value,
+    const sc_dt::sc_lv_base &value,
     hif_vhdl_std_textio::hif_vhdl_side justified,
     hif_vhdl_std_textio::hif_vhdl_width field)
 {
@@ -524,11 +536,13 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &va
 {
     std::string s;
     hif_vhdl_std_textio::hif_vhdl_read(l, s, good);
-    if (!good)
+    if (!good) {
         return;
+    }
     s = string2QuadBits(s, good);
-    if (!good)
+    if (!good) {
         return;
+    }
 
     value = s.c_str();
 
@@ -537,7 +551,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &va
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -550,7 +564,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value, bool &
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -563,7 +577,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value, bool 
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -576,7 +590,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value, bool 
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -589,7 +603,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value, bool
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -602,7 +616,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value, bool 
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -615,7 +629,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value, bool
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -628,7 +642,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value, bool 
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_hread(l, value, good);
 }
 
@@ -641,7 +655,7 @@ void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value, bool
 
 void hif_vhdl_hread(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -651,8 +665,9 @@ void hif_vhdl_hwrite(
     hif_vhdl_std_textio::hif_vhdl_side justified,
     hif_vhdl_std_textio::hif_vhdl_width field)
 {
-    if (!value.is_01())
+    if (!value.is_01()) {
         value = 'X';
+    }
     std::string s = value.to_string();
     s             = _toHexString(s);
     hif_vhdl_std_textio::hif_vhdl_write(l, s, justified, field);
@@ -664,11 +679,13 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &va
 {
     std::string s;
     hif_vhdl_std_textio::hif_vhdl_read(l, s, good);
-    if (!good)
+    if (!good) {
         return;
+    }
     s = string2TriBits(s, good);
-    if (!good)
+    if (!good) {
         return;
+    }
 
     value = s.c_str();
 
@@ -677,7 +694,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &va
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, sc_dt::sc_lv_base &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -690,7 +707,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value, bool &
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -703,7 +720,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value, bool 
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint8_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -716,7 +733,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value, bool 
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -729,7 +746,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value, bool
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint16_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -742,7 +759,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value, bool 
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -755,7 +772,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value, bool
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -768,7 +785,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value, bool 
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, int64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -781,7 +798,7 @@ void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value, bool
 
 void hif_vhdl_oread(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_oread(l, value, good);
 }
 
@@ -791,8 +808,9 @@ void hif_vhdl_owrite(
     hif_vhdl_std_textio::hif_vhdl_side justified,
     hif_vhdl_std_textio::hif_vhdl_width field)
 {
-    if (!value.is_01())
+    if (!value.is_01()) {
         value = '0';
+    }
     std::string s = value.to_string();
     s             = _toOctalString(s);
     hif_vhdl_std_textio::hif_vhdl_write(l, s, justified, field);

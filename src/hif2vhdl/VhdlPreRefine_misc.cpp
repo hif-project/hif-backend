@@ -24,41 +24,41 @@ namespace
 class PreRefine_misc : public hif::GuideVisitor
 {
 public:
-    typedef std::set<Object *> RefSet;
-    typedef std::map<Declaration *, RefSet> RefMap;
+    using RefSet = std::set<Object *>;
+    using RefMap = std::map<Declaration *, RefSet>;
 
     /// @brief Default constructor and destructor.
     PreRefine_misc(System *system, semantics::ILanguageSemantics *sem);
-    virtual ~PreRefine_misc();
+    ~PreRefine_misc() override;
 
-    int visitArray(Array &o);
-    int visitFor(For &o);
+    auto visitArray(Array &o) -> int override;
+    auto visitFor(For &o) -> int override;
     //int visitForGenerate(ForGenerate &o);
-    int visitStateTable(StateTable &o);
-    int visitSystem(System &o);
-    int visitWhen(When &o);
+    auto visitStateTable(StateTable &o) -> int override;
+    auto visitSystem(System &o) -> int override;
+    auto visitWhen(When &o) -> int override;
 
     void addRequiredLibraries();
 
 private:
-    Value *_buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, const bool skipReset);
-    Value *_buildSensitivityCondition(
+    auto _buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, bool skipReset) -> Value *;
+    auto _buildSensitivityCondition(
         StateTable *o,
         Value *expr,
         hif::analysis::ProcessInfos::ReferredDeclarations &refs,
         DataDeclaration *clock,
         DataDeclaration *skipReset,
-        const bool isRising);
-    void _moveSensitivities(StateTable *o);
+        bool isRising) -> Value *;
+    static void _moveSensitivities(StateTable *o);
     void _fixSynchronousProcess(StateTable *o, hif::analysis::ProcessInfos &infos);
 
-    typedef std::set<Object *> RefsSet;
-    typedef std::map<Declaration *, RefsSet> RefsMap;
-    typedef std::set<Declaration *> DeclsSet;
-    void _keepSignals(RefsMap &map, DeclsSet &declSet);
+    using RefsSet  = std::set<Object *>;
+    using RefsMap  = std::map<Declaration *, RefsSet>;
+    using DeclsSet = std::set<Declaration *>;
+    static void _keepSignals(RefsMap &map, DeclsSet &declSet);
 
-    PreRefine_misc(const PreRefine_misc &);
-    PreRefine_misc &operator=(const PreRefine_misc &);
+    PreRefine_misc(const PreRefine_misc &)                     = delete;
+    auto operator=(const PreRefine_misc &) -> PreRefine_misc & = delete;
 
     hif::HifFactory _factory;
 
@@ -66,7 +66,7 @@ private:
 
     RefMap _refMap;
     System *_system;
-    bool _addVhdlStandardLib;
+    bool _addVhdlStandardLib{false};
     hif::Trash _trash;
 };
 
@@ -75,7 +75,6 @@ PreRefine_misc::PreRefine_misc(System *system, semantics::ILanguageSemantics *se
     , _sem(sem)
     , _refMap()
     , _system(system)
-    , _addVhdlStandardLib(false)
     , _trash()
 {
     hif::semantics::getAllReferences(_refMap, _sem, system);
@@ -83,7 +82,7 @@ PreRefine_misc::PreRefine_misc(System *system, semantics::ILanguageSemantics *se
 
 PreRefine_misc::~PreRefine_misc() { _trash.clear(); }
 
-int PreRefine_misc::visitArray(Array &o)
+auto PreRefine_misc::visitArray(Array &o) -> int
 {
     GuideVisitor::visitArray(o);
 
@@ -91,19 +90,20 @@ int PreRefine_misc::visitArray(Array &o)
 
     // Skipping when is already in a typedef.
     if (dynamic_cast<TypeDef *>(o.getParent()) != nullptr) {
-        TypeDef *td = static_cast<TypeDef *>(o.getParent());
+        auto *td = dynamic_cast<TypeDef *>(o.getParent());
         td->setOpaque(true); // ensuring opaqueness
         // @TODO: check since maybe now some ops are no more allowed...
         return 0;
     }
     // Skipping when is not the type of a data declaration
-    DataDeclaration *decl = dynamic_cast<DataDeclaration *>(o.getParent());
-    if (decl == nullptr)
+    auto *decl = dynamic_cast<DataDeclaration *>(o.getParent());
+    if (decl == nullptr) {
         return 0;
+    }
 
     Scope *s = hif::getNearestScope(&o, true, false, false);
     if (dynamic_cast<View *>(s) != nullptr) {
-        View *v = static_cast<View *>(s);
+        View *v = dynamic_cast<View *>(s);
         s       = hif::getNearestScope(v->getParent(), true, false, false);
     }
     messageAssert(s != nullptr, "Cannot find suitable scope", &o, _sem);
@@ -111,7 +111,7 @@ int PreRefine_misc::visitArray(Array &o)
     auto tdName = hif::NameTable::getInstance()->getFreshName("array_type");
 
     hif::semantics::updateDeclarations(&o, _sem);
-    TypeDef *td = new TypeDef();
+    auto *td = new TypeDef();
     td->setName(tdName);
     td->setType(hif::copy(&o));
     td->setOpaque(true);
@@ -126,16 +126,16 @@ int PreRefine_misc::visitArray(Array &o)
     BList<Declaration> *decls = hif::objectGetDeclarationList(s);
     decls->push_front(td);
 
-    TypeReference *tr = new TypeReference();
+    auto *tr = new TypeReference();
     tr->setName(tdName);
 
     o.replace(tr);
     _refMap[td].insert(tr);
 
-    for (RefSet::iterator i = _refMap[decl].begin(); i != _refMap[decl].end(); ++i) {
+    for (auto i = _refMap[decl].begin(); i != _refMap[decl].end(); ++i) {
         if (dynamic_cast<PortAssign *>(*i) != nullptr) {
-            PortAssign *pa = static_cast<PortAssign *>(*i);
-            Cast *c        = new Cast();
+            auto *pa = dynamic_cast<PortAssign *>(*i);
+            Cast *c  = new Cast();
             c->setType(hif::copy(tr));
             c->setValue(pa->setValue(nullptr));
             pa->setValue(c);
@@ -143,14 +143,15 @@ int PreRefine_misc::visitArray(Array &o)
 
             continue;
         }
-        Value *obj = dynamic_cast<Value *>(*i);
+        auto *obj = dynamic_cast<Value *>(*i);
         messageAssert(obj != nullptr, "Not suitable reference.", *i, _sem);
         if (hif::manipulation::isInLeftHandSide(obj)) {
-            Assign *ass = getNearestParent<Assign>(obj);
+            auto *ass = getNearestParent<Assign>(obj);
             messageAssert(ass != nullptr, "Cannot found nearest assign", obj, _sem);
             // Skipping targets as slice and member since no cast should be required.
-            if (obj != ass->getLeftHandSide())
+            if (obj != ass->getLeftHandSide()) {
                 continue;
+            }
 
             Cast *c = new Cast();
             c->setType(hif::copy(tr));
@@ -171,45 +172,53 @@ int PreRefine_misc::visitArray(Array &o)
     return 0;
 }
 
-int PreRefine_misc::visitFor(For &o)
+auto PreRefine_misc::visitFor(For &o) -> int
 {
     GuideVisitor::visitFor(o);
 
-    Expression *condition = dynamic_cast<Expression *>(o.getCondition());
-    if (condition == nullptr)
+    auto *condition = dynamic_cast<Expression *>(o.getCondition());
+    if (condition == nullptr) {
         return 0;
-    if (condition->getOperator() != op_ge && condition->getOperator() != op_le)
+    }
+    if (condition->getOperator() != op_ge && condition->getOperator() != op_le) {
         return 0;
-    if (!o.initValues.empty())
+    }
+    if (!o.initValues.empty()) {
         return 0;
+    }
 
     // - Checking initial declarations
     const BList<DataDeclaration>::size_t sizeDecl = o.initDeclarations.size();
-    if (sizeDecl != 1 && sizeDecl != 2)
+    if (sizeDecl != 1 && sizeDecl != 2) {
         return 0;
+    }
 
-    Variable *v1 = dynamic_cast<Variable *>(o.initDeclarations.front());
-    if (v1 == nullptr)
+    auto *v1 = dynamic_cast<Variable *>(o.initDeclarations.front());
+    if (v1 == nullptr) {
         return 0;
+    }
     Variable *v2 = nullptr;
     if (sizeDecl == 2) {
         v2 = dynamic_cast<Variable *>(o.initDeclarations.back());
-        if (v2 == nullptr)
+        if (v2 == nullptr) {
             return 0;
+        }
 
         // Check form var + _hif_support + [fresh]
         std::string n1(v1->getName());
         std::string n2(v2->getName());
 
         std::string nc = n1 + "_hif_support";
-        if (n2.substr(0, nc.size()) != nc)
+        if (n2.substr(0, nc.size()) != nc) {
             return 0;
+        }
     }
 
     // - Checking step actions
     const BList<Action>::size_t sizeStepAct = o.stepActions.size();
-    if (sizeStepAct != 1)
+    if (sizeStepAct != 1) {
         return 0;
+    }
 
     BList<DataDeclaration> initDecls;
     hif::copy(o.initDeclarations, initDecls);
@@ -220,8 +229,9 @@ int PreRefine_misc::visitFor(For &o)
     BList<Action> forActions;
     hif::copy(o.forActions, forActions);
     if (sizeDecl == 2) {
-        if (forActions.empty())
+        if (forActions.empty()) {
             return 0;
+        }
         BList<Action>::iterator it(forActions.front());
         it.erase();
         forActions.push_front(_factory.assignment(new Identifier(v1->getName()), new Identifier(v2->getName())));
@@ -243,8 +253,9 @@ int PreRefine_misc::visitFor(For &o)
     opt.skipNullBranches = true;
     const bool equals    = hif::equals(templ, &o, opt);
     delete templ;
-    if (!equals)
+    if (!equals) {
         return 0;
+    }
 
     // Now we are sure that we can translate the condition with a range.
     Range *forRange = _factory.range(
@@ -289,15 +300,17 @@ int PreRefine_misc::visitFor(For &o)
     return 0;
 }
 
-int PreRefine_misc::visitStateTable(StateTable &o)
+auto PreRefine_misc::visitStateTable(StateTable &o) -> int
 {
     GuideVisitor::visitStateTable(o);
 
-    if (!hif::objectIsProcess(&o))
+    if (!hif::objectIsProcess(&o)) {
         return 0;
+    }
     // Optimization:
-    if (o.sensitivityNeg.empty() && o.sensitivityPos.empty())
+    if (o.sensitivityNeg.empty() && o.sensitivityPos.empty()) {
         return 0;
+    }
 
     using namespace hif::manipulation;
 
@@ -312,7 +325,7 @@ int PreRefine_misc::visitStateTable(StateTable &o)
         Value *expr = _buildAndExpression(&o, infos, false);
         If *ifStm   = new If();
         ifStm->addComment("Asynch");
-        IfAlt *ifAlt = new IfAlt();
+        auto *ifAlt = new IfAlt();
         ifStm->alts.push_back(ifAlt);
         ifAlt->setCondition(expr);
         ifAlt->actions.merge(o.states.front()->actions);
@@ -336,16 +349,17 @@ int PreRefine_misc::visitStateTable(StateTable &o)
     return 0;
 }
 
-int PreRefine_misc::visitSystem(System &o)
+auto PreRefine_misc::visitSystem(System &o) -> int
 {
     GuideVisitor::visitSystem(o);
 
     // If there is at least one declaration in system declaration list
     // must be moved inside a package
-    if (o.declarations.empty())
+    if (o.declarations.empty()) {
         return 0;
+    }
 
-    LibraryDef *ld = new LibraryDef();
+    auto *ld = new LibraryDef();
     ld->setName(NameTable::getInstance()->hifGlobals());
     ld->declarations.merge(o.declarations);
     ld->libraries.merge(o.libraries);
@@ -354,12 +368,12 @@ int PreRefine_misc::visitSystem(System &o)
 
     for (BList<Declaration>::iterator i = ld->declarations.begin(); i != ld->declarations.end(); ++i) {
         Declaration *d = *i;
-        for (RefSet::iterator j = _refMap[d].begin(); j != _refMap[d].end(); ++j) {
-            Object *obj = *j;
-            if (hif::getNearestParent<LibraryDef>(obj) == ld)
+        for (auto obj : _refMap[d]) {
+            if (hif::getNearestParent<LibraryDef>(obj) == ld) {
                 continue;
+            }
 
-            Library *lib = new Library();
+            auto *lib = new Library();
             lib->setName(NameTable::getInstance()->hifGlobals());
 
             hif::manipulation::AddUniqueObjectOptions addOpt;
@@ -373,7 +387,7 @@ int PreRefine_misc::visitSystem(System &o)
     return 0;
 }
 
-int PreRefine_misc::visitWhen(When &o)
+auto PreRefine_misc::visitWhen(When &o) -> int
 {
     GuideVisitor::visitWhen(o);
 
@@ -386,21 +400,23 @@ int PreRefine_misc::visitWhen(When &o)
     // 4- Otherwise      --> FunctionCall.
     messageAssert(!hif::manipulation::isInLeftHandSide(&o), "Wrong description with unexpected when.", &o, _sem);
 
-    Assign *aoC    = dynamic_cast<Assign *>(&o);
-    Return *roC    = dynamic_cast<Return *>(&o);
+    auto *aoC      = dynamic_cast<Assign *>(&o);
+    auto *roC      = dynamic_cast<Return *>(&o);
     Object *parent = aoC;
-    if (parent == nullptr)
+    if (parent == nullptr) {
         parent = roC;
+    }
 
     // 1
-    if (aoC != nullptr && dynamic_cast<GlobalAction *>(aoC->getParent()) != nullptr)
+    if (aoC != nullptr && dynamic_cast<GlobalAction *>(aoC->getParent()) != nullptr) {
         return 0;
+    }
 
     // 2
     if (aoC != nullptr && aoC->getBList()->size() == 1 && dynamic_cast<State *>(aoC->getParent()) != nullptr &&
         dynamic_cast<StateTable *>(aoC->getParent()->getParent()) != nullptr &&
         dynamic_cast<BaseContents *>(aoC->getParent()->getParent()->getParent()) != nullptr) {
-        StateTable *st = static_cast<StateTable *>(aoC->getParent()->getParent());
+        auto *st = dynamic_cast<StateTable *>(aoC->getParent()->getParent());
         RefsMap refsMap;
         hif::semantics::getAllReferences(refsMap, _sem, aoC);
         RefsMap sensMap;
@@ -413,9 +429,10 @@ int PreRefine_misc::visitWhen(When &o)
         _keepSignals(sensMap, sensSet);
         if (refSet == sensSet) {
             // Refine to globact!
-            BaseContents *bc = static_cast<BaseContents *>(aoC->getParent()->getParent()->getParent());
-            if (bc->getGlobalAction() == nullptr)
+            auto *bc = dynamic_cast<BaseContents *>(aoC->getParent()->getParent()->getParent());
+            if (bc->getGlobalAction() == nullptr) {
                 bc->setGlobalAction(new GlobalAction());
+            }
             bc->getGlobalAction()->actions.push_back(hif::copy(aoC));
             _trash.insert(aoC);
             return 0;
@@ -435,8 +452,8 @@ int PreRefine_misc::visitWhen(When &o)
         hif::semantics::updateDeclarations(&o, _sem);
 
         // Creating function call
-        FunctionCall *fc;
-        fc = new FunctionCall();
+        FunctionCall *fc = nullptr;
+        fc               = new FunctionCall();
         fc->setName(NameTable::getInstance()->getFreshName("when_function"));
         o.replace(fc);
 
@@ -444,10 +461,10 @@ int PreRefine_misc::visitWhen(When &o)
         messageAssert(t != nullptr, "Cannot type When.", &o, _sem);
 
         // Creating function
-        Function *f = static_cast<Function *>(
+        Function *f = dynamic_cast<Function *>(
             _factory.subprogram(hif::copy(t), fc->getName(), _factory.noTemplates(), _factory.noParameters()));
 
-        Return *ro = new Return();
+        auto *ro = new Return();
         ro->setValue(&o);
         f->setStateTable(_factory.stateTable(fc->getName(), _factory.noDeclarations(), (ro)));
 
@@ -457,8 +474,8 @@ int PreRefine_misc::visitWhen(When &o)
         delete ro;
 
         // Adding Function to the scope.
-        Function *func     = hif::getNearestParent<Function>(fc);
-        Contents *contents = hif::getNearestParent<Contents>(fc);
+        auto *func     = hif::getNearestParent<Function>(fc);
+        auto *contents = hif::getNearestParent<Contents>(fc);
         if (func != nullptr) {
             BList<Object>::iterator it(func);
             it.insert_before(f);
@@ -471,27 +488,29 @@ int PreRefine_misc::visitWhen(When &o)
         // Adding symbols as parameters.
         // TODO: managing symbols not found (typedefs, etc.).
         Scope *parentScope = hif::getNearestScope(fc, true, false, false);
-        if (dynamic_cast<SubProgram *>(parentScope->getParent()) != nullptr)
-            parentScope = static_cast<Scope *>(parentScope->getParent());
+        if (dynamic_cast<SubProgram *>(parentScope->getParent()) != nullptr) {
+            parentScope = dynamic_cast<Scope *>(parentScope->getParent());
+        }
 
         RefsMap refsMap;
         hif::semantics::getAllReferences(refsMap, _sem, ifStm);
-        for (RefsMap::iterator i = refsMap.begin(); i != refsMap.end(); ++i) {
-            Declaration *decl = i->first;
-            Signal *s         = dynamic_cast<Signal *>(decl);
+        for (auto &i : refsMap) {
+            Declaration *decl = i.first;
+            auto *s           = dynamic_cast<Signal *>(decl);
             Port *po          = dynamic_cast<Port *>(decl);
-            if (s == nullptr && po == nullptr && !hif::isSubNode(decl, parentScope))
+            if (s == nullptr && po == nullptr && !hif::isSubNode(decl, parentScope)) {
                 continue;
-            DataDeclaration *ddecl = dynamic_cast<DataDeclaration *>(decl);
+            }
+            auto *ddecl = dynamic_cast<DataDeclaration *>(decl);
             if (ddecl == nullptr) {
                 // Unsupported?
                 continue;
             }
 
-            Const *c     = dynamic_cast<Const *>(decl);
-            Variable *v  = dynamic_cast<Variable *>(decl);
-            ValueTP *vtp = dynamic_cast<ValueTP *>(decl);
-            Parameter *p = dynamic_cast<Parameter *>(decl);
+            auto *c   = dynamic_cast<Const *>(decl);
+            auto *v   = dynamic_cast<Variable *>(decl);
+            auto *vtp = dynamic_cast<ValueTP *>(decl);
+            auto *p   = dynamic_cast<Parameter *>(decl);
             if (c == nullptr && v == nullptr && vtp == nullptr && p == nullptr && po == nullptr && s == nullptr) {
                 messageError("Unsupported declaration to be managed.", ddecl, _sem);
             }
@@ -504,7 +523,8 @@ int PreRefine_misc::visitWhen(When &o)
                 //                pa->setValue(new Identifier(np->getName()));
                 //                fc->parameterAssigns.push_back(pa);
                 continue;
-            } else if (vtp != nullptr) {
+            }
+            if (vtp != nullptr) {
                 ValueTP *np = hif::copy(vtp);
                 f->templateParameters.push_back(np);
                 ValueTPAssign *pa = new ValueTPAssign();
@@ -571,13 +591,14 @@ void PreRefine_misc::addRequiredLibraries()
     }
 }
 
-Value *PreRefine_misc::_buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, const bool skipReset)
+auto PreRefine_misc::_buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, const bool skipReset) -> Value *
 {
     Value *expr = nullptr;
 
     DataDeclaration *rst = nullptr;
-    if (skipReset)
+    if (skipReset) {
         rst = infos.reset;
+    }
     expr = _buildSensitivityCondition(o, expr, infos.sensitivity, infos.clock, rst, true);
     expr = _buildSensitivityCondition(o, expr, infos.sensitivity, infos.clock, rst, false);
     expr = _buildSensitivityCondition(o, expr, infos.risingSensitivity, infos.clock, rst, true);
@@ -586,23 +607,24 @@ Value *PreRefine_misc::_buildAndExpression(StateTable *o, analysis::ProcessInfos
     return expr;
 }
 
-Value *PreRefine_misc::_buildSensitivityCondition(
+auto PreRefine_misc::_buildSensitivityCondition(
     StateTable *o,
     Value *expr,
     hif::analysis::ProcessInfos::ReferredDeclarations &refs,
     DataDeclaration *clock,
     DataDeclaration *skipReset,
-    const bool isRising)
+    const bool isRising) -> Value *
 {
     using hif::analysis::ProcessInfos;
 
-    for (ProcessInfos::ReferredDeclarations::iterator i = refs.begin(); i != refs.end(); ++i) {
-        if (*i == skipReset)
+    for (auto ref : refs) {
+        if (ref == skipReset) {
             continue;
+        }
         Value *v = nullptr;
 
-        Type *t = hif::semantics::getBaseType((*i)->getType(), false, _sem);
-        messageAssert(t != nullptr, "Cannot get base type.", (*i)->getType(), _sem);
+        Type *t = hif::semantics::getBaseType(ref->getType(), false, _sem);
+        messageAssert(t != nullptr, "Cannot get base type.", ref->getType(), _sem);
         Range *s = hif::typeGetSpan(t, _sem);
         messageAssert(s != nullptr, "Cannot get span type.", t, _sem);
         const unsigned long long bw = hif::semantics::spanGetBitwidth(s, _sem);
@@ -610,10 +632,11 @@ Value *PreRefine_misc::_buildSensitivityCondition(
 
         Bool *b = dynamic_cast<Bool *>(t);
 
-        if (isRising)
-            v = new Identifier((*i)->getName());
-        else
-            v = _factory.expression(b != nullptr ? op_not : op_bnot, new Identifier((*i)->getName()));
+        if (isRising) {
+            v = new Identifier(ref->getName());
+        } else {
+            v = _factory.expression(b != nullptr ? op_not : op_bnot, new Identifier(ref->getName()));
+        }
 
         if (b == nullptr) {
             Cast *c = new Cast();
@@ -622,16 +645,16 @@ Value *PreRefine_misc::_buildSensitivityCondition(
             v = c;
         }
 
-        if (*i == clock) {
+        if (ref == clock) {
             // adding the 'event attribute
-            Expression *clkE = new Expression();
+            auto *clkE = new Expression();
             clkE->setOperator(op_and);
             clkE->setValue2(v);
             clkE->setValue1(_factory.functionCall(
-                "hif_vhdl_event", new Identifier((*i)->getName()), _factory.noTemplateArguments(),
+                "hif_vhdl_event", new Identifier(ref->getName()), _factory.noTemplateArguments(),
                 _factory.noParameterArguments()));
             _addVhdlStandardLib = true;
-            Library *lib        = new Library();
+            auto *lib           = new Library();
             lib->setName("hif_vhdl_standard");
             lib->setSystem(true);
 
@@ -647,7 +670,7 @@ Value *PreRefine_misc::_buildSensitivityCondition(
             continue;
         }
 
-        Expression *e = new Expression();
+        auto *e = new Expression();
         e->setOperator(op_or);
         e->setValue1(expr);
         e->setValue2(v);
@@ -692,7 +715,7 @@ void PreRefine_misc::_fixSynchronousProcess(StateTable *o, analysis::ProcessInfo
         Value *expr = _buildAndExpression(o, infos, false);
         If *ifStm   = new If();
         ifStm->addComment("Style 3/5");
-        IfAlt *ifAlt = new IfAlt();
+        auto *ifAlt = new IfAlt();
         ifStm->alts.push_back(ifAlt);
         ifAlt->setCondition(expr);
         ifAlt->actions.merge(o->states.front()->actions);
@@ -705,7 +728,7 @@ void PreRefine_misc::_fixSynchronousProcess(StateTable *o, analysis::ProcessInfo
         ifStm->addComment("Style 6");
         messageAssert(ifStm != nullptr, "Unexpected object. (1)", o->states.front()->actions.front(), _sem);
         messageAssert(ifStm->alts.size() == 1, "Unexpected object. (2)", ifStm, _sem);
-        IfAlt *ifa  = new IfAlt();
+        auto *ifa   = new IfAlt();
         Value *expr = _buildAndExpression(o, infos, true);
         ifa->setCondition(expr);
         ifa->actions.merge(ifStm->defaults);
@@ -719,17 +742,17 @@ void PreRefine_misc::_fixSynchronousProcess(StateTable *o, analysis::ProcessInfo
 
 void PreRefine_misc::_keepSignals(PreRefine_misc::RefsMap &map, DeclsSet &declSet)
 {
-    for (RefsMap::iterator i = map.begin(); i != map.end(); ++i) {
-        Declaration *d = i->first;
-        for (RefsSet::iterator j = i->second.begin(); j != i->second.end();) {
+    for (auto &i : map) {
+        Declaration *d = i.first;
+        for (auto j = i.second.begin(); j != i.second.end();) {
             if (hif::manipulation::isInLeftHandSide(*j)) {
-                i->second.erase(j++);
+                i.second.erase(j++);
             } else {
                 ++j;
             }
         }
 
-        if (i->second.empty()) {
+        if (i.second.empty()) {
             continue;
         }
 

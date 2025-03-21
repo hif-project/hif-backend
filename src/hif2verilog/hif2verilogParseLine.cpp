@@ -44,10 +44,12 @@ hif2verilogParseLine::hif2verilogParseLine(int argc, char **argv)
 
 void hif2verilogParseLine::_validateArguments()
 {
-    if (!_options['h'].value.empty())
+    if (!_options['h'].value.empty()) {
         printHelp();
-    if (!_options['v'].value.empty())
+    }
+    if (!_options['v'].value.empty()) {
         printVersion();
+    }
 
     if (_files.empty()) {
         messageError(
@@ -71,10 +73,10 @@ void hif2verilogParseLine::_validateArguments()
 
     // Establish output file name
     std::string out = _options['D'].value;
-    if (out == "") {
+    if (out.empty()) {
         out = "hif2verilog_out";
     }
     _options['D'].value = out;
 }
 
-hif2verilogParseLine::~hif2verilogParseLine() {}
+hif2verilogParseLine::~hif2verilogParseLine() = default;

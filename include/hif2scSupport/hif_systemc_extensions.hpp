@@ -226,7 +226,7 @@ sc_dt::sc_logic hif_logicEquals(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2
 /// @param param2 The second logic value.
 /// @return The resulting logic value.
 HIF2SCSUPPORT_EXPORT
-sc_dt::sc_logic hif_logicEquals(sc_dt::sc_logic param1, sc_dt::sc_logic param2);
+sc_dt::sc_logic hif_logicEquals(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2);
 
 /// This method allows to compare two arrays of logic types, considering 'X' as false.
 /// @param param1 The first array.
@@ -251,7 +251,7 @@ bool hif_caseXZ(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const bool par
 /// @param param3 If true consider also 'X' as dontcare.
 /// @return The resulting logic value.
 HIF2SCSUPPORT_EXPORT
-bool hif_caseXZ(sc_dt::sc_logic param1, sc_dt::sc_logic param2, const bool param3);
+bool hif_caseXZ(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2, const bool param3);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 

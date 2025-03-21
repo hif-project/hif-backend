@@ -17,7 +17,7 @@ namespace hif_vhdl_ieee_std_logic_1164
 namespace /* anon */
 {
 
-int logic_index(const char v)
+auto logic_index(const char v) -> int
 {
     switch (toupper(v)) {
     case 'X':
@@ -43,10 +43,11 @@ char resolution_table[9][9] = {
 
 } // namespace
 
-sc_dt::sc_logic hif_vhdl_resolved(const sc_dt::sc_lv_base &s)
+auto hif_vhdl_resolved(const sc_dt::sc_lv_base &s) -> sc_dt::sc_logic
 {
-    if (s.length() == 1)
+    if (s.length() == 1) {
         return static_cast<sc_dt::sc_logic>(s[0]);
+    }
 
     sc_dt::sc_logic result('z');
     for (int i = 0; i < s.length(); ++i) {
@@ -57,23 +58,25 @@ sc_dt::sc_logic hif_vhdl_resolved(const sc_dt::sc_lv_base &s)
     return result;
 }
 
-bool hif_vhdl_to_bit(const sc_dt::sc_logic s, const bool xmap)
+auto hif_vhdl_to_bit(const sc_dt::sc_logic &s, const bool xmap) -> bool
 {
-    if (s == sc_dt::SC_LOGIC_1)
+    if (s == sc_dt::SC_LOGIC_1) {
         return true;
-    else if (s == sc_dt::SC_LOGIC_0)
+    }
+    if (s == sc_dt::SC_LOGIC_0)
         return false;
     return xmap;
 }
 
-sc_dt::sc_logic hif_vhdl_to_x01(const sc_dt::sc_logic &s)
+auto hif_vhdl_to_x01(const sc_dt::sc_logic &s) -> sc_dt::sc_logic
 {
-    if (toupper(s.to_char()) != 'Z')
+    if (toupper(s.to_char()) != 'Z') {
         return s;
+    }
     return sc_dt::SC_LOGIC_X;
 }
 
-sc_dt::sc_logic hif_vhdl_to_ux01(const sc_dt::sc_logic &s) { return hif_vhdl_to_x01(s); }
+auto hif_vhdl_to_ux01(const sc_dt::sc_logic &s) -> sc_dt::sc_logic { return hif_vhdl_to_x01(s); }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap)
@@ -99,9 +102,9 @@ hdtlib::hl_logic_t hif_vhdl_to_ux01(const hdtlib::hl_logic_t &s)
 }
 #endif
 
-bool hif_vhdl_is_x(const sc_dt::sc_logic s) { return !s.is_01(); }
+auto hif_vhdl_is_x(const sc_dt::sc_logic &s) -> bool { return !s.is_01(); }
 
-bool hif_vhdl_is_x(const sc_dt::sc_lv_base s) { return !s.is_01(); }
+auto hif_vhdl_is_x(const sc_dt::sc_lv_base &s) -> bool { return !s.is_01(); }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 bool hif_vhdl_is_x(const hdtlib::hl_logic_t s) { return !s.is_01(); }

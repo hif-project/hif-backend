@@ -876,19 +876,20 @@ auto PrintSystemCVisitor::visitAggregate(Aggregate &o) -> int
                 return 0;
             }
             const bool printString = !_opt.insideInitList;
-            if (printString)
+            if (printString) {
                 *(_outstream) << "std::string(";
+            }
             Value *size = hif::semantics::spanGetSize(stringType->getSpanInformation(), _sem);
             size->acceptVisitor(*this);
             *(_outstream) << ", ";
             o.getOthers()->acceptVisitor(*this);
-            if (printString)
+            if (printString) {
                 *(_outstream) << ")";
+            }
             return 0;
-        } else {
-            messageAssert(bv == nullptr, "Aggregate type must be a bitvector", &o, _sem);
-            return o.getOthers()->acceptVisitor(*this);
         }
+        messageAssert(bv == nullptr, "Aggregate type must be a bitvector", &o, _sem);
+        return o.getOthers()->acceptVisitor(*this);
     }
 
     *(_outstream) << "{";
@@ -3562,7 +3563,7 @@ void PrintSystemCVisitor::_printIndividualInit(DataDeclaration *ddo, Array *base
         }
 
         *(_outstream) << ddo->getName();
-        for (auto ind : info.indexes) {
+        for (auto *ind : info.indexes) {
             *(_outstream) << "[";
             if (dynamic_cast<Aggregate *>(ind) != nullptr || dynamic_cast<Range *>(ind) != nullptr) {
                 // print the for index
@@ -3953,8 +3954,9 @@ auto PrintSystemCVisitor::_printNormalInit(DataDeclaration *o) -> bool
             }
             return true;
         }
-        if (isSignal && static_cast<Signal *>(o)->isWrapper())
+        if (isSignal && dynamic_cast<Signal *>(o)->isWrapper()) {
             return false;
+        }
 
         if (!_opt.printType && o->getValue() == nullptr && vr != nullptr) {
             return false;
@@ -3995,7 +3997,7 @@ auto PrintSystemCVisitor::_printNormalInit(DataDeclaration *o) -> bool
         if (_isCppConstructor(o->getValue()) && dynamic_cast<Pointer *>(o->getType()) == nullptr) {
             // Stack allocation - Note: second part of condition should be useless
             // since a call to hif_new would be expected
-            if (!static_cast<FunctionCall *>(o->getValue())->parameterAssigns.empty()) {
+            if (!dynamic_cast<FunctionCall *>(o->getValue())->parameterAssigns.empty()) {
                 o->getValue()->acceptVisitor(*this);
             }
             *(_outstream) << ";";
@@ -4082,9 +4084,10 @@ void PrintSystemCVisitor::_visitType(Type *type, bool different_management)
         return;
     }
     if (dynamic_cast<Record *>(type) != nullptr) {
-        _visitTypeRecord(static_cast<Record *>(type), different_management);
+        _visitTypeRecord(dynamic_cast<Record *>(type), different_management);
         return;
-    } else if (dynamic_cast<Int *>(type) != nullptr) {
+    }
+    if (dynamic_cast<Int *>(type) != nullptr) {
         _visitTypeBitField(static_cast<Int *>(type), different_management);
         return;
     }
@@ -4525,15 +4528,15 @@ auto PrintSystemCVisitor::_isStatement(Object *obj) -> bool
         if (dynamic_cast<Assign *>(obj) != nullptr || dynamic_cast<ProcedureCall *>(obj) != nullptr ||
             dynamic_cast<Return *>(obj) != nullptr || dynamic_cast<Break *>(obj) != nullptr ||
             dynamic_cast<Wait *>(obj) != nullptr || dynamic_cast<Continue *>(obj) != nullptr ||
-            dynamic_cast<ValueStatement *>(obj) != nullptr || dynamic_cast<Null *>(obj) != nullptr)
+            dynamic_cast<ValueStatement *>(obj) != nullptr || dynamic_cast<Null *>(obj) != nullptr) {
             return true;
+        }
 
         // E.g. : for, if, while
         return false;
-    } else {
-        messageDebugAssert(false, "Unexpected object for _isStatament", obj, _sem);
-        messageError("Unexpected Object for _isStatement", obj, _sem);
     }
+    messageDebugAssert(false, "Unexpected object for _isStatament", obj, _sem);
+    messageError("Unexpected Object for _isStatement", obj, _sem);
 }
 
 auto PrintSystemCVisitor::_isTLMComponent(DataDeclaration *obj) -> bool
@@ -4625,7 +4628,8 @@ template <typename T> auto PrintSystemCVisitor::_needTemplateAsQualifier(T *o) -
         if (sp != nullptr && !sp->templateParameters.empty()) {
             found = true;
             break;
-        } else if (td != nullptr && !td->templateParameters.empty()) {
+        }
+        if (td != nullptr && !td->templateParameters.empty()) {
             found = true;
             break;
         }
@@ -5163,8 +5167,8 @@ auto PrintSystemCVisitor::_getOperatorPrecedence(Object *v) -> PrintSystemCVisit
     }
     if (dynamic_cast<Member *>(v) != nullptr) {
         return prec_member;
-    } else if (
-        dynamic_cast<FunctionCall *>(v) != nullptr || dynamic_cast<ProcedureCall *>(v) != nullptr ||
+    }
+    if (dynamic_cast<FunctionCall *>(v) != nullptr || dynamic_cast<ProcedureCall *>(v) != nullptr ||
         dynamic_cast<Slice *>(v) != nullptr) {
         // Slices will be translated as function calls (.range())
         return prec_call;
@@ -5289,7 +5293,7 @@ auto PrintSystemCVisitor::_isAMSPort(Port *o) -> bool
     }
 
     auto *amsLib = hif::getNearestParent<LibraryDef>(v);
-    return !(amsLib == nullptr || !objectMatchName(amsLib, "systemc_sca_eln"));
+    return amsLib != nullptr && objectMatchName(amsLib, "systemc_sca_eln");
 }
 
 void PrintSystemCVisitor::_printImplementationBegin(Object *obj)
@@ -6115,9 +6119,10 @@ void PrintSystemCVisitor::_printDeclarations_H(
             continue;
         }
         // Const are managed by _printConstants()
-        if (dynamic_cast<Const *>(*it) != nullptr)
+        if (dynamic_cast<Const *>(*it) != nullptr) {
             continue;
-        else if (dynamic_cast<Variable *>(*it) != nullptr) {
+        }
+        if (dynamic_cast<Variable *>(*it) != nullptr) {
             if (ld != nullptr && !insideNamespace)
                 continue;
             _opt.printType = false;
@@ -6263,8 +6268,9 @@ auto PrintSystemCVisitor::_calculateInclude(Object *where, Library *lib) -> std:
     if (dots.empty()) {
         return dirs;
     }
-    if (dirs.empty())
+    if (dirs.empty()) {
         return dots;
+    }
     return dots + "/" + dirs;
 }
 
@@ -6429,8 +6435,6 @@ PrintSystemCVisitor::PrintListOpt::PrintListOpt(
     , _breakLine(breakLine)
 {
 }
-
-PrintSystemCVisitor::PrintListOpt::~PrintListOpt() = default;
 
 PrintSystemCVisitor::PrintListOpt::PrintListOpt(const PrintListOpt &other)
 

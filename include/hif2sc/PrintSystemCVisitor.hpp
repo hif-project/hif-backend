@@ -700,7 +700,7 @@ private:
 
         PrintListOpt();
         PrintListOpt(bool mandatoryParen, bool mandatoryNoParen, bool angularParen, bool curlyParen, bool breakLine);
-        ~PrintListOpt();
+        ~PrintListOpt() = default;
         PrintListOpt(const PrintListOpt &other);
         auto operator=(const PrintListOpt &other) -> PrintListOpt &;
     };

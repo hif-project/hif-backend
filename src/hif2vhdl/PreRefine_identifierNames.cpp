@@ -18,20 +18,20 @@ namespace
 class PreRefine_identifierNames : public hif::GuideVisitor
 {
 public:
-    typedef std::set<hif::Object *> References;
+    using References = std::set<hif::Object *>;
 
-    typedef std::map<hif::Declaration *, References> DeclarationsMap;
+    using DeclarationsMap = std::map<hif::Declaration *, References>;
 
     /// @brief Default constructor and destructor.
     PreRefine_identifierNames(hif::System *system, semantics::ILanguageSemantics *sem);
-    virtual ~PreRefine_identifierNames();
+    ~PreRefine_identifierNames() override;
 
-    virtual bool BeforeVisit(hif::Object &o);
-    virtual int AfterVisit(hif::Object &o);
+    auto BeforeVisit(hif::Object &o) -> bool override;
+    auto AfterVisit(hif::Object &o) -> int override;
 
 private:
-    PreRefine_identifierNames(const PreRefine_identifierNames &);
-    PreRefine_identifierNames &operator=(const PreRefine_identifierNames &);
+    PreRefine_identifierNames(const PreRefine_identifierNames &)                     = delete;
+    auto operator=(const PreRefine_identifierNames &) -> PreRefine_identifierNames & = delete;
 
     hif::HifFactory _factory;
 
@@ -39,11 +39,11 @@ private:
 
     DeclarationsMap _declarationsMap;
 
-    std::string _analyzeString(const std::string &n);
+    auto _analyzeString(const std::string &n) -> std::string;
 
-    std::string _replaceFirstUnderscore(std::string nameStr);
+    static auto _replaceFirstUnderscore(std::string nameStr) -> std::string;
 
-    std::string _replaceDoubleUnderscore(std::string nameStr);
+    static auto _replaceDoubleUnderscore(std::string nameStr) -> std::string;
 };
 
 PreRefine_identifierNames::PreRefine_identifierNames(hif::System *system, semantics::ILanguageSemantics *sem)
@@ -56,66 +56,74 @@ PreRefine_identifierNames::PreRefine_identifierNames(hif::System *system, semant
     hif::semantics::getAllReferences(_declarationsMap, _sem, system, opt);
 }
 
-PreRefine_identifierNames::~PreRefine_identifierNames() {}
+PreRefine_identifierNames::~PreRefine_identifierNames() = default;
 
-bool PreRefine_identifierNames::BeforeVisit(Object &o)
+auto PreRefine_identifierNames::BeforeVisit(Object &o) -> bool
 {
-    LibraryDef *ld = dynamic_cast<LibraryDef *>(&o);
-    DesignUnit *du = dynamic_cast<DesignUnit *>(&o);
+    auto *ld = dynamic_cast<LibraryDef *>(&o);
+    auto *du = dynamic_cast<DesignUnit *>(&o);
 
-    if (ld != nullptr && ld->isStandard())
+    if (ld != nullptr && ld->isStandard()) {
         return true;
-    if (du != nullptr && du->views.front()->isStandard())
+    }
+    if (du != nullptr && du->views.front()->isStandard()) {
         return true;
+    }
 
     return false;
 }
 
-int PreRefine_identifierNames::AfterVisit(Object &o)
+auto PreRefine_identifierNames::AfterVisit(Object &o) -> int
 {
-    features::ISymbol *symb = dynamic_cast<features::ISymbol *>(&o);
+    auto *symb = dynamic_cast<features::ISymbol *>(&o);
 
     if (symb != nullptr) {
         Declaration *d = hif::semantics::getDeclaration(&o, _sem);
 
         messageAssert(
             d != nullptr || (dynamic_cast<Instance *>(&o) != nullptr &&
-                             dynamic_cast<Library *>(static_cast<Instance *>(&o)->getReferencedType()) != nullptr),
+                             dynamic_cast<Library *>(dynamic_cast<Instance *>(&o)->getReferencedType()) != nullptr),
             "Declaration not found", &o, _sem);
-        if (d == nullptr)
+        if (d == nullptr) {
             return 0;
+        }
 
-        LibraryDef *ld = dynamic_cast<LibraryDef *>(d);
-        View *view     = dynamic_cast<View *>(d);
+        auto *ld   = dynamic_cast<LibraryDef *>(d);
+        View *view = dynamic_cast<View *>(d);
 
-        if (ld != nullptr && ld->isStandard())
+        if (ld != nullptr && ld->isStandard()) {
             return 0;
-        if (view != nullptr && view->isStandard())
+        }
+        if (view != nullptr && view->isStandard()) {
             return 0;
+        }
 
         ld   = getNearestParent<LibraryDef>(d);
         view = getNearestParent<View>(d);
 
-        if (ld != nullptr && ld->isStandard())
+        if (ld != nullptr && ld->isStandard()) {
             return 0;
-        if (view != nullptr && view->isStandard())
+        }
+        if (view != nullptr && view->isStandard()) {
             return 0;
+        }
     }
     auto nm = objectGetName(&o);
 
-    if (nm.empty())
+    if (nm.empty()) {
         return 0;
+    }
 
     objectSetName(&o, _analyzeString(nm));
 
     if (dynamic_cast<ViewReference *>(&o) != nullptr) {
-        ViewReference *vr = static_cast<ViewReference *>(&o);
+        auto *vr = dynamic_cast<ViewReference *>(&o);
         vr->setDesignUnit(_analyzeString(vr->getDesignUnit()));
     } else if (dynamic_cast<Declaration *>(&o) != nullptr) {
-        Declaration *decl = static_cast<Declaration *>(&o);
+        auto *decl = dynamic_cast<Declaration *>(&o);
 
         if (decl->getName() != nm) {
-            for (References::iterator it = _declarationsMap[decl].begin(); it != _declarationsMap[decl].end(); ++it) {
+            for (auto it = _declarationsMap[decl].begin(); it != _declarationsMap[decl].end(); ++it) {
                 hif::objectSetName(*it, decl->getName());
             }
         }
@@ -123,14 +131,14 @@ int PreRefine_identifierNames::AfterVisit(Object &o)
     return 0;
 }
 
-std::string PreRefine_identifierNames::_analyzeString(const std::string &n)
+auto PreRefine_identifierNames::_analyzeString(const std::string &n) -> std::string
 {
     std::string nameStr = _replaceFirstUnderscore(n);
 
     return _replaceDoubleUnderscore(nameStr);
 }
 
-string PreRefine_identifierNames::_replaceFirstUnderscore(string nameStr)
+auto PreRefine_identifierNames::_replaceFirstUnderscore(string nameStr) -> string
 {
     if (!nameStr.empty()) {
         if (nameStr.at(0) == '_') {
@@ -140,7 +148,7 @@ string PreRefine_identifierNames::_replaceFirstUnderscore(string nameStr)
     return nameStr;
 }
 
-string PreRefine_identifierNames::_replaceDoubleUnderscore(string nameStr)
+auto PreRefine_identifierNames::_replaceDoubleUnderscore(string nameStr) -> string
 {
     if (!nameStr.empty()) {
         std::size_t found = nameStr.find("__");

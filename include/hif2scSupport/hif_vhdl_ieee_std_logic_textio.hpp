@@ -94,14 +94,14 @@ void hif_vhdl_read(hif_vhdl_std_textio::hif_vhdl_line &l, uint64_t &value);
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_std_textio::hif_vhdl_line &l,
-    sc_dt::sc_logic value,
+    const sc_dt::sc_logic &value,
     hif_vhdl_std_textio::hif_vhdl_side justified = hif_vhdl_std_textio::hif_vhdl_right,
     hif_vhdl_std_textio::hif_vhdl_width field    = 0);
 
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_std_textio::hif_vhdl_line &l,
-    sc_dt::sc_lv_base value,
+    const sc_dt::sc_lv_base &value,
     hif_vhdl_std_textio::hif_vhdl_side justified = hif_vhdl_std_textio::hif_vhdl_right,
     hif_vhdl_std_textio::hif_vhdl_width field    = 0);
 

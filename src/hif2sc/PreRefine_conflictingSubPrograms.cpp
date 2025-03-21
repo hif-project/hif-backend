@@ -48,7 +48,7 @@ private:
 
     void _updateSignatures();
 
-    auto _areConflictingTypes(Type *t1, Type *t2) -> CompareType const;
+    auto _areConflictingTypes(Type *t1, Type *t2) const -> CompareType;
 
     static auto _createFakeCall(SubProgram *o) -> ProcedureCall *;
 
@@ -143,7 +143,7 @@ template <typename T> void FixSubProgramVisitor::_checkCall(T *call, SubProgram 
     _updateSignatures();
 }
 
-auto FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2) -> CompareType const
+auto FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2) const -> CompareType
 {
     // Conflicting types in systemc are:
     // - bitvector (that is array packed of bit logic/not logic)
@@ -163,12 +163,13 @@ auto FixSubProgramVisitor::_areConflictingTypes(Type *t1, Type *t2) -> CompareTy
         } // handle case bitvector->signed vs bitvector->unsiged that conflicts!
         // Using IsA to increase performance
         if (dynamic_cast<Bitvector *>(t1) != nullptr && dynamic_cast<Bitvector *>(t2) != nullptr) {
-            Bitvector *arr1 = static_cast<Bitvector *>(t1);
-            Bitvector *arr2 = static_cast<Bitvector *>(t2);
+            auto *arr1 = dynamic_cast<Bitvector *>(t1);
+            auto *arr2 = dynamic_cast<Bitvector *>(t2);
             if (arr1->isSigned() != arr2->isSigned()) {
                 // Searched case!
                 return CONFLICTING;
-            } else if (arr1->isResolved() != arr2->isResolved()) {
+            }
+            if (arr1->isResolved() != arr2->isResolved()) {
                 // Searched case!
                 return CONFLICTING;
             }
@@ -266,12 +267,10 @@ auto FixSubProgramVisitor::_areSigsConflict(SubProgram *s1, SubProgram *s2) -> b
             //all_compatible = false;
             //conflicts = false;
             return false;
-        } else // t == CONFLICTING
-        {
-            // e.g. signed - unsigned
-            all_compatible = false;
-            conflicts      = true;
-        }
+        } // t == CONFLICTING
+        // e.g. signed - unsigned
+        all_compatible = false;
+        conflicts      = true;
     }
 
     if (conflicts || all_compatible) {

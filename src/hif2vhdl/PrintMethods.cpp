@@ -32,11 +32,12 @@ void splitFileName(const std::string &f, std::string &base, std::string &ext)
     ext  = f.substr(p + 1);
 }
 
-int openFileStream(const std::string &name, ofstream *outstream)
+auto openFileStream(const std::string &name, ofstream *outstream) -> int
 {
     outstream->open(name.c_str());
-    if (!outstream->is_open() || !outstream->good())
+    if (!outstream->is_open() || !outstream->good()) {
         return 0;
+    }
     return 1;
 }
 

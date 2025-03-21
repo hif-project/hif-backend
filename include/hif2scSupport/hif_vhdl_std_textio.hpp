@@ -58,7 +58,7 @@ HIF2SCSUPPORT_EXPORT
 void hif_vhdl_file_open(
     hif_vhdl_standard::hif_vhdl_file_open_status &status,
     hif_vhdl_text &f,
-    std::string external_name,
+    const std::string &external_name,
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind = hif_vhdl_standard::hif_vhdl_read_mode);
 
 // procedure FILE_CLOSE (file F: TEXT);
@@ -71,7 +71,7 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value);
 
 // procedure WRITE (file F: TEXT; VALUE: in STRING);
 HIF2SCSUPPORT_EXPORT
-void hif_vhdl_write(hif_vhdl_text &f, std::string value);
+void hif_vhdl_write(hif_vhdl_text &f, const std::string &value);
 
 //  procedure READLINE (file F: TEXT; L: inout LINE);
 HIF2SCSUPPORT_EXPORT
@@ -162,7 +162,7 @@ void hif_vhdl_writeline(hif_vhdl_text &f, hif_vhdl_line &l);
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    sc_dt::sc_bit value,
+    const sc_dt::sc_bit &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 
@@ -171,7 +171,7 @@ void hif_vhdl_write(
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    sc_dt::sc_bv_base value,
+    const sc_dt::sc_bv_base &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 
@@ -210,7 +210,7 @@ void hif_vhdl_write(
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    std::string value,
+    const std::string &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 

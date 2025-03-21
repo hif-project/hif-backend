@@ -50,13 +50,13 @@ namespace internal
 {
 
 HIF2SCSUPPORT_EXPORT
-sc_dt::sc_lv<32> hif_verilog__system_getParam(sc_dt::sc_lv<32> p = 1);
+sc_dt::sc_lv<32> hif_verilog__system_getParam(const sc_dt::sc_lv<32> &p = 1);
 
 HIF2SCSUPPORT_EXPORT
-void hif_verilog__system_finish_impl(const char *f, const int l, const char *func, sc_dt::sc_lv<32> param1 = 1);
+void hif_verilog__system_finish_impl(const char *f, const int l, const char *func, const sc_dt::sc_lv<32> &param1 = 1);
 
 HIF2SCSUPPORT_EXPORT
-void hif_verilog__system_stop_impl(const char *f, const int l, const char *func, sc_dt::sc_lv<32> param1 = 1);
+void hif_verilog__system_stop_impl(const char *f, const int l, const char *func, const sc_dt::sc_lv<32> &param1 = 1);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 

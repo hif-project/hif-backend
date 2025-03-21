@@ -6,11 +6,13 @@
 /// See LICENSE.md for details.
 
 #include "hif2verilog/VerilogPrinter.hpp"
-#include "hif2verilog/PrintMethods.hpp"
 
-VerilogPrinter::VerilogPrinter(const std::string &outDir)
-    : _sem(semantics::VHDLSemantics::getInstance())
-    , _outDir(outDir)
+#include "hif2verilog/PrintMethods.hpp"
+#include <utility>
+
+VerilogPrinter::VerilogPrinter(std::string outDir)
+    : _sem(hif::semantics::VHDLSemantics::getInstance())
+    , _outDir(std::move(outDir))
 {
     // ntd
 }
@@ -20,517 +22,517 @@ VerilogPrinter::~VerilogPrinter()
     // ntd
 }
 
-int VerilogPrinter::visitAggregate(Aggregate &o)
+auto VerilogPrinter::visitAggregate(Aggregate &o) -> int
 {
     GuideVisitor::visitAggregate(o);
     return 0;
 }
 
-int VerilogPrinter::visitAggregateAlt(AggregateAlt &o)
+auto VerilogPrinter::visitAggregateAlt(AggregateAlt &o) -> int
 {
     GuideVisitor::visitAggregateAlt(o);
     return 0;
 }
 
-int VerilogPrinter::visitAlias(Alias &o)
+auto VerilogPrinter::visitAlias(Alias &o) -> int
 {
     GuideVisitor::visitAlias(o);
     return 0;
 }
 
-int VerilogPrinter::visitArray(Array &o)
+auto VerilogPrinter::visitArray(Array &o) -> int
 {
     GuideVisitor::visitArray(o);
     return 0;
 }
 
-int VerilogPrinter::visitAssign(Assign &o)
+auto VerilogPrinter::visitAssign(Assign &o) -> int
 {
     GuideVisitor::visitAssign(o);
     return 0;
 }
 
-int VerilogPrinter::visitBit(Bit &o)
+auto VerilogPrinter::visitBit(Bit &o) -> int
 {
     GuideVisitor::visitBit(o);
     return 0;
 }
 
-int VerilogPrinter::visitBitValue(BitValue &o)
+auto VerilogPrinter::visitBitValue(BitValue &o) -> int
 {
     GuideVisitor::visitBitValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitBitvector(Bitvector &o)
+auto VerilogPrinter::visitBitvector(Bitvector &o) -> int
 {
     GuideVisitor::visitBitvector(o);
     return 0;
 }
 
-int VerilogPrinter::visitBitvectorValue(BitvectorValue &o)
+auto VerilogPrinter::visitBitvectorValue(BitvectorValue &o) -> int
 {
     GuideVisitor::visitBitvectorValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitBool(Bool &o)
+auto VerilogPrinter::visitBool(Bool &o) -> int
 {
     GuideVisitor::visitBool(o);
     return 0;
 }
 
-int VerilogPrinter::visitBoolValue(BoolValue &o)
+auto VerilogPrinter::visitBoolValue(BoolValue &o) -> int
 {
     GuideVisitor::visitBoolValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitBreak(Break &o)
+auto VerilogPrinter::visitBreak(Break &o) -> int
 {
     GuideVisitor::visitBreak(o);
     return 0;
 }
 
-int VerilogPrinter::visitCast(Cast &o)
+auto VerilogPrinter::visitCast(Cast &o) -> int
 {
     GuideVisitor::visitCast(o);
     return 0;
 }
 
-int VerilogPrinter::visitChar(Char &o)
+auto VerilogPrinter::visitChar(char &o) -> int
 {
     GuideVisitor::visitChar(o);
     return 0;
 }
 
-int VerilogPrinter::visitCharValue(CharValue &o)
+auto VerilogPrinter::visitCharValue(CharValue &o) -> int
 {
     GuideVisitor::visitCharValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitConst(Const &o)
+auto VerilogPrinter::visitConst(Const &o) -> int
 {
     GuideVisitor::visitConst(o);
     return 0;
 }
 
-int VerilogPrinter::visitContents(Contents &o)
+auto VerilogPrinter::visitContents(Contents &o) -> int
 {
     GuideVisitor::visitContents(o);
     return 0;
 }
 
-int VerilogPrinter::visitContinue(Continue &o)
+auto VerilogPrinter::visitContinue(Continue &o) -> int
 {
     GuideVisitor::visitContinue(o);
     return 0;
 }
 
-int VerilogPrinter::visitDesignUnit(DesignUnit &o)
+auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
 {
     GuideVisitor::visitDesignUnit(o);
     return 0;
 }
 
-int VerilogPrinter::visitEnum(Enum &o)
+auto VerilogPrinter::visitEnum(Enum &o) -> int
 {
     GuideVisitor::visitEnum(o);
     return 0;
 }
 
-int VerilogPrinter::visitEnumValue(EnumValue &o)
+auto VerilogPrinter::visitEnumValue(EnumValue &o) -> int
 {
     GuideVisitor::visitEnumValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitExpression(Expression &o)
+auto VerilogPrinter::visitExpression(Expression &o) -> int
 {
     GuideVisitor::visitExpression(o);
     return 0;
 }
 
-int VerilogPrinter::visitFunctionCall(FunctionCall &o)
+auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
     GuideVisitor::visitFunctionCall(o);
     return 0;
 }
 
-int VerilogPrinter::visitField(Field &o)
+auto VerilogPrinter::visitField(Field &o) -> int
 {
     GuideVisitor::visitField(o);
     return 0;
 }
 
-int VerilogPrinter::visitFieldReference(FieldReference &o)
+auto VerilogPrinter::visitFieldReference(FieldReference &o) -> int
 {
     GuideVisitor::visitFieldReference(o);
     return 0;
 }
 
-int VerilogPrinter::visitFile(File &o)
+auto VerilogPrinter::visitFile(File &o) -> int
 {
     GuideVisitor::visitFile(o);
     return 0;
 }
 
-int VerilogPrinter::visitFor(For &o)
+auto VerilogPrinter::visitFor(For &o) -> int
 {
     GuideVisitor::visitFor(o);
     return 0;
 }
 
-int VerilogPrinter::visitForGenerate(ForGenerate &o)
+auto VerilogPrinter::visitForGenerate(ForGenerate &o) -> int
 {
     GuideVisitor::visitForGenerate(o);
     return 0;
 }
 
-int VerilogPrinter::visitFunction(Function &o)
+auto VerilogPrinter::visitFunction(Function &o) -> int
 {
     GuideVisitor::visitFunction(o);
     return 0;
 }
 
-int VerilogPrinter::visitGlobalAction(GlobalAction &o)
+auto VerilogPrinter::visitGlobalAction(GlobalAction &o) -> int
 {
     GuideVisitor::visitGlobalAction(o);
     return 0;
 }
 
-int VerilogPrinter::visitEntity(Entity &o)
+auto VerilogPrinter::visitEntity(Entity &o) -> int
 {
     GuideVisitor::visitEntity(o);
     return 0;
 }
 
-int VerilogPrinter::visitIdentifier(Identifier &o)
+auto VerilogPrinter::visitIdentifier(Identifier &o) -> int
 {
     GuideVisitor::visitIdentifier(o);
     return 0;
 }
 
-int VerilogPrinter::visitIf(If &o)
+auto VerilogPrinter::visitIf(If &o) -> int
 {
     GuideVisitor::visitIf(o);
     return 0;
 }
 
-int VerilogPrinter::visitIfAlt(IfAlt &o)
+auto VerilogPrinter::visitIfAlt(IfAlt &o) -> int
 {
     GuideVisitor::visitIfAlt(o);
     return 0;
 }
 
-int VerilogPrinter::visitIfGenerate(IfGenerate &o)
+auto VerilogPrinter::visitIfGenerate(IfGenerate &o) -> int
 {
     GuideVisitor::visitIfGenerate(o);
     return 0;
 }
 
-int VerilogPrinter::visitInstance(Instance &o)
+auto VerilogPrinter::visitInstance(Instance &o) -> int
 {
     GuideVisitor::visitInstance(o);
     return 0;
 }
 
-int VerilogPrinter::visitInt(Int &o)
+auto VerilogPrinter::visitInt(Int &o) -> int
 {
     GuideVisitor::visitInt(o);
     return 0;
 }
 
-int VerilogPrinter::visitIntValue(IntValue &o)
+auto VerilogPrinter::visitIntValue(IntValue &o) -> int
 {
     GuideVisitor::visitIntValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitLibraryDef(LibraryDef &o)
+auto VerilogPrinter::visitLibraryDef(LibraryDef &o) -> int
 {
     GuideVisitor::visitLibraryDef(o);
     return 0;
 }
 
-int VerilogPrinter::visitLibrary(Library &o)
+auto VerilogPrinter::visitLibrary(Library &o) -> int
 {
     GuideVisitor::visitLibrary(o);
     return 0;
 }
 
-int VerilogPrinter::visitMember(Member &o)
+auto VerilogPrinter::visitMember(Member &o) -> int
 {
     GuideVisitor::visitMember(o);
     return 0;
 }
 
-int VerilogPrinter::visitNull(Null &o)
+auto VerilogPrinter::visitNull(Null &o) -> int
 {
     GuideVisitor::visitNull(o);
     return 0;
 }
 
-int VerilogPrinter::visitTransition(Transition &o)
+auto VerilogPrinter::visitTransition(Transition &o) -> int
 {
     GuideVisitor::visitTransition(o);
     return 0;
 }
 
-int VerilogPrinter::visitParameterAssign(ParameterAssign &o)
+auto VerilogPrinter::visitParameterAssign(ParameterAssign &o) -> int
 {
     GuideVisitor::visitParameterAssign(o);
     return 0;
 }
 
-int VerilogPrinter::visitParameter(Parameter &o)
+auto VerilogPrinter::visitParameter(Parameter &o) -> int
 {
     GuideVisitor::visitParameter(o);
     return 0;
 }
 
-int VerilogPrinter::visitProcedureCall(ProcedureCall &o)
+auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
 {
     GuideVisitor::visitProcedureCall(o);
     return 0;
 }
 
-int VerilogPrinter::visitPointer(Pointer &o)
+auto VerilogPrinter::visitPointer(Pointer &o) -> int
 {
     GuideVisitor::visitPointer(o);
     return 0;
 }
 
-int VerilogPrinter::visitPortAssign(PortAssign &o)
+auto VerilogPrinter::visitPortAssign(PortAssign &o) -> int
 {
     GuideVisitor::visitPortAssign(o);
     return 0;
 }
 
-int VerilogPrinter::visitPort(Port &o)
+auto VerilogPrinter::visitPort(Port &o) -> int
 {
     GuideVisitor::visitPort(o);
     return 0;
 }
 
-int VerilogPrinter::visitProcedure(Procedure &o)
+auto VerilogPrinter::visitProcedure(Procedure &o) -> int
 {
     GuideVisitor::visitProcedure(o);
     return 0;
 }
 
-int VerilogPrinter::visitRange(Range &o)
+auto VerilogPrinter::visitRange(Range &o) -> int
 {
     GuideVisitor::visitRange(o);
     return 0;
 }
 
-int VerilogPrinter::visitReal(Real &o)
+auto VerilogPrinter::visitReal(Real &o) -> int
 {
     GuideVisitor::visitReal(o);
     return 0;
 }
 
-int VerilogPrinter::visitRealValue(RealValue &o)
+auto VerilogPrinter::visitRealValue(RealValue &o) -> int
 {
     GuideVisitor::visitRealValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitRecord(Record &o)
+auto VerilogPrinter::visitRecord(Record &o) -> int
 {
     GuideVisitor::visitRecord(o);
     return 0;
 }
 
-int VerilogPrinter::visitRecordValue(RecordValue &o)
+auto VerilogPrinter::visitRecordValue(RecordValue &o) -> int
 {
     GuideVisitor::visitRecordValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitRecordValueAlt(RecordValueAlt &o)
+auto VerilogPrinter::visitRecordValueAlt(RecordValueAlt &o) -> int
 {
     GuideVisitor::visitRecordValueAlt(o);
     return 0;
 }
 
-int VerilogPrinter::visitReference(Reference &o)
+auto VerilogPrinter::visitReference(Reference &o) -> int
 {
     GuideVisitor::visitReference(o);
     return 0;
 }
 
-int VerilogPrinter::visitReturn(Return &o)
+auto VerilogPrinter::visitReturn(Return &o) -> int
 {
     GuideVisitor::visitReturn(o);
     return 0;
 }
 
-int VerilogPrinter::visitSignal(Signal &o)
+auto VerilogPrinter::visitSignal(Signal &o) -> int
 {
     GuideVisitor::visitSignal(o);
     return 0;
 }
 
-int VerilogPrinter::visitSigned(Signed &o)
+auto VerilogPrinter::visitSigned(Signed &o) -> int
 {
     GuideVisitor::visitSigned(o);
     return 0;
 }
 
-int VerilogPrinter::visitSlice(Slice &o)
+auto VerilogPrinter::visitSlice(Slice &o) -> int
 {
     GuideVisitor::visitSlice(o);
     return 0;
 }
 
-int VerilogPrinter::visitState(State &o)
+auto VerilogPrinter::visitState(State &o) -> int
 {
     GuideVisitor::visitState(o);
     return 0;
 }
 
-int VerilogPrinter::visitString(String &o)
+auto VerilogPrinter::visitString(String &o) -> int
 {
     GuideVisitor::visitString(o);
     return 0;
 }
 
-int VerilogPrinter::visitStateTable(StateTable &o)
+auto VerilogPrinter::visitStateTable(StateTable &o) -> int
 {
     GuideVisitor::visitStateTable(o);
     return 0;
 }
 
-int VerilogPrinter::visitSystem(System &o)
+auto VerilogPrinter::visitSystem(System &o) -> int
 {
     GuideVisitor::visitSystem(o);
     return 0;
 }
 
-int VerilogPrinter::visitSwitchAlt(SwitchAlt &o)
+auto VerilogPrinter::visitSwitchAlt(SwitchAlt &o) -> int
 {
     GuideVisitor::visitSwitchAlt(o);
     return 0;
 }
 
-int VerilogPrinter::visitSwitch(Switch &o)
+auto VerilogPrinter::visitSwitch(Switch &o) -> int
 {
     GuideVisitor::visitSwitch(o);
     return 0;
 }
 
-int VerilogPrinter::visitStringValue(StringValue &o)
+auto VerilogPrinter::visitStringValue(StringValue &o) -> int
 {
     GuideVisitor::visitStringValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitTime(Time &o)
+auto VerilogPrinter::visitTime(Time &o) -> int
 {
     GuideVisitor::visitTime(o);
     return 0;
 }
 
-int VerilogPrinter::visitTimeValue(TimeValue &o)
+auto VerilogPrinter::visitTimeValue(TimeValue &o) -> int
 {
     GuideVisitor::visitTimeValue(o);
     return 0;
 }
 
-int VerilogPrinter::visitTypeDef(TypeDef &o)
+auto VerilogPrinter::visitTypeDef(TypeDef &o) -> int
 {
     GuideVisitor::visitTypeDef(o);
     return 0;
 }
 
-int VerilogPrinter::visitTypeReference(TypeReference &o)
+auto VerilogPrinter::visitTypeReference(TypeReference &o) -> int
 {
     GuideVisitor::visitTypeReference(o);
     return 0;
 }
 
-int VerilogPrinter::visitTypeTPAssign(TypeTPAssign &o)
+auto VerilogPrinter::visitTypeTPAssign(TypeTPAssign &o) -> int
 {
     GuideVisitor::visitTypeTPAssign(o);
     return 0;
 }
 
-int VerilogPrinter::visitTypeTP(TypeTP &o)
+auto VerilogPrinter::visitTypeTP(TypeTP &o) -> int
 {
     GuideVisitor::visitTypeTP(o);
     return 0;
 }
 
-int VerilogPrinter::visitUnsigned(Unsigned &o)
+auto VerilogPrinter::visitUnsigned(Unsigned &o) -> int
 {
     GuideVisitor::visitUnsigned(o);
     return 0;
 }
 
-int VerilogPrinter::visitValueTPAssign(ValueTPAssign &o)
+auto VerilogPrinter::visitValueTPAssign(ValueTPAssign &o) -> int
 {
     GuideVisitor::visitValueTPAssign(o);
     return 0;
 }
 
-int VerilogPrinter::visitValueTP(ValueTP &o)
+auto VerilogPrinter::visitValueTP(ValueTP &o) -> int
 {
     GuideVisitor::visitValueTP(o);
     return 0;
 }
 
-int VerilogPrinter::visitVariable(Variable &o)
+auto VerilogPrinter::visitVariable(Variable &o) -> int
 {
     GuideVisitor::visitVariable(o);
     return 0;
 }
 
-int VerilogPrinter::visitView(View &o)
+auto VerilogPrinter::visitView(View &o) -> int
 {
     GuideVisitor::visitView(o);
     return 0;
 }
 
-int VerilogPrinter::visitViewReference(ViewReference &o)
+auto VerilogPrinter::visitViewReference(ViewReference &o) -> int
 {
     GuideVisitor::visitViewReference(o);
     return 0;
 }
 
-int VerilogPrinter::visitWait(Wait &o)
+auto VerilogPrinter::visitWait(Wait &o) -> int
 {
     GuideVisitor::visitWait(o);
     return 0;
 }
 
-int VerilogPrinter::visitWhen(When &o)
+auto VerilogPrinter::visitWhen(When &o) -> int
 {
     GuideVisitor::visitWhen(o);
     return 0;
 }
 
-int VerilogPrinter::visitWhenAlt(WhenAlt &o)
+auto VerilogPrinter::visitWhenAlt(WhenAlt &o) -> int
 {
     GuideVisitor::visitWhenAlt(o);
     return 0;
 }
 
-int VerilogPrinter::visitWhile(While &o)
+auto VerilogPrinter::visitWhile(While &o) -> int
 {
     GuideVisitor::visitWhile(o);
     return 0;
 }
 
-int VerilogPrinter::visitWith(With &o)
+auto VerilogPrinter::visitWith(With &o) -> int
 {
     GuideVisitor::visitWith(o);
     return 0;
 }
 
-int VerilogPrinter::visitWithAlt(WithAlt &o)
+auto VerilogPrinter::visitWithAlt(WithAlt &o) -> int
 {
     GuideVisitor::visitWithAlt(o);
     return 0;

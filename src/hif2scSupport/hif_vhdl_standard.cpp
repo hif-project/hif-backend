@@ -14,28 +14,29 @@ namespace hif_vhdl_standard
 
 void hif_vhdl_assert(const bool condition, const std::string &report, const hif_vhdl_severity_level level)
 {
-    if (condition)
+    if (condition) {
         return;
+    }
 
     switch (level) {
     case hif_vhdl_note:
-        std::cout << "[NOTE] " << report << std::endl;
+        std::cout << "[NOTE] " << report << '\n';
         break;
     case hif_vhdl_warning:
-        std::clog << "[WARNING] " << report << std::endl;
+        std::clog << "[WARNING] " << report << '\n';
         break;
     case hif_vhdl_error:
-        std::clog << "[ERROR] " << report << std::endl;
+        std::clog << "[ERROR] " << report << '\n';
         break;
     case hif_vhdl_failure:
-        std::cerr << "[FAILURE] " << report << std::endl;
+        std::cerr << "[FAILURE] " << report << '\n';
         exit(1);
     default:
         return;
     }
 }
 
-long long int hif_vhdl_castRealToInt(double param, int size, bool sign)
+auto hif_vhdl_castRealToInt(double param, int size, bool sign) -> long long int
 {
 #if (defined _MSC_VER)
     double d = floor(param + 0.5);
@@ -53,10 +54,11 @@ long long int hif_vhdl_castRealToInt(double param, int size, bool sign)
         max = pow(2.0, size - 1) - 1;
     }
 
-    if (d < min)
+    if (d < min) {
         d = min;
-    else if (d > max)
+    } else if (d > max) {
         d = max;
+    }
 
     return static_cast<long long int>(d);
 }

@@ -28,29 +28,29 @@ namespace
 class FinalRefineVisitor : public GuideVisitor
 {
 public:
-    typedef std::set<Scope *> ScopeSet;
-    typedef std::map<std::string, ScopeSet> LibraryMap;
-    typedef std::set<FieldReference *> FieldReferenceSet;
+    using ScopeSet          = std::set<Scope *>;
+    using LibraryMap        = std::map<std::string, ScopeSet>;
+    using FieldReferenceSet = std::set<FieldReference *>;
 
     FinalRefineVisitor(semantics::ILanguageSemantics *sem);
-    ~FinalRefineVisitor();
+    ~FinalRefineVisitor() override;
 
     /// @name Scope-related visits.
     /// @{
-    int visitContents(Contents &o);
-    int visitExpression(Expression &o);
-    int visitLibraryDef(LibraryDef &o);
-    int visitSystem(System &o);
-    int visitView(View &o);
+    auto visitContents(Contents &o) -> int override;
+    auto visitExpression(Expression &o) -> int override;
+    auto visitLibraryDef(LibraryDef &o) -> int override;
+    auto visitSystem(System &o) -> int override;
+    auto visitView(View &o) -> int override;
     /// @}
 
     /// @name Symbol-related visits.
     /// @{
-    int visitBit(Bit &o);
-    int visitBitvector(Bitvector &o);
-    int visitLibrary(Library &o);
-    int visitSigned(Signed &o);
-    int visitUnsigned(Unsigned &o);
+    auto visitBit(Bit &o) -> int override;
+    auto visitBitvector(Bitvector &o) -> int override;
+    auto visitLibrary(Library &o) -> int override;
+    auto visitSigned(Signed &o) -> int override;
+    auto visitUnsigned(Unsigned &o) -> int override;
     /// @}
 
     /// @name Special cases.
@@ -63,14 +63,14 @@ public:
 
 private:
     // Disabled.
-    FinalRefineVisitor(const FinalRefineVisitor &);
-    FinalRefineVisitor &operator=(const FinalRefineVisitor &);
+    FinalRefineVisitor(const FinalRefineVisitor &)                     = delete;
+    auto operator=(const FinalRefineVisitor &) -> FinalRefineVisitor & = delete;
 
     semantics::ILanguageSemantics *_sem;
     HifFactory _factory;
 
     /// @brief Keep trace of current scope.
-    Scope *_currentScope;
+    Scope *_currentScope{nullptr};
 
     LibraryMap _libraryMap;
 
@@ -82,7 +82,6 @@ private:
 FinalRefineVisitor::FinalRefineVisitor(semantics::ILanguageSemantics *sem)
     : _sem(sem)
     , _factory(sem)
-    , _currentScope(nullptr)
     , _libraryMap()
     , _frSet()
     , _trash()
@@ -95,7 +94,7 @@ FinalRefineVisitor::~FinalRefineVisitor()
     // ntd
 }
 
-int FinalRefineVisitor::visitContents(Contents &o)
+auto FinalRefineVisitor::visitContents(Contents &o) -> int
 {
     //    Scope * restore = _currentScope;
     //    _currentScope = &o;
@@ -105,28 +104,31 @@ int FinalRefineVisitor::visitContents(Contents &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitExpression(Expression &o)
+auto FinalRefineVisitor::visitExpression(Expression &o) -> int
 {
     GuideVisitor::visitExpression(o);
 
-    if (o.getOperator() != op_pow)
+    if (o.getOperator() != op_pow) {
         return 0;
+    }
     Type *t = hif::semantics::getSemanticType(&o, _sem);
     messageAssert(t != nullptr, "Cannot type expression", &o, _sem);
 
     Real *r = dynamic_cast<Real *>(t);
-    if (r == nullptr)
+    if (r == nullptr) {
         return 0;
+    }
 
     _libraryMap["ieee_math_real"].insert(_currentScope);
 
     return 0;
 }
 
-int FinalRefineVisitor::visitLibraryDef(LibraryDef &o)
+auto FinalRefineVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     Scope *restore = _currentScope;
     _currentScope  = &o;
@@ -136,7 +138,7 @@ int FinalRefineVisitor::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitSystem(System &o)
+auto FinalRefineVisitor::visitSystem(System &o) -> int
 {
     _currentScope = &o;
     GuideVisitor::visitSystem(o);
@@ -144,10 +146,11 @@ int FinalRefineVisitor::visitSystem(System &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitView(View &o)
+auto FinalRefineVisitor::visitView(View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     Scope *restore = _currentScope;
     _currentScope  = &o;
@@ -157,35 +160,38 @@ int FinalRefineVisitor::visitView(View &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitBit(Bit &o)
+auto FinalRefineVisitor::visitBit(Bit &o) -> int
 {
     GuideVisitor::visitBit(o);
 
-    if (!o.isLogic())
+    if (!o.isLogic()) {
         return 0;
+    }
     _libraryMap["ieee_std_logic_1164"].insert(_currentScope);
 
     return 0;
 }
 
-int FinalRefineVisitor::visitBitvector(Bitvector &o)
+auto FinalRefineVisitor::visitBitvector(Bitvector &o) -> int
 {
     GuideVisitor::visitBitvector(o);
 
-    if (!o.isLogic())
+    if (!o.isLogic()) {
         return 0;
+    }
     _libraryMap["ieee_std_logic_1164"].insert(_currentScope);
 
     return 0;
 }
 
-int FinalRefineVisitor::visitLibrary(Library &o)
+auto FinalRefineVisitor::visitLibrary(Library &o) -> int
 {
     GuideVisitor::visitLibrary(o);
 
     Library *lib = &o;
-    if (lib->isStandard() || !lib->isSystem())
+    if (lib->isStandard() || !lib->isSystem()) {
         return 0;
+    }
 
     messageAssert(lib->getInstance() == nullptr, "Unexpected standard library (1)", &o, _sem);
 
@@ -211,10 +217,11 @@ int FinalRefineVisitor::visitLibrary(Library &o)
 
     if (libraryInclude.empty() && package.empty()) {
         // standard
-        Instance *inst     = dynamic_cast<Instance *>(o.getParent());
+        auto *inst         = dynamic_cast<Instance *>(o.getParent());
         FieldReference *fr = nullptr;
-        if (inst != nullptr)
+        if (inst != nullptr) {
             fr = dynamic_cast<FieldReference *>(inst->getParent());
+        }
         _trash.insert(&o);
         if (fr != nullptr) {
             _frSet.insert(fr);
@@ -222,14 +229,14 @@ int FinalRefineVisitor::visitLibrary(Library &o)
         return 0;
     }
 
-    Library *l = _factory.library(libraryInclude.c_str(), nullptr, nullptr, false, true);
+    Library *l = _factory.library(libraryInclude, nullptr, nullptr, false, true);
     lib->setName(package);
     lib->setInstance(l);
 
     return 0;
 }
 
-int FinalRefineVisitor::visitSigned(Signed &o)
+auto FinalRefineVisitor::visitSigned(Signed &o) -> int
 {
     GuideVisitor::visitSigned(o);
 
@@ -238,7 +245,7 @@ int FinalRefineVisitor::visitSigned(Signed &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitUnsigned(Unsigned &o)
+auto FinalRefineVisitor::visitUnsigned(Unsigned &o) -> int
 {
     GuideVisitor::visitUnsigned(o);
 
@@ -249,11 +256,11 @@ int FinalRefineVisitor::visitUnsigned(Unsigned &o)
 
 void FinalRefineVisitor::doFixes()
 {
-    for (LibraryMap::iterator i = _libraryMap.begin(); i != _libraryMap.end(); ++i) {
-        const std::string &libName = i->first;
-        for (ScopeSet::iterator j = i->second.begin(); j != i->second.end(); ++j) {
+    for (auto &i : _libraryMap) {
+        const std::string &libName = i.first;
+        for (auto j = i.second.begin(); j != i.second.end(); ++j) {
             Scope *s     = *j;
-            Library *lib = _factory.library(libName.c_str(), nullptr, nullptr, false, true);
+            Library *lib = _factory.library(libName, nullptr, nullptr, false, true);
             hif::manipulation::AddUniqueObjectOptions addOpt;
             addOpt.equalsOptions.checkOnlyNames = true;
             addOpt.deleteIfNotAdded             = true;
@@ -270,9 +277,8 @@ void FinalRefineVisitor::doFixes()
         }
     }
 
-    for (FieldReferenceSet::iterator i = _frSet.begin(); i != _frSet.end(); ++i) {
-        FieldReference *fr = *i;
-        Identifier *id     = new Identifier(fr->getName());
+    for (auto fr : _frSet) {
+        auto *id = new Identifier(fr->getName());
         fr->replace(id);
         delete fr;
     }

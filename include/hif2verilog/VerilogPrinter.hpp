@@ -12,7 +12,7 @@
 class VerilogPrinter : public hif::GuideVisitor
 {
 public:
-    VerilogPrinter(const std::string &outDir);
+    VerilogPrinter(std::string outDir);
     virtual ~VerilogPrinter();
 
     virtual int visitAggregate(hif::Aggregate &o);

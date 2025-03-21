@@ -28,7 +28,7 @@ HIF2SCSUPPORT_EXPORT
 sc_dt::sc_logic hif_vhdl_resolved(const sc_dt::sc_lv_base &s);
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_to_bit(const sc_dt::sc_logic s, const bool xmap = false);
+bool hif_vhdl_to_bit(const sc_dt::sc_logic &s, const bool xmap = false);
 
 template <int size> sc_dt::sc_bv<size> hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap = false);
 
@@ -68,10 +68,10 @@ hdtlib::hl_logic_t hif_vhdl_to_ux01(const hdtlib::hl_logic_t &s);
 //ld->declarations.push_back(_makeAttribute("falling_edge", factory.boolean(), hif::copy(std_ulogic), factory.noValue(), false, hifFormat));
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_is_x(const sc_dt::sc_logic s);
+bool hif_vhdl_is_x(const sc_dt::sc_logic &s);
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_is_x(const sc_dt::sc_lv_base s);
+bool hif_vhdl_is_x(const sc_dt::sc_lv_base &s);
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 HIF2SCSUPPORT_EXPORT

@@ -17,7 +17,7 @@ public:
     typedef std::set<hif::View *> ViewSet;
     typedef std::map<hif::View *, ViewSet> ViewMap;
 
-    VHDLPrinter(const std::string &outDir);
+    VHDLPrinter(std::string outDir);
     virtual ~VHDLPrinter();
 
     virtual int visitAggregate(hif::Aggregate &o);
@@ -146,11 +146,11 @@ private:
     bool _isSubProgramBody;
 
     /// @brief Create the new directory \p dirName.
-    int _createDirectory(std::string dirName);
+    static int _createDirectory(const std::string &dirName);
 
     /// @brief Create a file named \p fileName and initialize the output stream
     /// used to print the VHDL final description.
-    void _initializeOutstream(std::string fileName, std::string subdirectory);
+    void _initializeOutstream(const std::string &fileName, const std::string &subdirectory);
 
     /// @brief Print the comment of an HIF Object \p o.
     void _printComment(hif::Object *o);

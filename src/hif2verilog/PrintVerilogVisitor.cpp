@@ -7,18 +7,19 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "hif2verilog/PrintVerilogVisitor.hpp"
 //#include "hif2verilog/PrintVerilogMethods.hpp"
 
 PrintVerilogVisitor::PrintVerilogVisitor(
     hif::backends::IndentedStream *outstream,
-    const std::string &baseName,
-    const std::string &extension)
+    std::string baseName,
+    std::string extension)
     : _sem(hif::semantics::VerilogSemantics::getInstance())
     , _outstream(outstream)
-    , _baseName(baseName)
-    , _extension(extension)
+    , _baseName(std::move(baseName))
+    , _extension(std::move(extension))
 {
     // empty
 }
@@ -35,28 +36,28 @@ using namespace std;
 using namespace hif;
 
 // Check
-int PrintVerilogVisitor::visitAggregate(Aggregate &o)
+auto PrintVerilogVisitor::visitAggregate(Aggregate &o) -> int
 {
     GuideVisitor::visitAggregate(o);
     return 0;
 }
 
 // Check
-int PrintVerilogVisitor::visitAggregateAlt(AggregateAlt &o)
+auto PrintVerilogVisitor::visitAggregateAlt(AggregateAlt &o) -> int
 {
     GuideVisitor::visitAggregateAlt(o);
     return 0;
 }
 
 // Check
-int PrintVerilogVisitor::visitAlias(Alias &o)
+auto PrintVerilogVisitor::visitAlias(Alias &o) -> int
 {
     GuideVisitor::visitAlias(o);
     return 0;
 }
 
 // Check
-int PrintVerilogVisitor::visitArray(Array &o)
+auto PrintVerilogVisitor::visitArray(Array &o) -> int
 {
     *(_outstream) << "array( ";
     // Print Span
@@ -69,7 +70,7 @@ int PrintVerilogVisitor::visitArray(Array &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitAssign(Assign &o)
+auto PrintVerilogVisitor::visitAssign(Assign &o) -> int
 {
     // handle With assign
     if (dynamic_cast<With *>(o.getRightHandSide()) != nullptr) {
@@ -103,7 +104,7 @@ int PrintVerilogVisitor::visitAssign(Assign &o)
     //if (_ams_enabled) {
     //    *(_outstream) << " <+ ";
     //} // if the target is a variable put := otherwise put <=
-    if (dynamic_cast<Variable *>(dd)) {
+    if (dynamic_cast<Variable *>(dd) != nullptr) {
         *(_outstream) << " = ";
     } else {
         *(_outstream) << " <= ";
@@ -116,7 +117,7 @@ int PrintVerilogVisitor::visitAssign(Assign &o)
 }
 
 // Check std_logic and std_ulogic
-int PrintVerilogVisitor::visitBit(Bit &o)
+auto PrintVerilogVisitor::visitBit(Bit &o) -> int
 {
     if (o.isLogic()) {
         if (o.isResolved()) {
@@ -132,7 +133,7 @@ int PrintVerilogVisitor::visitBit(Bit &o)
 }
 
 // Verilog has four logic values, 0,1 Z, X. Values U, W, L, H, - are only in VHDL.
-int PrintVerilogVisitor::visitBitValue(BitValue &o)
+auto PrintVerilogVisitor::visitBitValue(BitValue &o) -> int
 {
     switch (o.getValue()) {
     case bit_zero:
@@ -169,55 +170,55 @@ int PrintVerilogVisitor::visitBitValue(BitValue &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitBitvector(Bitvector &o)
+auto PrintVerilogVisitor::visitBitvector(Bitvector &o) -> int
 {
     GuideVisitor::visitBitvector(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitBitvectorValue(BitvectorValue &o)
+auto PrintVerilogVisitor::visitBitvectorValue(BitvectorValue &o) -> int
 {
     GuideVisitor::visitBitvectorValue(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitBool(Bool &o)
+auto PrintVerilogVisitor::visitBool(Bool &o) -> int
 {
     GuideVisitor::visitBool(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitBoolValue(BoolValue &o)
+auto PrintVerilogVisitor::visitBoolValue(BoolValue &o) -> int
 {
     GuideVisitor::visitBoolValue(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitBreak(Break &o)
+auto PrintVerilogVisitor::visitBreak(Break &o) -> int
 {
     GuideVisitor::visitBreak(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitCast(Cast &o)
+auto PrintVerilogVisitor::visitCast(Cast &o) -> int
 {
     GuideVisitor::visitCast(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitChar(Char &o)
+auto PrintVerilogVisitor::visitChar(Char &o) -> int
 {
     GuideVisitor::visitChar(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitCharValue(CharValue &o)
+auto PrintVerilogVisitor::visitCharValue(CharValue &o) -> int
 {
     GuideVisitor::visitCharValue(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitConst(Const &o)
+auto PrintVerilogVisitor::visitConst(Const &o) -> int
 {
     /*
     *(_outstream) << "\tlocalparam " << o.getName();
@@ -247,7 +248,7 @@ int PrintVerilogVisitor::visitConst(Const &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitContents(Contents &o)
+auto PrintVerilogVisitor::visitContents(Contents &o) -> int
 {
     if (o.getName() == "Architecture") {
         this->processDeclarations(o);
@@ -256,13 +257,13 @@ int PrintVerilogVisitor::visitContents(Contents &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitContinue(Continue &o)
+auto PrintVerilogVisitor::visitContinue(Continue &o) -> int
 {
     GuideVisitor::visitContinue(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitDesignUnit(DesignUnit &o)
+auto PrintVerilogVisitor::visitDesignUnit(DesignUnit &o) -> int
 {
 #if 0
     if (hif::languageIDToString(o.views.at(0)->getLanguageID()) == "AMS") {
@@ -281,7 +282,7 @@ int PrintVerilogVisitor::visitDesignUnit(DesignUnit &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitEnum(Enum &o)
+auto PrintVerilogVisitor::visitEnum(Enum &o) -> int
 {
     *(_outstream) << "(";
     _printList(o.values, ',', false);
@@ -290,19 +291,19 @@ int PrintVerilogVisitor::visitEnum(Enum &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitEnumValue(EnumValue &o)
+auto PrintVerilogVisitor::visitEnumValue(EnumValue &o) -> int
 {
     *(_outstream) << o.getName();
     return 0;
 }
 
-int PrintVerilogVisitor::visitEvent(Event &o)
+auto PrintVerilogVisitor::visitEvent(Event &o) -> int
 {
     GuideVisitor::visitEvent(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitExpression(Expression &o)
+auto PrintVerilogVisitor::visitExpression(Expression &o) -> int
 {
     // Set use of parenthesis for expression operands.
     bool needOp1Paren =
@@ -324,11 +325,13 @@ int PrintVerilogVisitor::visitExpression(Expression &o)
 
     // If binary expression, print Op1. Unless pow (recursive call).
     if (o.getValue2() != nullptr) {
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << "(";
+        }
         o.getValue1()->acceptVisitor(*this);
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << ")";
+        }
         *(_outstream) << " ";
     }
 
@@ -455,24 +458,28 @@ int PrintVerilogVisitor::visitExpression(Expression &o)
 
     // If binary expression, print Op2.
     if (o.getValue2() != nullptr) {
-        if (needOp2Paren)
+        if (needOp2Paren) {
             *(_outstream) << "(";
+        }
         o.getValue2()->acceptVisitor(*this);
-        if (needOp2Paren)
+        if (needOp2Paren) {
             *(_outstream) << ")";
+        }
     }
     // If unary expression, print Op1.
     else {
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << "(";
+        }
         o.getValue1()->acceptVisitor(*this);
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << ")";
+        }
     }
     return 0;
 }
 
-int PrintVerilogVisitor::visitFunctionCall(FunctionCall &o)
+auto PrintVerilogVisitor::visitFunctionCall(FunctionCall &o) -> int
 {
     // handle attributes
     //_printValueInstance(o.getInstance());
@@ -510,81 +517,82 @@ int PrintVerilogVisitor::visitFunctionCall(FunctionCall &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitField(Field &o)
+auto PrintVerilogVisitor::visitField(Field &o) -> int
 {
     GuideVisitor::visitField(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitFieldReference(FieldReference &o)
+auto PrintVerilogVisitor::visitFieldReference(FieldReference &o) -> int
 {
     GuideVisitor::visitFieldReference(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitFile(File &o)
+auto PrintVerilogVisitor::visitFile(File &o) -> int
 {
     GuideVisitor::visitFile(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitFor(For &o)
+auto PrintVerilogVisitor::visitFor(For &o) -> int
 {
     GuideVisitor::visitFor(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitForGenerate(ForGenerate &o)
+auto PrintVerilogVisitor::visitForGenerate(ForGenerate &o) -> int
 {
     GuideVisitor::visitForGenerate(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitFunction(Function &o)
+auto PrintVerilogVisitor::visitFunction(Function &o) -> int
 {
     GuideVisitor::visitFunction(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitGlobalAction(GlobalAction &o)
+auto PrintVerilogVisitor::visitGlobalAction(GlobalAction &o) -> int
 {
     GuideVisitor::visitGlobalAction(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitEntity(Entity &o)
+auto PrintVerilogVisitor::visitEntity(Entity &o) -> int
 {
     _currentEntity = &o;
 
     if (!o.ports.empty()) {
         // Print Ports of the module
-        *(_outstream) << "(" << endl;
+        *(_outstream) << "(" << '\n';
         _outstream->indent();
-        for (auto it : o.ports) {
+        for (auto *it : o.ports) {
             auto pName = (it->getName());
-            if (pName == o.ports.at(0)->getName())
+            if (pName == o.ports.at(0)->getName()) {
                 *(_outstream) << pName;
-            else
+            } else {
                 *(_outstream) << ", " << pName;
+            }
         }
-        *(_outstream) << ";" << endl;
+        *(_outstream) << ";" << '\n';
         _outstream->newLine();
         _outstream->unindent();
-        *(_outstream) << ");" << endl;
+        *(_outstream) << ");" << '\n';
 
         //TODO
         // Print port declarations
         _outstream->newLine();
         _outstream->indent();
-        for (auto it2 : o.ports) {
+        for (auto *it2 : o.ports) {
             auto pName = it2->getName();
             assert(!pName.empty());
-            auto portType = dynamic_cast<ViewReference *>(it2->getType());
+            auto *portType = dynamic_cast<ViewReference *>(it2->getType());
             if (portType != nullptr) {
                 std::string prefix("hif_verilog_");
                 std::string currentType = portType->getDesignUnit();
 
-                if (!currentType.compare(0, prefix.size(), prefix)) {
+                if (currentType.compare(0, prefix.size(), prefix) == 0) {
                     *(_outstream) << currentType.substr(prefix.length()) + " " + pName << ";\n";
                 }
             } else {
@@ -599,7 +607,7 @@ int PrintVerilogVisitor::visitEntity(Entity &o)
     }
 
     // Print Template Parameters
-    for (auto tp : _currentView->templateParameters) {
+    for (auto *tp : _currentView->templateParameters) {
         tp->acceptVisitor(*this);
     }
 
@@ -607,25 +615,28 @@ int PrintVerilogVisitor::visitEntity(Entity &o)
 
     // Port Declarations
     _outstream->indent();
-    for (auto it3 : o.ports) {
+    for (auto *it3 : o.ports) {
         auto direction = it3->getDirection();
-        if (direction == PortDirection::dir_in)
+        if (direction == PortDirection::dir_in) {
             *(_outstream) << "input ";
-        else if (direction == PortDirection::dir_out)
+        } else if (direction == PortDirection::dir_out) {
             *(_outstream) << "output ";
-        else if (direction == PortDirection::dir_inout)
+        } else if (direction == PortDirection::dir_inout) {
             *(_outstream) << "inout ";
-        else
+        } else {
             messageError("Unexpected PortDirection", it3, _sem);
+        }
         // TODO Add net_type (if any)
         // Add signed (if any)
-        if (typeIsSigned(it3->getType(), _sem))
+        if (typeIsSigned(it3->getType(), _sem)) {
             *(_outstream) << "signed ";
+        }
         // Add range (if any))
         if (!_ams_enabled) {
             unsigned long long bw = hif::semantics::typeGetSpanBitwidth(it3->getType(), _sem);
-            if (bw != 1)
+            if (bw != 1) {
                 *(_outstream) << "[" << (bw - 1) << ":0] ";
+            }
         }
         *(_outstream) << it3->getName() << ";\n";
     }
@@ -634,27 +645,27 @@ int PrintVerilogVisitor::visitEntity(Entity &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitIdentifier(Identifier &o)
+auto PrintVerilogVisitor::visitIdentifier(Identifier &o) -> int
 {
     *(_outstream) << o.getName();
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitIf(If &o)
+auto PrintVerilogVisitor::visitIf(If &o) -> int
 {
     GuideVisitor::visitIf(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitIfAlt(IfAlt &o)
+auto PrintVerilogVisitor::visitIfAlt(IfAlt &o) -> int
 {
     GuideVisitor::visitIfAlt(o);
     return 0;
 }
 
 // TODO
-int PrintVerilogVisitor::visitIfGenerate(IfGenerate &o)
+auto PrintVerilogVisitor::visitIfGenerate(IfGenerate &o) -> int
 {
     messageInfo("IfGenerate is not implemented yet.");
 
@@ -662,9 +673,9 @@ int PrintVerilogVisitor::visitIfGenerate(IfGenerate &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitInstance(Instance &o)
+auto PrintVerilogVisitor::visitInstance(Instance &o) -> int
 {
-    auto vr = dynamic_cast<ViewReference *>(o.getReferencedType());
+    auto *vr = dynamic_cast<ViewReference *>(o.getReferencedType());
 
     if (vr != nullptr) {
         _outstream->indent();
@@ -683,14 +694,14 @@ int PrintVerilogVisitor::visitInstance(Instance &o)
 }
 
 // TODO
-int PrintVerilogVisitor::visitInt(Int &o)
+auto PrintVerilogVisitor::visitInt(Int &o) -> int
 {
     *(_outstream) << (o.isSigned() ? "integer" : "natural");
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitIntValue(IntValue &o)
+auto PrintVerilogVisitor::visitIntValue(IntValue &o) -> int
 {
     *(_outstream) << o.getValue();
     if (_isRealRange) {
@@ -700,10 +711,11 @@ int PrintVerilogVisitor::visitIntValue(IntValue &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitLibraryDef(LibraryDef &o)
+auto PrintVerilogVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     string libraryDefName = o.getName();
     // Create the subdirectory
@@ -713,7 +725,7 @@ int PrintVerilogVisitor::visitLibraryDef(LibraryDef &o)
     // Initialize the output stream
     _initializeOutstream(libraryDefName, libraryDefName + "/");
 
-    *(_outstream) << "PACKAGE " << libraryDefName << " IS" << endl << endl;
+    *(_outstream) << "PACKAGE " << libraryDefName << " IS" << '\n' << '\n';
     _outstream->indent();
 
     // Print LibraryDef content
@@ -726,32 +738,34 @@ int PrintVerilogVisitor::visitLibraryDef(LibraryDef &o)
     }
 
     _outstream->unindent();
-    *(_outstream) << "\n\nEND " << libraryDefName << ";" << endl;
+    *(_outstream) << "\n\nEND " << libraryDefName << ";" << '\n';
 
-    *(_outstream) << "\n\nPACKAGE BODY " << libraryDefName << " IS" << endl << endl;
+    *(_outstream) << "\n\nPACKAGE BODY " << libraryDefName << " IS" << '\n' << '\n';
     _outstream->indent();
 
     // Custom printing to skip type defs.
     for (BList<Declaration>::iterator i = o.declarations.begin(); i != o.declarations.end(); ++i) {
         Declaration *d = *i;
-        if (dynamic_cast<TypeDef *>(d) != nullptr)
+        if (dynamic_cast<TypeDef *>(d) != nullptr) {
             continue;
+        }
         d->acceptVisitor(*this);
         *(_outstream) << ";";
         _outstream->newLine();
     }
 
     _outstream->unindent();
-    *(_outstream) << "\nEND " << libraryDefName << ";" << std::endl << std::flush;
+    *(_outstream) << "\nEND " << libraryDefName << ";" << '\n' << std::flush;
     delete _outstream;
     _outstream = nullptr;
     return 0;
 }
 
-int PrintVerilogVisitor::visitLibrary(Library &o)
+auto PrintVerilogVisitor::visitLibrary(Library &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     _printTypeInstance(o.getInstance());
 
@@ -765,14 +779,16 @@ int PrintVerilogVisitor::visitLibrary(Library &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitMember(Member &o)
+auto PrintVerilogVisitor::visitMember(Member &o) -> int
 {
     const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     o.getPrefix()->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     messageAssert(o.getIndex() != nullptr, "Unsupported member without index", &o, _sem);
 
@@ -783,26 +799,27 @@ int PrintVerilogVisitor::visitMember(Member &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitNull(Null & /*o*/)
+auto PrintVerilogVisitor::visitNull(Null & /*o*/) -> int
 {
     *(_outstream) << "nullptr";
     return 0;
 }
 
-int PrintVerilogVisitor::visitTransition(Transition &o)
+auto PrintVerilogVisitor::visitTransition(Transition &o) -> int
 {
     messageError("Transition is not implemented yet.", &o, nullptr);
 }
 
-int PrintVerilogVisitor::visitParameterAssign(ParameterAssign &o)
+auto PrintVerilogVisitor::visitParameterAssign(ParameterAssign &o) -> int
 {
-    if (o.getValue() != nullptr)
+    if (o.getValue() != nullptr) {
         o.getValue()->acceptVisitor(*this);
+    }
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitParameter(Parameter &o)
+auto PrintVerilogVisitor::visitParameter(Parameter &o) -> int
 {
     *(_outstream) << o.getName();
     *(_outstream) << ": ";
@@ -822,11 +839,12 @@ int PrintVerilogVisitor::visitParameter(Parameter &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitProcedureCall(ProcedureCall &o)
+auto PrintVerilogVisitor::visitProcedureCall(ProcedureCall &o) -> int
 {
     Declaration *decl = hif::semantics::getDeclaration(&o, _sem);
-    if (_isSupportDeclaration(decl))
+    if (_isSupportDeclaration(decl)) {
         return 0;
+    }
 
     std::string name = o.getName();
     if (name == "hif_verilog_vams_indirect_contribution_statement") {
@@ -835,9 +853,9 @@ int PrintVerilogVisitor::visitProcedureCall(ProcedureCall &o)
 
         *(_outstream) << ": ";
 
-        auto cast = dynamic_cast<Cast *>(o.parameterAssigns.at(1)->getValue());
+        auto *cast = dynamic_cast<Cast *>(o.parameterAssigns.at(1)->getValue());
         assert(cast);
-        auto expression = dynamic_cast<Expression *>(cast->getValue());
+        auto *expression = dynamic_cast<Expression *>(cast->getValue());
         assert(expression);
         expression->getValue2()->acceptVisitor(*this);
         *(_outstream) << " == ";
@@ -849,9 +867,10 @@ int PrintVerilogVisitor::visitProcedureCall(ProcedureCall &o)
 
         *(_outstream) << " <+ ";
 
-        auto expression = dynamic_cast<Expression *>(o.parameterAssigns.at(1)->getValue());
-        if (expression != nullptr)
+        auto *expression = dynamic_cast<Expression *>(o.parameterAssigns.at(1)->getValue());
+        if (expression != nullptr) {
             expression->acceptVisitor(*this);
+        }
         //expression->getValue2()->acceptVisitor(*this);
         //*(_outstream) << " == ";
         //expression->getValue1()->acceptVisitor(*this);
@@ -873,7 +892,7 @@ int PrintVerilogVisitor::visitProcedureCall(ProcedureCall &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitPointer(Pointer &o)
+auto PrintVerilogVisitor::visitPointer(Pointer &o) -> int
 {
     *(_outstream) << "access ";
     o.getType()->acceptVisitor(*this);
@@ -881,7 +900,7 @@ int PrintVerilogVisitor::visitPointer(Pointer &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitPortAssign(PortAssign &o)
+auto PrintVerilogVisitor::visitPortAssign(PortAssign &o) -> int
 {
     //*(_outstream) << o.getName() << " => ";
     o.getValue()->acceptVisitor(*this);
@@ -889,7 +908,7 @@ int PrintVerilogVisitor::visitPortAssign(PortAssign &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitPort(Port &o)
+auto PrintVerilogVisitor::visitPort(Port &o) -> int
 {
     //_printComment( &o );
 
@@ -911,10 +930,11 @@ int PrintVerilogVisitor::visitPort(Port &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitProcedure(Procedure &o)
+auto PrintVerilogVisitor::visitProcedure(Procedure &o) -> int
 {
-    if (_isSupportDeclaration(&o))
+    if (_isSupportDeclaration(&o)) {
         return 0;
+    }
 
     *(_outstream) << "PROCEDURE ";
     *(_outstream) << o.getName();
@@ -926,7 +946,7 @@ int PrintVerilogVisitor::visitProcedure(Procedure &o)
     }
 
     if (!_isPrintingLibDefDecls) {
-        *(_outstream) << " IS" << std::endl;
+        *(_outstream) << " IS" << '\n';
         const bool restore = _isSubProgramBody;
         _isSubProgramBody  = true;
         o.getStateTable()->acceptVisitor(*this);
@@ -936,7 +956,7 @@ int PrintVerilogVisitor::visitProcedure(Procedure &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitRange(Range &o)
+auto PrintVerilogVisitor::visitRange(Range &o) -> int
 {
     const bool restore = _isRealRange;
     _setRealRange(&o);
@@ -958,18 +978,19 @@ int PrintVerilogVisitor::visitRange(Range &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitReal(Real & /*o*/)
+auto PrintVerilogVisitor::visitReal(Real & /*o*/) -> int
 {
     *(_outstream) << "real ";
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitRealValue(RealValue &o)
+auto PrintVerilogVisitor::visitRealValue(RealValue &o) -> int
 {
     *(_outstream) << o.getValue();
 
-    double whole, decimal;
+    double whole;
+    double decimal;
     decimal = std::modf(o.getValue(), &whole);
     if (_approximatelyEqual(decimal, 0.0, 0.001)) {
         //if (decimal == 0.0) {
@@ -979,17 +1000,17 @@ int PrintVerilogVisitor::visitRealValue(RealValue &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitRecord(Record &o)
+auto PrintVerilogVisitor::visitRecord(Record &o) -> int
 {
-    *(_outstream) << "RECORD" << endl;
+    *(_outstream) << "RECORD" << '\n';
     _outstream->indent();
     _printList(o.fields, ';', true);
     _outstream->unindent();
-    *(_outstream) << "END RECORD" << endl;
+    *(_outstream) << "END RECORD" << '\n';
     return 0;
 }
 
-int PrintVerilogVisitor::visitRecordValue(RecordValue &o)
+auto PrintVerilogVisitor::visitRecordValue(RecordValue &o) -> int
 {
     *(_outstream) << "( ";
 
@@ -1000,7 +1021,7 @@ int PrintVerilogVisitor::visitRecordValue(RecordValue &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitRecordValueAlt(RecordValueAlt &o)
+auto PrintVerilogVisitor::visitRecordValueAlt(RecordValueAlt &o) -> int
 {
     *(_outstream) << o.getName() << " <= ";
     o.getValue()->acceptVisitor(*this);
@@ -1008,12 +1029,12 @@ int PrintVerilogVisitor::visitRecordValueAlt(RecordValueAlt &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitReference(Reference &o)
+auto PrintVerilogVisitor::visitReference(Reference &o) -> int
 {
     messageError("Reference is not implemented yet.", &o, nullptr);
 }
 
-int PrintVerilogVisitor::visitReturn(Return &o)
+auto PrintVerilogVisitor::visitReturn(Return &o) -> int
 {
     *(_outstream) << "return";
     if (o.getValue() != nullptr) {
@@ -1024,19 +1045,19 @@ int PrintVerilogVisitor::visitReturn(Return &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitSignal(Signal &o)
+auto PrintVerilogVisitor::visitSignal(Signal &o) -> int
 {
     // Check if AMS is enabled
     if (_ams_enabled) {
         _outstream->indent();
-        auto currentView = dynamic_cast<ViewReference *>(o.getType());
+        auto *currentView = dynamic_cast<ViewReference *>(o.getType());
         assert(currentView);
         // Check flavour because it could be a digital signal in an AMS design
         if (currentView->getName() == "ams_discipline") {
             std::string prefix("hif_verilog_");
             std::string currentType = currentView->getDesignUnit();
 
-            if (!currentType.compare(0, prefix.size(), prefix)) {
+            if (currentType.compare(0, prefix.size(), prefix) == 0) {
                 *(_outstream) << currentType.substr(prefix.length()) + " " + o.getName() + ";";
             }
         }
@@ -1066,16 +1087,18 @@ int PrintVerilogVisitor::visitSignal(Signal &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitSigned(Signed &o)
+auto PrintVerilogVisitor::visitSigned(Signed &o) -> int
 {
     *(_outstream) << "signed";
 
-    if (dynamic_cast<Cast *>(o.getParent()) != nullptr)
+    if (dynamic_cast<Cast *>(o.getParent()) != nullptr) {
         return 0;
-    if (dynamic_cast<Function *>(o.getParent()) != nullptr)
+    }
+    if (dynamic_cast<Function *>(o.getParent()) != nullptr) {
         return 0;
+    }
 
-    if (o.getSpan()) {
+    if (o.getSpan() != nullptr) {
         *(_outstream) << "( ";
         o.getSpan()->acceptVisitor(*this);
         *(_outstream) << " )";
@@ -1084,14 +1107,16 @@ int PrintVerilogVisitor::visitSigned(Signed &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitSlice(Slice &o)
+auto PrintVerilogVisitor::visitSlice(Slice &o) -> int
 {
     const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     o.getPrefix()->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     *(_outstream) << "( ";
     o.getSpan()->acceptVisitor(*this);
@@ -1099,7 +1124,7 @@ int PrintVerilogVisitor::visitSlice(Slice &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitState(State &o)
+auto PrintVerilogVisitor::visitState(State &o) -> int
 {
     if (!o.actions.empty()) {
         _printList(o.actions, ';', true);
@@ -1109,7 +1134,7 @@ int PrintVerilogVisitor::visitState(State &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitString(String &o)
+auto PrintVerilogVisitor::visitString(String &o) -> int
 {
     *(_outstream) << "string";
     if (o.getSpanInformation() != nullptr) {
@@ -1121,7 +1146,7 @@ int PrintVerilogVisitor::visitString(String &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitStateTable(StateTable &o)
+auto PrintVerilogVisitor::visitStateTable(StateTable &o) -> int
 {
     //_printComment( &o );
 
@@ -1139,7 +1164,7 @@ int PrintVerilogVisitor::visitStateTable(StateTable &o)
             _printList(o.sensitivity, ',', false);
             *(_outstream) << " )";
         }
-        *(_outstream) << std::endl;
+        *(_outstream) << '\n';
         _outstream->newLine();
     }
 
@@ -1155,10 +1180,11 @@ int PrintVerilogVisitor::visitStateTable(StateTable &o)
 
     _outstream->indent();
     // StateTable body
-    if (_ams_enabled && (processFlavourToString(o.getFlavour()) == "ANALOG"))
+    if (_ams_enabled && (processFlavourToString(o.getFlavour()) == "ANALOG")) {
         *(_outstream) << "analog begin";
-    else
-        *(_outstream) << "BEGIN" << endl;
+    } else {
+        *(_outstream) << "BEGIN" << '\n';
+    }
     _outstream->indent();
     _outstream->newLine();
 
@@ -1167,19 +1193,20 @@ int PrintVerilogVisitor::visitStateTable(StateTable &o)
     o.states.front()->acceptVisitor(*this);
 
     _outstream->unindent();
-    if (_ams_enabled)
+    if (_ams_enabled) {
         *(_outstream) << "\nend\n\n";
-    else if (!_isSubProgramBody)
+    } else if (!_isSubProgramBody) {
         *(_outstream) << "\nEND PROCESS\n";
-    else
+    } else {
         *(_outstream) << "\nEND\n";
+    }
 
     _outstream->unindent();
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitSystem(System &o)
+auto PrintVerilogVisitor::visitSystem(System &o) -> int
 {
     //_printComment( &o );
 
@@ -1198,61 +1225,63 @@ int PrintVerilogVisitor::visitSystem(System &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitSwitchAlt(SwitchAlt &o)
+auto PrintVerilogVisitor::visitSwitchAlt(SwitchAlt &o) -> int
 {
     GuideVisitor::visitSwitchAlt(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitSwitch(Switch &o)
+auto PrintVerilogVisitor::visitSwitch(Switch &o) -> int
 {
     GuideVisitor::visitSwitch(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitStringValue(StringValue &o)
+auto PrintVerilogVisitor::visitStringValue(StringValue &o) -> int
 {
     GuideVisitor::visitStringValue(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitTime(Time &o) { messageError("Time is not implemented yet.", &o, nullptr); }
+auto PrintVerilogVisitor::visitTime(Time &o) -> int { messageError("Time is not implemented yet.", &o, nullptr); }
 
-int PrintVerilogVisitor::visitTimeValue(TimeValue &o)
+auto PrintVerilogVisitor::visitTimeValue(TimeValue &o) -> int
 {
     messageError("TimeValue is not implemented yet.", &o, nullptr);
     return 0;
 }
 
-int PrintVerilogVisitor::visitTypeDef(TypeDef &o)
+auto PrintVerilogVisitor::visitTypeDef(TypeDef &o) -> int
 {
     GuideVisitor::visitTypeDef(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitTypeReference(TypeReference &o)
+auto PrintVerilogVisitor::visitTypeReference(TypeReference &o) -> int
 {
     GuideVisitor::visitTypeReference(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitTypeTPAssign(TypeTPAssign &o)
+auto PrintVerilogVisitor::visitTypeTPAssign(TypeTPAssign &o) -> int
 {
     messageError("TypeTPAssign is not implemented yet.", &o, nullptr);
 }
 
-int PrintVerilogVisitor::visitTypeTP(TypeTP &o) { messageError("TypeTP is not implemented yet.", &o, nullptr); }
+auto PrintVerilogVisitor::visitTypeTP(TypeTP &o) -> int { messageError("TypeTP is not implemented yet.", &o, nullptr); }
 
-int PrintVerilogVisitor::visitUnsigned(Unsigned &o)
+auto PrintVerilogVisitor::visitUnsigned(Unsigned &o) -> int
 {
     *(_outstream) << "unsigned";
 
-    if (dynamic_cast<Cast *>(o.getParent()) != nullptr)
+    if (dynamic_cast<Cast *>(o.getParent()) != nullptr) {
         return 0;
-    if (dynamic_cast<Function *>(o.getParent()) != nullptr)
+    }
+    if (dynamic_cast<Function *>(o.getParent()) != nullptr) {
         return 0;
+    }
 
-    if (o.getSpan()) {
+    if (o.getSpan() != nullptr) {
         *(_outstream) << "( ";
         o.getSpan()->acceptVisitor(*this);
         *(_outstream) << " )";
@@ -1261,13 +1290,13 @@ int PrintVerilogVisitor::visitUnsigned(Unsigned &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitValueStatement(ValueStatement &o)
+auto PrintVerilogVisitor::visitValueStatement(ValueStatement &o) -> int
 {
     GuideVisitor::visitValueStatement(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitValueTPAssign(ValueTPAssign &o)
+auto PrintVerilogVisitor::visitValueTPAssign(ValueTPAssign &o) -> int
 {
     *(_outstream) << o.getName() << " = ";
 
@@ -1275,7 +1304,7 @@ int PrintVerilogVisitor::visitValueTPAssign(ValueTPAssign &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitValueTP(ValueTP &o)
+auto PrintVerilogVisitor::visitValueTP(ValueTP &o) -> int
 {
     *(_outstream) << "\n";
     _outstream->indent();
@@ -1301,22 +1330,23 @@ int PrintVerilogVisitor::visitValueTP(ValueTP &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitVariable(Variable &o)
+auto PrintVerilogVisitor::visitVariable(Variable &o) -> int
 {
-    if (_printFileVariable(&o))
+    if (_printFileVariable(&o)) {
         return 0;
+    }
     _outstream->indent();
 
     if (!_ams_enabled) {
         *(_outstream) << "assign "; //TODO check
     } else {
-        auto viewRef = dynamic_cast<ViewReference *>(o.getType());
+        auto *viewRef = dynamic_cast<ViewReference *>(o.getType());
         if (viewRef != nullptr && viewRef->getName() == "ams_discipline") {
             assert(viewRef);
             std::string prefix("hif_verilog_");
             std::string currentType = viewRef->getDesignUnit();
 
-            if (!currentType.compare(0, prefix.size(), prefix)) {
+            if (currentType.compare(0, prefix.size(), prefix) == 0) {
                 *(_outstream) << currentType.substr(prefix.length()) + " " + o.getName() + ";";
             }
         } else if (dynamic_cast<Real *>(o.getType()) != nullptr) {
@@ -1346,7 +1376,7 @@ int PrintVerilogVisitor::visitVariable(Variable &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitView(View &o)
+auto PrintVerilogVisitor::visitView(View &o) -> int
 {
     ////return 0;
     //_printComment( &o );
@@ -1376,37 +1406,38 @@ int PrintVerilogVisitor::visitView(View &o)
     _outstream->newLine();
 
     // Visit the contents
-    if (cnt != nullptr)
+    if (cnt != nullptr) {
         cnt->acceptVisitor(*this);
+    }
 
     return 0;
 }
 
-int PrintVerilogVisitor::visitViewReference(ViewReference &o)
+auto PrintVerilogVisitor::visitViewReference(ViewReference &o) -> int
 {
     GuideVisitor::visitViewReference(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitWait(Wait &o)
+auto PrintVerilogVisitor::visitWait(Wait &o) -> int
 {
     GuideVisitor::visitWait(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitWhen(When &o)
+auto PrintVerilogVisitor::visitWhen(When &o) -> int
 {
     GuideVisitor::visitWhen(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitWhenAlt(WhenAlt &o)
+auto PrintVerilogVisitor::visitWhenAlt(WhenAlt &o) -> int
 {
     GuideVisitor::visitWhenAlt(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitWhile(While &o)
+auto PrintVerilogVisitor::visitWhile(While &o) -> int
 {
     if (o.getName() != NameTable::getInstance()->none()) {
         *(_outstream) << o.getName() << ": ";
@@ -1424,21 +1455,21 @@ int PrintVerilogVisitor::visitWhile(While &o)
     return 0;
 }
 
-int PrintVerilogVisitor::visitWith(With &o)
+auto PrintVerilogVisitor::visitWith(With &o) -> int
 {
     messageInfo("Statement not supported in Verilog/A-MS");
     GuideVisitor::visitWith(o);
     return 0;
 }
 
-int PrintVerilogVisitor::visitWithAlt(WithAlt &o)
+auto PrintVerilogVisitor::visitWithAlt(WithAlt &o) -> int
 {
     messageInfo("Statement not supported in Verilog/A-MS");
     GuideVisitor::visitWithAlt(o);
     return 0;
 }
 
-void PrintVerilogVisitor::_initializeOutstream(string fileName, string subdirectory)
+void PrintVerilogVisitor::_initializeOutstream(const string &fileName, const string &subdirectory)
 {
     if (fileName.empty()) {
         messageError("Empty file name", nullptr, nullptr);
@@ -1446,8 +1477,9 @@ void PrintVerilogVisitor::_initializeOutstream(string fileName, string subdirect
 
     string path = _outDir + "/src/" + subdirectory + fileName;
 
-    if (_outstream != nullptr)
+    {
         delete _outstream;
+    }
 
     _outstream = new hif::backends::IndentedStream(path, "vhd");
     _outstream->setComment("--", "--", "");
@@ -1455,14 +1487,14 @@ void PrintVerilogVisitor::_initializeOutstream(string fileName, string subdirect
     //_printInitBanner();
 }
 
-int PrintVerilogVisitor::_createDirectory(string dirName)
+auto PrintVerilogVisitor::_createDirectory(const string &dirName) -> int
 {
     hif::application_utils::FileStructure dir(dirName);
     // Empty directory if it already exists.
     if (dir.exists()) {
         vector<string> fileList = dir.list();
-        for (vector<string>::iterator it = fileList.begin(); it != fileList.end(); ++it) {
-            hif::application_utils::FileStructure fileIn(*it);
+        for (auto &it : fileList) {
+            hif::application_utils::FileStructure fileIn(it);
             fileIn.rmfile_weak();
         }
     }
@@ -1474,67 +1506,74 @@ int PrintVerilogVisitor::_createDirectory(string dirName)
     return 1;
 }
 
-bool PrintVerilogVisitor::_isSupportDeclaration(Declaration *d)
+auto PrintVerilogVisitor::_isSupportDeclaration(Declaration *d) -> bool
 {
     if (dynamic_cast<Variable *>(d) != nullptr) {
-        Variable *v       = static_cast<Variable *>(d);
+        auto *v           = dynamic_cast<Variable *>(d);
         std::string vName = v->getName();
-        if (_startsWith(vName, "old_") || _endsWith(vName, "_sig_var"))
+        if (_startsWith(vName, "old_") || _endsWith(vName, "_sig_var")) {
             return true;
+        }
     }
     if (dynamic_cast<Procedure *>(d) != nullptr) {
-        Procedure *p      = static_cast<Procedure *>(d);
+        auto *p           = dynamic_cast<Procedure *>(d);
         std::string pName = p->getName();
-        if (_startsWith(pName, "hif_cone_"))
+        if (_startsWith(pName, "hif_cone_")) {
             return true;
+        }
     }
 
     return false;
 }
 
-bool PrintVerilogVisitor::_startsWith(std::string str, std::string target)
+auto PrintVerilogVisitor::_startsWith(const std::string &str, const std::string &target) -> bool
 {
     std::size_t pos = str.find(target);
-    if (pos == std::string::npos)
+    if (pos == std::string::npos) {
         return false;
+    }
     return (pos == 0);
 }
 
-bool PrintVerilogVisitor::_endsWith(std::string str, std::string target)
+auto PrintVerilogVisitor::_endsWith(const std::string &str, const std::string &target) -> bool
 {
     std::size_t pos = str.find(target);
-    if (pos == std::string::npos)
+    if (pos == std::string::npos) {
         return false;
+    }
     return (pos == (str.length() - target.length()));
 }
 
 template <typename T> void PrintVerilogVisitor::_printList(BList<T> &list, const char separator, const bool needNewLine)
 {
-    BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
+    auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, std::string() + separator, needNewLine);
 }
 
 template <typename T>
 void PrintVerilogVisitor::_printList(BList<T> &list, const std::string &separator, const bool needNewLine)
 {
-    BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
+    auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, separator, needNewLine);
 }
 
 void PrintVerilogVisitor::_printList(BList<Object> &list, const std::string &separator, const bool needNewLine)
 {
-    if (list.empty())
+    if (list.empty()) {
         return;
+    }
 
     for (BList<Object>::iterator it(list.begin()); it != list.end(); ++it) {
         if (it != list.begin()) {
-            if (separator != " ")
+            if (separator != " ") {
                 *(_outstream) << separator << " ";
-            else if (!needNewLine)
+            } else if (!needNewLine) {
                 *(_outstream) << " ";
+            }
 
-            if (needNewLine && _outstream != nullptr)
+            if (needNewLine && _outstream != nullptr) {
                 _outstream->newLine();
+            }
         }
 
         (*it)->acceptVisitor(*this);
@@ -1548,7 +1587,7 @@ void PrintVerilogVisitor::_setRealRange(Range *o)
         return;
     }
 
-    DataDeclaration *dd = dynamic_cast<DataDeclaration *>(o->getParent());
+    auto *dd = dynamic_cast<DataDeclaration *>(o->getParent());
     if (dd == nullptr) {
         _isRealRange = false;
         return;
@@ -1560,41 +1599,48 @@ void PrintVerilogVisitor::_setRealRange(Range *o)
 
 void PrintVerilogVisitor::_printValueInstance(Value *v)
 {
-    if (v == nullptr)
+    if (v == nullptr) {
         return;
+    }
 
     const bool needParen = (dynamic_cast<Expression *>(v) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     v->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     bool printDot = false;
 
-    Instance *inst = dynamic_cast<Instance *>(v);
+    auto *inst = dynamic_cast<Instance *>(v);
     if (inst != nullptr) {
-        Library *lib = dynamic_cast<Library *>(inst->getReferencedType());
-        if (lib != nullptr && lib->isStandard())
+        auto *lib = dynamic_cast<Library *>(inst->getReferencedType());
+        if (lib != nullptr && lib->isStandard()) {
             return;
+        }
 
         printDot = true;
     }
 
-    if (printDot)
+    if (printDot) {
         *(_outstream) << ".";
-    else
+    } else {
         *(_outstream) << "'";
+    }
 }
 
 void PrintVerilogVisitor::_printTypeInstance(ReferencedType *v)
 {
-    if (v == nullptr)
+    if (v == nullptr) {
         return;
+    }
 
-    Library *lib = dynamic_cast<Library *>(v);
-    if (lib != nullptr && lib->isStandard())
+    auto *lib = dynamic_cast<Library *>(v);
+    if (lib != nullptr && lib->isStandard()) {
         return;
+    }
 
     v->acceptVisitor(*this);
 
@@ -1628,14 +1674,16 @@ void PrintVerilogVisitor::_printLibraries(BList<Library> &libraries)
     for (BList<Library>::iterator it = libraries.begin(); it != libraries.end(); ++it) {
         Library *lib = *it;
         libraryName  = lib->getName();
-        if (lib->isStandard())
+        if (lib->isStandard()) {
             continue;
+        }
 
-        if (libraryName == "standard")
+        if (libraryName == "standard") {
             continue;
+        }
 
         if (!libDecl) {
-            Library *terminal = dynamic_cast<Library *>(hif::getTerminalInstance(lib));
+            auto *terminal = dynamic_cast<Library *>(hif::getTerminalInstance(lib));
             if (terminal->getName() == "ieee") {
                 *(_outstream) << "library IEEE;";
                 _outstream->newLine();
@@ -1650,11 +1698,12 @@ void PrintVerilogVisitor::_printLibraries(BList<Library> &libraries)
     }
 }
 
-bool PrintVerilogVisitor::_printFileVariable(Variable *o)
+auto PrintVerilogVisitor::_printFileVariable(Variable *o) -> bool
 {
     File *f = dynamic_cast<File *>(hif::semantics::getBaseType(o->getType(), false, _sem));
-    if (f == nullptr)
+    if (f == nullptr) {
         return false;
+    }
 
     FunctionCall *fc = nullptr;
     if (o->getValue() != nullptr) {
@@ -1682,25 +1731,29 @@ bool PrintVerilogVisitor::_printFileVariable(Variable *o)
     return true;
 }
 
-bool PrintVerilogVisitor::_printAssertStatement(ProcedureCall *o)
+auto PrintVerilogVisitor::_printAssertStatement(ProcedureCall *o) -> bool
 {
     // void ASSERT(bool CONDITION, string REPORT = "", severity_level LEVEL = NOTE)
 
-    if (o->getName() != "assert")
+    if (o->getName() != "assert") {
         return false;
+    }
     const BList<ParameterAssign>::size_t size = o->parameterAssigns.size();
-    if (size < 1 || size > 3)
+    if (size < 1 || size > 3) {
         return false;
+    }
 
     *(_outstream) << "assert ";
 
     ParameterAssign *p1 = o->parameterAssigns.at(0);
     ParameterAssign *p2 = nullptr;
-    if (size > 1)
+    if (size > 1) {
         p2 = o->parameterAssigns.at(1);
+    }
     ParameterAssign *p3 = nullptr;
-    if (size > 2)
+    if (size > 2) {
         p3 = o->parameterAssigns.at(2);
+    }
 
     p1->getValue()->acceptVisitor(*this);
 
@@ -1718,7 +1771,7 @@ bool PrintVerilogVisitor::_printAssertStatement(ProcedureCall *o)
 }
 
 // return true if the difference between a and b is within epsilon percent of the larger of a and b
-bool PrintVerilogVisitor::_approximatelyEqual(double a, double b, double epsilon)
+auto PrintVerilogVisitor::_approximatelyEqual(double a, double b, double epsilon) -> bool
 {
     return (std::abs(a - b) <= (std::max(std::abs(a), std::abs(b)) * epsilon));
 }
@@ -1727,8 +1780,9 @@ void PrintVerilogVisitor::processDeclarations(Contents &o)
 {
     if (!o.declarations.empty()) {
         for (const auto &declaration : o.declarations) {
-            if (this->_isSupportDeclaration(declaration))
+            if (this->_isSupportDeclaration(declaration)) {
                 continue;
+            }
             if (!_ams_enabled) {
                 this->processNonAMSDeclaration(declaration);
             } else {
@@ -1776,11 +1830,13 @@ void PrintVerilogVisitor::printBitwidth(Type *type)
 void PrintVerilogVisitor::printValue(Value *value)
 {
     if (auto *bv = dynamic_cast<BitValue *>(value)) {
-        if (bv->getValue() != BitConstant::bit_x)
+        if (bv->getValue() != BitConstant::bit_x) {
             *(_outstream) << " = " << bv->toString();
+        }
     } else if (auto *bvv = dynamic_cast<BitvectorValue *>(value)) {
-        if (!bvv->isX())
+        if (!bvv->isX()) {
             *(_outstream) << " = " << bvv->getValue();
+        }
     }
 }
 
@@ -1820,7 +1876,7 @@ void PrintVerilogVisitor::printAMSViewReference(ViewReference *portType, const s
 {
     std::string prefix("hif_verilog_");
     std::string currentType = portType->getDesignUnit();
-    if (!currentType.compare(0, prefix.size(), prefix)) {
+    if (currentType.compare(0, prefix.size(), prefix) == 0) {
         *(_outstream) << currentType.substr(prefix.length()) + " " + pName << ";\n";
     }
 }
@@ -1829,15 +1885,15 @@ void PrintVerilogVisitor::printAMSTypeReference(TypeReference *portTypeRef, cons
 {
     std::string prefix("hif_verilog_");
     std::string currentType = portTypeRef->getName();
-    if (!currentType.compare(0, prefix.size(), prefix)) {
+    if (currentType.compare(0, prefix.size(), prefix) == 0) {
         *(_outstream) << currentType.substr(prefix.length()) + " " + pName << ";\n";
     }
     if (auto *portTypeRef2 = portTypeRef->templateParameterAssigns.findByName("T")) {
-        auto viewRef2 = dynamic_cast<hif::TypeTPAssign *>(portTypeRef2)->getType();
-        auto typeRef2 = dynamic_cast<hif::ViewReference *>(viewRef2)->getDesignUnit();
+        auto *viewRef2 = dynamic_cast<hif::TypeTPAssign *>(portTypeRef2)->getType();
+        auto typeRef2  = dynamic_cast<hif::ViewReference *>(viewRef2)->getDesignUnit();
         assert(!typeRef2.empty());
         currentType = typeRef2;
-        if (!currentType.compare(0, prefix.size(), prefix)) {
+        if (currentType.compare(0, prefix.size(), prefix) == 0) {
             *(_outstream) << currentType.substr(prefix.length()) + " " + pName << ";\n";
         }
     }
@@ -1850,8 +1906,8 @@ void PrintVerilogVisitor::processStateTables(Contents &o)
             _outstream->indent();
             _outstream->newLine();
             *(_outstream) << "analog begin\n";
-            auto process = state_table->states.findByName("process");
-            if (process) {
+            auto *process = state_table->states.findByName("process");
+            if (process != nullptr) {
                 _outstream->indent();
                 process->acceptVisitor(*this);
                 _outstream->unindent();

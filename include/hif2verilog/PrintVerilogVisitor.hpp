@@ -15,10 +15,7 @@ public:
     typedef std::set<hif::View *> ViewSet;
     typedef std::map<hif::View *, ViewSet> ViewMap;
 
-    PrintVerilogVisitor(
-        hif::backends::IndentedStream *outstream,
-        const std::string &baseName,
-        const std::string &extension);
+    PrintVerilogVisitor(hif::backends::IndentedStream *outstream, std::string baseName, std::string extension);
 
     virtual ~PrintVerilogVisitor();
 
@@ -218,16 +215,16 @@ private:
     std::string _currentViewName;
 
     /// @brief The templateParameterAssignList of the current sub-tree.
-    hif::View *_currentView;
+    hif::View *_currentView{};
 
     /// @brief Hif System of the current sub-tree.
-    hif::System *_currentSystem;
+    hif::System *_currentSystem{};
 
     /// @brief Hif Contents of the current sub-tree.
-    hif::Contents *_currentContents;
+    hif::Contents *_currentContents{};
 
     /// @brief Hif Entity of the current sub-tree.
-    hif::Entity *_currentEntity;
+    hif::Entity *_currentEntity{};
 
     /// @brief Store the components already printed.
     ViewMap _printedComponents;
@@ -239,37 +236,37 @@ private:
     const std::string _extension;
 
     /// @brief Variable to check if the range is composed by Real Value.
-    bool _isRealRange;
+    bool _isRealRange{};
 
     /// @brief Variable to check if AMS is enabled.
-    bool _ams_enabled;
+    bool _ams_enabled{};
 
     /// @brief Variable to check if it is a print component.
-    bool _isPrintComponents;
+    bool _isPrintComponents{};
 
     /// @brief Variable to check if it is a print condition.
-    bool _isPrintWithCondition;
+    bool _isPrintWithCondition{};
 
     /// @brief Variable to check if it a library declaration.
-    bool _isPrintingLibDefDecls;
+    bool _isPrintingLibDefDecls{};
 
     /// @brief Variable to check if it is a sub-program body.
-    bool _isSubProgramBody;
+    bool _isSubProgramBody{};
 
     /// @brief Function to initialize the output stream.
-    void _initializeOutstream(std::string fileName, std::string subdirectory);
+    void _initializeOutstream(const std::string &fileName, const std::string &subdirectory);
 
     /// @brief Function to create the output directory.
-    int _createDirectory(std::string dirName);
+    static int _createDirectory(const std::string &dirName);
 
     /// @brief Function to check if it is a support declaration.
     bool _isSupportDeclaration(hif::Declaration *d);
 
     /// @brief Function to check if starts with str.
-    bool _startsWith(std::string str, std::string target);
+    static bool _startsWith(const std::string &str, const std::string &target);
 
     /// @brief Function to check if ends with str.
-    bool _endsWith(std::string str, std::string target);
+    static bool _endsWith(const std::string &str, const std::string &target);
 
     /// @name Print a list of objects.
     /// @param list The list to be printed.
@@ -308,7 +305,7 @@ private:
     bool _printAssertStatement(hif::ProcedureCall *o);
 
     /// @brief Floating point comparison.
-    bool _approximatelyEqual(double a, double b, double epsilon);
+    static bool _approximatelyEqual(double a, double b, double epsilon);
 
     /// @brief Processes all declarations within the given contents.
     /// @param o The contents containing declarations.

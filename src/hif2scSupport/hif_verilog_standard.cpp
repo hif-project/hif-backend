@@ -28,10 +28,10 @@ namespace hif_verilog_standard
 namespace /* anon */
 {
 
-typedef std::map<int, FILE *> IOMap;
+using IOMap = std::map<int, FILE *>;
 IOMap _ioMap;
 
-void _hif_verilog__system_vfdisplay(const int fd, const char *const s, va_list argp)
+void _hif_verilog_system_vfdisplay(const int fd, const char *const s, va_list argp)
 {
     if (_ioMap.find(fd) == _ioMap.end()) {
 #ifdef _MSC_VER
@@ -39,15 +39,16 @@ void _hif_verilog__system_vfdisplay(const int fd, const char *const s, va_list a
 #else
         FILE *f = fdopen(fd, "a");
 #endif
-        if (f == nullptr)
+        if (f == nullptr) {
             exit(EXIT_FAILURE);
+        }
         _ioMap[fd] = f;
     }
     FILE *f = _ioMap[fd];
     vfprintf(f, s, argp);
 }
 
-int _hif_verilog__system_vfscanf(const int fd, const char *const s, va_list argp)
+auto _hif_verilog_system_vfscanf(const int fd, const char *const s, va_list argp) -> int
 {
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -59,8 +60,9 @@ int _hif_verilog__system_vfscanf(const int fd, const char *const s, va_list argp
 #else
         FILE *f = fdopen(fd, "r+");
 #endif
-        if (f == nullptr)
+        if (f == nullptr) {
             exit(EXIT_FAILURE);
+        }
         _ioMap[fd] = f;
     }
     FILE *f = _ioMap[fd];
@@ -80,9 +82,9 @@ int _hif_verilog__system_vfscanf(const int fd, const char *const s, va_list argp
 namespace internal
 {
 
-sc_dt::sc_lv<32> hif_verilog__system_getParam(sc_dt::sc_lv<32> p) { return p; }
+auto hif_verilog__system_getParam(const sc_dt::sc_lv<32> &p) -> sc_dt::sc_lv<32> { return p; }
 
-void hif_verilog__system_finish_impl(const char *f, const int l, const char *func, sc_dt::sc_lv<32> param1)
+void hif_verilog__system_finish_impl(const char *f, const int l, const char *func, const sc_dt::sc_lv<32> &param1)
 {
     if (param1.to_int() != 0) {
         std::clog << "In " << f << ":" << l << "\nInside function " << func << "()\n";
@@ -94,7 +96,7 @@ void hif_verilog__system_finish_impl(const char *f, const int l, const char *fun
     //throw "EXIT";
 }
 
-void hif_verilog__system_stop_impl(const char *f, const int l, const char *func, sc_dt::sc_lv<32> param1)
+void hif_verilog__system_stop_impl(const char *f, const int l, const char *func, const sc_dt::sc_lv<32> &param1)
 {
     if (param1.to_int() != 0) {
         std::clog << "In " << f << ":" << l << "\nInside function " << func << "()\n";
@@ -129,19 +131,19 @@ void hif_verilog__system_stop_impl(const char *f, const int l, const char *func,
 
 } // namespace internal
 
-sc_dt::sc_lv<32> hif_verilog__system_stime()
+auto hif_verilog__system_stime() -> sc_dt::sc_lv<32>
 {
     return sc_dt::sc_lv<32>(static_cast<uint32_t>(sc_core::sc_time_stamp().to_double()));
 }
 
-sc_dt::sc_lv<64> hif_verilog__system_time()
+auto hif_verilog__system_time() -> sc_dt::sc_lv<64>
 {
     return sc_dt::sc_lv<64>(static_cast<uint64_t>(sc_core::sc_time_stamp().to_double()));
 }
 
-double hif_verilog__system_realtime() { return sc_core::sc_time_stamp().to_double(); }
+auto hif_verilog__system_realtime() -> double { return sc_core::sc_time_stamp().to_double(); }
 
-int32_t hif_verilog__system_random(const uint64_t seed)
+auto hif_verilog__system_random(const uint64_t seed) -> int32_t
 {
     if (seed != static_cast<uint64_t>(-1)) {
         srand(static_cast<unsigned int>(seed));
@@ -154,7 +156,7 @@ void hif_verilog__system_fdisplay(const int fd, const char *const s, ...)
 {
     va_list argp;
     va_start(argp, s);
-    _hif_verilog__system_vfdisplay(fd, s, argp);
+    _hif_verilog_system_vfdisplay(fd, s, argp);
     va_end(argp);
 }
 
@@ -162,7 +164,7 @@ void hif_verilog__system_fscanf(const int fd, const char *const s, ...)
 {
     va_list argp;
     va_start(argp, s);
-    _hif_verilog__system_vfscanf(fd, s, argp);
+    _hif_verilog_system_vfscanf(fd, s, argp);
     va_end(argp);
 }
 
@@ -170,32 +172,35 @@ void hif_verilog__system_fwrite(const int fd, const char *const s, ...)
 {
     va_list argp;
     va_start(argp, s);
-    _hif_verilog__system_vfdisplay(fd, s, argp);
+    _hif_verilog_system_vfdisplay(fd, s, argp);
     va_end(argp);
 }
 
 void hif_verilog__system_fflush(const int fd)
 {
-    if (_ioMap.find(fd) == _ioMap.end())
+    if (_ioMap.find(fd) == _ioMap.end()) {
         return;
+    }
     FILE *f = _ioMap[fd];
     fflush(f);
 }
 
 void hif_verilog__system_fclose(const int fd)
 {
-    IOMap::iterator it = _ioMap.find(fd);
-    if (it == _ioMap.end())
+    auto it = _ioMap.find(fd);
+    if (it == _ioMap.end()) {
         return;
+    }
     FILE *f = it->second;
     fclose(f);
     _ioMap.erase(it);
 }
 
-int hif_verilog__system_feof(const int fd)
+auto hif_verilog__system_feof(const int fd) -> int
 {
-    if (_ioMap.find(fd) == _ioMap.end())
+    if (_ioMap.find(fd) == _ioMap.end()) {
         return 0;
+    }
     FILE *f = _ioMap[fd];
     return feof(f);
 }

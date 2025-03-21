@@ -6,7 +6,9 @@
 /// See LICENSE.md for details.
 
 #include "hif2vhdl/VHDLPrinter.hpp"
+
 #include "hif2vhdl/PrintMethods.hpp"
+#include <utility>
 
 using std::endl;
 using std::string;
@@ -14,12 +16,10 @@ using std::vector;
 using namespace hif;
 using namespace hif::semantics;
 
-VHDLPrinter::VHDLPrinter(const std::string &outDir)
+VHDLPrinter::VHDLPrinter(std::string outDir)
     : _sem(hif::semantics::VHDLSemantics::getInstance())
-    , _outDir(outDir)
+    , _outDir(std::move(outDir))
     , _outstream(nullptr)
-    , _currentDesignUnitName("")
-    , _currentViewName("")
     , _currentSystem(nullptr)
     , _currentContents(nullptr)
     , _printedComponents()
@@ -37,17 +37,19 @@ VHDLPrinter::~VHDLPrinter()
     // ntd
 }
 
-int VHDLPrinter::visitAggregate(Aggregate &o)
+auto VHDLPrinter::visitAggregate(Aggregate &o) -> int
 {
-    if (o.alts.empty() && o.getOthers() == nullptr)
+    if (o.alts.empty() && o.getOthers() == nullptr) {
         return 0;
+    }
     *(_outstream) << "( ";
 
     _printList(o.alts, ',', false);
 
     if (o.getOthers() != nullptr) {
-        if (!o.alts.empty())
+        if (!o.alts.empty()) {
             *(_outstream) << ", ";
+        }
         *(_outstream) << "others => ";
         o.getOthers()->acceptVisitor(*this);
     }
@@ -57,16 +59,16 @@ int VHDLPrinter::visitAggregate(Aggregate &o)
     return 0;
 }
 
-int VHDLPrinter::visitAggregateAlt(AggregateAlt &o)
+auto VHDLPrinter::visitAggregateAlt(AggregateAlt &o) -> int
 {
     o.getValue()->acceptVisitor(*this);
 
     return 0;
 }
 
-int VHDLPrinter::visitAlias(Alias &o) { messageError("Alias is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitAlias(Alias &o) -> int { messageError("Alias is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitArray(Array &o)
+auto VHDLPrinter::visitArray(Array &o) -> int
 {
     *(_outstream) << "array( ";
     // Print Span
@@ -79,7 +81,7 @@ int VHDLPrinter::visitArray(Array &o)
     return 0;
 }
 
-int VHDLPrinter::visitAssign(Assign &o)
+auto VHDLPrinter::visitAssign(Assign &o) -> int
 {
     _printComment(&o);
 
@@ -102,7 +104,7 @@ int VHDLPrinter::visitAssign(Assign &o)
     Declaration *dd = getDeclaration(id, _sem);
 
     // if the target is a variable put := otherwise put <=
-    if (dynamic_cast<Variable *>(dd)) {
+    if (dynamic_cast<Variable *>(dd) != nullptr) {
         *(_outstream) << " := ";
     } else {
         *(_outstream) << " <= ";
@@ -113,7 +115,7 @@ int VHDLPrinter::visitAssign(Assign &o)
     return 0;
 }
 
-int VHDLPrinter::visitBit(Bit &o)
+auto VHDLPrinter::visitBit(Bit &o) -> int
 {
     if (o.isLogic()) {
         if (o.isResolved()) {
@@ -128,7 +130,7 @@ int VHDLPrinter::visitBit(Bit &o)
     return 0;
 }
 
-int VHDLPrinter::visitBitValue(BitValue &o)
+auto VHDLPrinter::visitBitValue(BitValue &o) -> int
 {
     switch (o.getValue()) {
     case bit_zero:
@@ -165,7 +167,7 @@ int VHDLPrinter::visitBitValue(BitValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitBitvector(Bitvector &o)
+auto VHDLPrinter::visitBitvector(Bitvector &o) -> int
 {
     if (o.isLogic()) {
         if (o.isResolved()) {
@@ -177,10 +179,12 @@ int VHDLPrinter::visitBitvector(Bitvector &o)
         *(_outstream) << "bit_vector";
     }
 
-    if (dynamic_cast<Cast *>(o.getParent()) != nullptr)
+    if (dynamic_cast<Cast *>(o.getParent()) != nullptr) {
         return 0;
-    if (dynamic_cast<Function *>(o.getParent()) != nullptr)
+    }
+    if (dynamic_cast<Function *>(o.getParent()) != nullptr) {
         return 0;
+    }
 
     if (o.getSpan() != nullptr) {
         *(_outstream) << "( ";
@@ -191,7 +195,7 @@ int VHDLPrinter::visitBitvector(Bitvector &o)
     return 0;
 }
 
-int VHDLPrinter::visitBitvectorValue(BitvectorValue &o)
+auto VHDLPrinter::visitBitvectorValue(BitvectorValue &o) -> int
 {
     // Actually, it is not possible to cast a const...
     // so it is an error to have a non-bit value type.
@@ -210,30 +214,31 @@ int VHDLPrinter::visitBitvectorValue(BitvectorValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitBool(Bool & /*o*/)
+auto VHDLPrinter::visitBool(Bool & /*o*/) -> int
 {
     *(_outstream) << "boolean";
 
     return 0;
 }
 
-int VHDLPrinter::visitBoolValue(BoolValue &o)
+auto VHDLPrinter::visitBoolValue(BoolValue &o) -> int
 {
-    if (o.getValue())
+    if (o.getValue()) {
         *(_outstream) << "true";
-    else
+    } else {
         *(_outstream) << "false";
+    }
 
     return 0;
 }
 
-int VHDLPrinter::visitBreak(Break &o) { messageError("Break is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitBreak(Break &o) -> int { messageError("Break is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitCast(Cast &o)
+auto VHDLPrinter::visitCast(Cast &o) -> int
 {
     // check null pointer
     if (dynamic_cast<Pointer *>(o.getType()) != nullptr && dynamic_cast<IntValue *>(o.getValue()) != nullptr &&
-        static_cast<IntValue *>(o.getValue())->getValue() == 0) {
+        dynamic_cast<IntValue *>(o.getValue())->getValue() == 0) {
         *(_outstream) << "null";
         return 0;
     }
@@ -245,14 +250,14 @@ int VHDLPrinter::visitCast(Cast &o)
     return 0;
 }
 
-int VHDLPrinter::visitChar(Char & /*o*/)
+auto VHDLPrinter::visitChar(Char & /*o*/) -> int
 {
     *(_outstream) << "character";
 
     return 0;
 }
 
-int VHDLPrinter::visitCharValue(CharValue &o)
+auto VHDLPrinter::visitCharValue(CharValue &o) -> int
 {
     if (o.getValue() == '\0') {
         *(_outstream) << "NUL";
@@ -263,7 +268,7 @@ int VHDLPrinter::visitCharValue(CharValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitConst(Const &o)
+auto VHDLPrinter::visitConst(Const &o) -> int
 {
     _printComment(&o);
 
@@ -283,11 +288,12 @@ int VHDLPrinter::visitConst(Const &o)
     return 0;
 }
 
-int VHDLPrinter::visitContents(Contents &o)
+auto VHDLPrinter::visitContents(Contents &o) -> int
 {
     // Inside libdefs just printing the hif::entity as component.
-    if (_isPrintingLibDefDecls)
+    if (_isPrintingLibDefDecls) {
         return 0;
+    }
     _printComment(&o);
 
     _currentContents = &o;
@@ -353,9 +359,9 @@ int VHDLPrinter::visitContents(Contents &o)
     return 0;
 }
 
-int VHDLPrinter::visitContinue(Continue &o) { messageError("Continue is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitContinue(Continue &o) -> int { messageError("Continue is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitDesignUnit(DesignUnit &o)
+auto VHDLPrinter::visitDesignUnit(DesignUnit &o) -> int
 {
     _printComment(&o);
 
@@ -371,12 +377,12 @@ int VHDLPrinter::visitDesignUnit(DesignUnit &o)
     messageAssert(o.views.size() == 1, "Not supported more than one view", &o, _sem);
     GuideVisitor::visitDesignUnit(o);
 
-    *_outstream << ";" << std::endl;
+    *_outstream << ";" << '\n';
 
     return 0;
 }
 
-int VHDLPrinter::visitEnum(Enum &o)
+auto VHDLPrinter::visitEnum(Enum &o) -> int
 {
     *(_outstream) << "(";
     _printList(o.values, ',', false);
@@ -385,14 +391,14 @@ int VHDLPrinter::visitEnum(Enum &o)
     return 0;
 }
 
-int VHDLPrinter::visitEnumValue(EnumValue &o)
+auto VHDLPrinter::visitEnumValue(EnumValue &o) -> int
 {
     *(_outstream) << o.getName();
 
     return 0;
 }
 
-int VHDLPrinter::visitExpression(Expression &o)
+auto VHDLPrinter::visitExpression(Expression &o) -> int
 {
     // Set use of parenthesis for expression operands.
     bool needOp1Paren =
@@ -414,11 +420,13 @@ int VHDLPrinter::visitExpression(Expression &o)
 
     // If binary expression, print Op1. Unless pow (recursive call).
     if (o.getValue2() != nullptr) {
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << "(";
+        }
         o.getValue1()->acceptVisitor(*this);
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << ")";
+        }
         *(_outstream) << " ";
     }
 
@@ -546,24 +554,28 @@ int VHDLPrinter::visitExpression(Expression &o)
 
     // If binary expression, print Op2.
     if (o.getValue2() != nullptr) {
-        if (needOp2Paren)
+        if (needOp2Paren) {
             *(_outstream) << "(";
+        }
         o.getValue2()->acceptVisitor(*this);
-        if (needOp2Paren)
+        if (needOp2Paren) {
             *(_outstream) << ")";
+        }
     }
     // If unary expression, print Op1.
     else {
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << "(";
+        }
         o.getValue1()->acceptVisitor(*this);
-        if (needOp1Paren)
+        if (needOp1Paren) {
             *(_outstream) << ")";
+        }
     }
     return 0;
 }
 
-int VHDLPrinter::visitFunctionCall(FunctionCall &o)
+auto VHDLPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
     _printComment(&o);
 
@@ -582,7 +594,7 @@ int VHDLPrinter::visitFunctionCall(FunctionCall &o)
     return 0;
 }
 
-int VHDLPrinter::visitField(Field &o)
+auto VHDLPrinter::visitField(Field &o) -> int
 {
     *(_outstream) << o.getName();
 
@@ -597,10 +609,10 @@ int VHDLPrinter::visitField(Field &o)
     return 0;
 }
 
-int VHDLPrinter::visitFieldReference(FieldReference &o)
+auto VHDLPrinter::visitFieldReference(FieldReference &o) -> int
 {
     if (dynamic_cast<Instance *>(o.getPrefix()) != nullptr) {
-        Instance *inst = static_cast<Instance *>(o.getPrefix());
+        auto *inst = dynamic_cast<Instance *>(o.getPrefix());
         messageAssert(
             dynamic_cast<Library *>(inst->getReferencedType()) != nullptr, "Unsupported fieldreference.", &o, _sem);
     } else {
@@ -613,17 +625,17 @@ int VHDLPrinter::visitFieldReference(FieldReference &o)
     return 0;
 }
 
-int VHDLPrinter::visitFile(File &o) { messageError("File is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitFile(File &o) -> int { messageError("File is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitFor(For &o)
+auto VHDLPrinter::visitFor(For &o) -> int
 {
     _printComment(&o);
     if (o.getName() != NameTable::getInstance()->none()) {
         *(_outstream) << o.getName() << ": ";
     }
 
-    Range *cond     = dynamic_cast<Range *>(o.getCondition());
-    Variable *index = dynamic_cast<Variable *>(o.initDeclarations.front());
+    auto *cond  = dynamic_cast<Range *>(o.getCondition());
+    auto *index = dynamic_cast<Variable *>(o.initDeclarations.front());
     messageAssert(
         o.initDeclarations.size() == 1 && index != nullptr && o.initValues.empty() && cond != nullptr &&
             o.stepActions.empty(),
@@ -631,20 +643,24 @@ int VHDLPrinter::visitFor(For &o)
 
     (*_outstream) << "FOR " << index->getName() << " in ";
     cond->acceptVisitor(*this);
-    (*_outstream) << " LOOP" << std::endl;
+    (*_outstream) << " LOOP" << '\n';
     _outstream->indent();
     _printList(o.forActions, ';', true);
-    if (!o.forActions.empty())
+    if (!o.forActions.empty()) {
         (*_outstream) << ";";
+    }
     _outstream->unindent();
-    (*_outstream) << std::endl << "END LOOP";
+    (*_outstream) << '\n' << "END LOOP";
 
     return 0;
 }
 
-int VHDLPrinter::visitForGenerate(ForGenerate &o) { messageError("ForGenerate is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitForGenerate(ForGenerate &o) -> int
+{
+    messageError("ForGenerate is not implemented yet.", &o, nullptr);
+}
 
-int VHDLPrinter::visitFunction(Function &o)
+auto VHDLPrinter::visitFunction(Function &o) -> int
 {
     _printComment(&o);
 
@@ -661,7 +677,7 @@ int VHDLPrinter::visitFunction(Function &o)
     o.getType()->acceptVisitor(*this);
 
     if (!_isPrintingLibDefDecls) {
-        *(_outstream) << " IS" << std::endl;
+        *(_outstream) << " IS" << '\n';
         const bool restore = _isSubProgramBody;
         _isSubProgramBody  = true;
         o.getStateTable()->acceptVisitor(*this);
@@ -671,7 +687,7 @@ int VHDLPrinter::visitFunction(Function &o)
     return 0;
 }
 
-int VHDLPrinter::visitGlobalAction(GlobalAction &o)
+auto VHDLPrinter::visitGlobalAction(GlobalAction &o) -> int
 {
     _printComment(&o);
 
@@ -684,11 +700,11 @@ int VHDLPrinter::visitGlobalAction(GlobalAction &o)
     return 0;
 }
 
-int VHDLPrinter::visitEntity(Entity &o)
+auto VHDLPrinter::visitEntity(Entity &o) -> int
 {
     _printComment(&o);
 
-    DesignUnit *du = hif::getNearestParent<DesignUnit>(&o);
+    auto *du = hif::getNearestParent<DesignUnit>(&o);
     messageAssert(du != nullptr, "Design unit not found", &o, _sem);
 
     View *view = dynamic_cast<View *>(o.getParent());
@@ -696,29 +712,29 @@ int VHDLPrinter::visitEntity(Entity &o)
 
     // Inside libdefs just printing the hif::entity as component.
     if (_isPrintingLibDefDecls) {
-        *(_outstream) << "COMPONENT " << du->getName() << endl;
+        *(_outstream) << "COMPONENT " << du->getName() << '\n';
     } else {
-        *(_outstream) << "ENTITY " << du->getName() << " IS" << endl;
+        *(_outstream) << "ENTITY " << du->getName() << " IS" << '\n';
     }
     _outstream->indent();
 
     if (!view->templateParameters.empty()) {
-        *(_outstream) << "GENERIC(" << endl;
+        *(_outstream) << "GENERIC(" << '\n';
         _outstream->indent();
         _printList(view->templateParameters, ';', true);
         _outstream->unindent();
-        *(_outstream) << std::endl << ");" << std::endl;
+        *(_outstream) << '\n' << ");" << '\n';
     }
 
     if (!o.ports.empty()) {
-        *(_outstream) << "PORT(" << endl;
+        *(_outstream) << "PORT(" << '\n';
         _outstream->indent();
 
         _printList(o.ports, ';', true);
 
         _outstream->newLine();
         _outstream->unindent();
-        *(_outstream) << ");" << endl;
+        *(_outstream) << ");" << '\n';
     }
 
     _outstream->unindent();
@@ -731,7 +747,7 @@ int VHDLPrinter::visitEntity(Entity &o)
     return 0;
 }
 
-int VHDLPrinter::visitIdentifier(Identifier &o)
+auto VHDLPrinter::visitIdentifier(Identifier &o) -> int
 {
     // Print identifier name.
     *(_outstream) << o.getName();
@@ -739,7 +755,7 @@ int VHDLPrinter::visitIdentifier(Identifier &o)
     return 0;
 }
 
-int VHDLPrinter::visitIf(If &o)
+auto VHDLPrinter::visitIf(If &o) -> int
 {
     _printComment(&o);
 
@@ -759,12 +775,12 @@ int VHDLPrinter::visitIf(If &o)
         _outstream->unindent();
     }
 
-    *(_outstream) << std::endl << "END IF";
+    *(_outstream) << '\n' << "END IF";
 
     return 0;
 }
 
-int VHDLPrinter::visitIfAlt(IfAlt &o)
+auto VHDLPrinter::visitIfAlt(IfAlt &o) -> int
 {
     _printComment(&o);
 
@@ -783,12 +799,15 @@ int VHDLPrinter::visitIfAlt(IfAlt &o)
     return 0;
 }
 
-int VHDLPrinter::visitIfGenerate(IfGenerate &o) { messageError("IfGenerate is not implemented yet.", &o, nullptr); }
-
-int VHDLPrinter::visitInstance(Instance &o)
+auto VHDLPrinter::visitIfGenerate(IfGenerate &o) -> int
 {
-    ViewReference *vr = dynamic_cast<ViewReference *>(o.getReferencedType());
-    Library *lib      = dynamic_cast<Library *>(o.getReferencedType());
+    messageError("IfGenerate is not implemented yet.", &o, nullptr);
+}
+
+auto VHDLPrinter::visitInstance(Instance &o) -> int
+{
+    auto *vr  = dynamic_cast<ViewReference *>(o.getReferencedType());
+    auto *lib = dynamic_cast<Library *>(o.getReferencedType());
 
     if (lib != nullptr) {
         lib->acceptVisitor(*this);
@@ -803,8 +822,9 @@ int VHDLPrinter::visitInstance(Instance &o)
         ViewReference::DeclarationType *view = hif::semantics::getDeclaration(vr, _sem);
         messageAssert(view != nullptr, "Declaration not found", vr, _sem);
 
-        if (_printedComponents[parentView].find(view) != _printedComponents[parentView].end())
+        if (_printedComponents[parentView].find(view) != _printedComponents[parentView].end()) {
             return 0;
+        }
         _printedComponents[parentView].insert(view);
 
         const bool restore     = _isPrintingLibDefDecls;
@@ -822,7 +842,7 @@ int VHDLPrinter::visitInstance(Instance &o)
     // Print the instance
     *(_outstream) << o.getName(); // Instance name
     *(_outstream) << ": ";
-    *(_outstream) << vr->getDesignUnit() << endl; // DesignUnit name
+    *(_outstream) << vr->getDesignUnit() << '\n'; // DesignUnit name
     _outstream->indent();
 
     vr->acceptVisitor(*this);
@@ -842,26 +862,28 @@ int VHDLPrinter::visitInstance(Instance &o)
     return 0;
 }
 
-int VHDLPrinter::visitInt(Int &o)
+auto VHDLPrinter::visitInt(Int &o) -> int
 {
     *(_outstream) << (o.isSigned() ? "integer" : "natural");
 
     return 0;
 }
 
-int VHDLPrinter::visitIntValue(IntValue &o)
+auto VHDLPrinter::visitIntValue(IntValue &o) -> int
 {
     *(_outstream) << o.getValue();
-    if (_isRealRange)
+    if (_isRealRange) {
         *(_outstream) << ".0";
+    }
 
     return 0;
 }
 
-int VHDLPrinter::visitLibraryDef(LibraryDef &o)
+auto VHDLPrinter::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     string libraryDefName = o.getName();
     // Create the subdirectory
@@ -871,7 +893,7 @@ int VHDLPrinter::visitLibraryDef(LibraryDef &o)
     // Initialize the output stream
     _initializeOutstream(libraryDefName, libraryDefName + "/");
 
-    *(_outstream) << "PACKAGE " << libraryDefName << " IS" << endl << endl;
+    *(_outstream) << "PACKAGE " << libraryDefName << " IS" << '\n' << '\n';
     _outstream->indent();
 
     // Print LibraryDef content
@@ -884,32 +906,34 @@ int VHDLPrinter::visitLibraryDef(LibraryDef &o)
     }
 
     _outstream->unindent();
-    *(_outstream) << "\n\nEND " << libraryDefName << ";" << endl;
+    *(_outstream) << "\n\nEND " << libraryDefName << ";" << '\n';
 
-    *(_outstream) << "\n\nPACKAGE BODY " << libraryDefName << " IS" << endl << endl;
+    *(_outstream) << "\n\nPACKAGE BODY " << libraryDefName << " IS" << '\n' << '\n';
     _outstream->indent();
 
     // Custom printing to skip type defs.
     for (BList<Declaration>::iterator i = o.declarations.begin(); i != o.declarations.end(); ++i) {
         Declaration *d = *i;
-        if (dynamic_cast<TypeDef *>(d) != nullptr)
+        if (dynamic_cast<TypeDef *>(d) != nullptr) {
             continue;
+        }
         d->acceptVisitor(*this);
         *(_outstream) << ";";
         _outstream->newLine();
     }
 
     _outstream->unindent();
-    *(_outstream) << "\nEND " << libraryDefName << ";" << std::endl << std::flush;
+    *(_outstream) << "\nEND " << libraryDefName << ";" << '\n' << std::flush;
     delete _outstream;
     _outstream = nullptr;
     return 0;
 }
 
-int VHDLPrinter::visitLibrary(Library &o)
+auto VHDLPrinter::visitLibrary(Library &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     _printTypeInstance(o.getInstance());
 
@@ -922,14 +946,16 @@ int VHDLPrinter::visitLibrary(Library &o)
     return 0;
 }
 
-int VHDLPrinter::visitMember(Member &o)
+auto VHDLPrinter::visitMember(Member &o) -> int
 {
     const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     o.getPrefix()->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     messageAssert(o.getIndex() != nullptr, "Unsupported member without index", &o, _sem);
 
@@ -940,22 +966,25 @@ int VHDLPrinter::visitMember(Member &o)
     return 0;
 }
 
-int VHDLPrinter::visitNull(Null & /*o*/)
+auto VHDLPrinter::visitNull(Null & /*o*/) -> int
 {
     *(_outstream) << "nullptr";
     return 0;
 }
 
-int VHDLPrinter::visitTransition(Transition &o) { messageError("Transition is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitTransition(Transition &o) -> int
+{
+    messageError("Transition is not implemented yet.", &o, nullptr);
+}
 
-int VHDLPrinter::visitParameterAssign(ParameterAssign &o)
+auto VHDLPrinter::visitParameterAssign(ParameterAssign &o) -> int
 {
     o.getValue()->acceptVisitor(*this);
 
     return 0;
 }
 
-int VHDLPrinter::visitParameter(Parameter &o)
+auto VHDLPrinter::visitParameter(Parameter &o) -> int
 {
     *(_outstream) << o.getName();
     *(_outstream) << ": ";
@@ -975,12 +1004,13 @@ int VHDLPrinter::visitParameter(Parameter &o)
     return 0;
 }
 
-int VHDLPrinter::visitProcedureCall(ProcedureCall &o)
+auto VHDLPrinter::visitProcedureCall(ProcedureCall &o) -> int
 {
     _printComment(&o);
 
-    if (_printAssertStatement(&o))
+    if (_printAssertStatement(&o)) {
         return 0;
+    }
 
     // handle attributes
     _printValueInstance(o.getInstance());
@@ -997,7 +1027,7 @@ int VHDLPrinter::visitProcedureCall(ProcedureCall &o)
     return 0;
 }
 
-int VHDLPrinter::visitPointer(Pointer &o)
+auto VHDLPrinter::visitPointer(Pointer &o) -> int
 {
     *(_outstream) << "access ";
     o.getType()->acceptVisitor(*this);
@@ -1005,7 +1035,7 @@ int VHDLPrinter::visitPointer(Pointer &o)
     return 0;
 }
 
-int VHDLPrinter::visitPortAssign(PortAssign &o)
+auto VHDLPrinter::visitPortAssign(PortAssign &o) -> int
 {
     *(_outstream) << o.getName() << " => ";
     o.getValue()->acceptVisitor(*this);
@@ -1013,7 +1043,7 @@ int VHDLPrinter::visitPortAssign(PortAssign &o)
     return 0;
 }
 
-int VHDLPrinter::visitPort(Port &o)
+auto VHDLPrinter::visitPort(Port &o) -> int
 {
     _printComment(&o);
 
@@ -1035,7 +1065,7 @@ int VHDLPrinter::visitPort(Port &o)
     return 0;
 }
 
-int VHDLPrinter::visitProcedure(Procedure &o)
+auto VHDLPrinter::visitProcedure(Procedure &o) -> int
 {
     _printComment(&o);
 
@@ -1049,7 +1079,7 @@ int VHDLPrinter::visitProcedure(Procedure &o)
     }
 
     if (!_isPrintingLibDefDecls) {
-        *(_outstream) << " IS" << std::endl;
+        *(_outstream) << " IS" << '\n';
         const bool restore = _isSubProgramBody;
         _isSubProgramBody  = true;
         o.getStateTable()->acceptVisitor(*this);
@@ -1059,7 +1089,7 @@ int VHDLPrinter::visitProcedure(Procedure &o)
     return 0;
 }
 
-int VHDLPrinter::visitRange(Range &o)
+auto VHDLPrinter::visitRange(Range &o) -> int
 {
     const bool restore = _isRealRange;
     _setRealRange(&o);
@@ -1082,13 +1112,13 @@ int VHDLPrinter::visitRange(Range &o)
     return 0;
 }
 
-int VHDLPrinter::visitReal(Real & /*o*/)
+auto VHDLPrinter::visitReal(Real & /*o*/) -> int
 {
     *(_outstream) << "real";
     return 0;
 }
 
-int VHDLPrinter::visitRealValue(RealValue &o)
+auto VHDLPrinter::visitRealValue(RealValue &o) -> int
 {
     *(_outstream) << std::showpoint;
     *(_outstream) << o.getValue();
@@ -1096,17 +1126,17 @@ int VHDLPrinter::visitRealValue(RealValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitRecord(Record &o)
+auto VHDLPrinter::visitRecord(Record &o) -> int
 {
-    *(_outstream) << "RECORD" << endl;
+    *(_outstream) << "RECORD" << '\n';
     _outstream->indent();
     _printList(o.fields, ';', true);
     _outstream->unindent();
-    *(_outstream) << "END RECORD" << endl;
+    *(_outstream) << "END RECORD" << '\n';
     return 0;
 }
 
-int VHDLPrinter::visitRecordValue(RecordValue &o)
+auto VHDLPrinter::visitRecordValue(RecordValue &o) -> int
 {
     *(_outstream) << "( ";
 
@@ -1117,7 +1147,7 @@ int VHDLPrinter::visitRecordValue(RecordValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitRecordValueAlt(RecordValueAlt &o)
+auto VHDLPrinter::visitRecordValueAlt(RecordValueAlt &o) -> int
 {
     *(_outstream) << o.getName() << " <= ";
     o.getValue()->acceptVisitor(*this);
@@ -1125,9 +1155,12 @@ int VHDLPrinter::visitRecordValueAlt(RecordValueAlt &o)
     return 0;
 }
 
-int VHDLPrinter::visitReference(Reference &o) { messageError("Reference is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitReference(Reference &o) -> int
+{
+    messageError("Reference is not implemented yet.", &o, nullptr);
+}
 
-int VHDLPrinter::visitReturn(Return &o)
+auto VHDLPrinter::visitReturn(Return &o) -> int
 {
     *(_outstream) << "RETURN";
     if (o.getValue() != nullptr) {
@@ -1138,7 +1171,7 @@ int VHDLPrinter::visitReturn(Return &o)
     return 0;
 }
 
-int VHDLPrinter::visitSignal(Signal &o)
+auto VHDLPrinter::visitSignal(Signal &o) -> int
 {
     _printComment(&o);
 
@@ -1162,16 +1195,18 @@ int VHDLPrinter::visitSignal(Signal &o)
     return 0;
 }
 
-int VHDLPrinter::visitSigned(Signed &o)
+auto VHDLPrinter::visitSigned(Signed &o) -> int
 {
     *(_outstream) << "signed";
 
-    if (dynamic_cast<Cast *>(o.getParent()) != nullptr)
+    if (dynamic_cast<Cast *>(o.getParent()) != nullptr) {
         return 0;
-    if (dynamic_cast<Function *>(o.getParent()) != nullptr)
+    }
+    if (dynamic_cast<Function *>(o.getParent()) != nullptr) {
         return 0;
+    }
 
-    if (o.getSpan()) {
+    if (o.getSpan() != nullptr) {
         *(_outstream) << "( ";
         o.getSpan()->acceptVisitor(*this);
         *(_outstream) << " )";
@@ -1180,14 +1215,16 @@ int VHDLPrinter::visitSigned(Signed &o)
     return 0;
 }
 
-int VHDLPrinter::visitSlice(Slice &o)
+auto VHDLPrinter::visitSlice(Slice &o) -> int
 {
     const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     o.getPrefix()->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     *(_outstream) << "( ";
     o.getSpan()->acceptVisitor(*this);
@@ -1195,7 +1232,7 @@ int VHDLPrinter::visitSlice(Slice &o)
     return 0;
 }
 
-int VHDLPrinter::visitState(State &o)
+auto VHDLPrinter::visitState(State &o) -> int
 {
     if (!o.actions.empty()) {
         _printList(o.actions, ';', true);
@@ -1205,7 +1242,7 @@ int VHDLPrinter::visitState(State &o)
     return 0;
 }
 
-int VHDLPrinter::visitString(String &o)
+auto VHDLPrinter::visitString(String &o) -> int
 {
     *(_outstream) << "string";
     if (o.getSpanInformation() != nullptr) {
@@ -1217,7 +1254,7 @@ int VHDLPrinter::visitString(String &o)
     return 0;
 }
 
-int VHDLPrinter::visitStateTable(StateTable &o)
+auto VHDLPrinter::visitStateTable(StateTable &o) -> int
 {
     _printComment(&o);
 
@@ -1234,7 +1271,7 @@ int VHDLPrinter::visitStateTable(StateTable &o)
             _printList(o.sensitivity, ',', false);
             *(_outstream) << " )";
         }
-        *(_outstream) << std::endl;
+        *(_outstream) << '\n';
         _outstream->newLine();
     }
 
@@ -1249,7 +1286,7 @@ int VHDLPrinter::visitStateTable(StateTable &o)
     }
 
     // StateTable body
-    *(_outstream) << "BEGIN" << endl;
+    *(_outstream) << "BEGIN" << '\n';
     _outstream->indent();
     _outstream->newLine();
 
@@ -1258,15 +1295,16 @@ int VHDLPrinter::visitStateTable(StateTable &o)
     o.states.front()->acceptVisitor(*this);
 
     _outstream->unindent();
-    if (!_isSubProgramBody)
+    if (!_isSubProgramBody) {
         *(_outstream) << "\n\nEND PROCESS";
-    else
+    } else {
         *(_outstream) << "\n\nEND";
+    }
 
     return 0;
 }
 
-int VHDLPrinter::visitSystem(System &o)
+auto VHDLPrinter::visitSystem(System &o) -> int
 {
     _printComment(&o);
 
@@ -1285,7 +1323,7 @@ int VHDLPrinter::visitSystem(System &o)
     return 0;
 }
 
-int VHDLPrinter::visitSwitchAlt(SwitchAlt &o)
+auto VHDLPrinter::visitSwitchAlt(SwitchAlt &o) -> int
 {
     *(_outstream) << "WHEN ";
     _printList(o.conditions, " |", false);
@@ -1299,7 +1337,7 @@ int VHDLPrinter::visitSwitchAlt(SwitchAlt &o)
     return 0;
 }
 
-int VHDLPrinter::visitSwitch(Switch &o)
+auto VHDLPrinter::visitSwitch(Switch &o) -> int
 {
     _printComment(&o);
 
@@ -1331,9 +1369,9 @@ int VHDLPrinter::visitSwitch(Switch &o)
     return 0;
 }
 
-int VHDLPrinter::visitStringValue(StringValue &o)
+auto VHDLPrinter::visitStringValue(StringValue &o) -> int
 {
-    if (o.getValue() == "") {
+    if (o.getValue().empty()) {
         *(_outstream) << "(others => NUL)";
     } else {
         *(_outstream) << "\"" << o.getValue() << "\"";
@@ -1341,11 +1379,14 @@ int VHDLPrinter::visitStringValue(StringValue &o)
     return 0;
 }
 
-int VHDLPrinter::visitTime(Time &o) { messageError("Time is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitTime(Time &o) -> int { messageError("Time is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitTimeValue(TimeValue &o) { messageError("TimeValue is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitTimeValue(TimeValue &o) -> int
+{
+    messageError("TimeValue is not implemented yet.", &o, nullptr);
+}
 
-int VHDLPrinter::visitTypeDef(TypeDef &o)
+auto VHDLPrinter::visitTypeDef(TypeDef &o) -> int
 {
     _printComment(&o);
 
@@ -1370,7 +1411,7 @@ int VHDLPrinter::visitTypeDef(TypeDef &o)
     return 0;
 }
 
-int VHDLPrinter::visitTypeReference(TypeReference &o)
+auto VHDLPrinter::visitTypeReference(TypeReference &o) -> int
 {
     _printTypeInstance(o.getInstance());
 
@@ -1379,23 +1420,25 @@ int VHDLPrinter::visitTypeReference(TypeReference &o)
     return 0;
 }
 
-int VHDLPrinter::visitTypeTPAssign(TypeTPAssign &o)
+auto VHDLPrinter::visitTypeTPAssign(TypeTPAssign &o) -> int
 {
     messageError("TypeTPAssign is not implemented yet.", &o, nullptr);
 }
 
-int VHDLPrinter::visitTypeTP(TypeTP &o) { messageError("TypeTP is not implemented yet.", &o, nullptr); }
+auto VHDLPrinter::visitTypeTP(TypeTP &o) -> int { messageError("TypeTP is not implemented yet.", &o, nullptr); }
 
-int VHDLPrinter::visitUnsigned(Unsigned &o)
+auto VHDLPrinter::visitUnsigned(Unsigned &o) -> int
 {
     *(_outstream) << "unsigned";
 
-    if (dynamic_cast<Cast *>(o.getParent()) != nullptr)
+    if (dynamic_cast<Cast *>(o.getParent()) != nullptr) {
         return 0;
-    if (dynamic_cast<Function *>(o.getParent()) != nullptr)
+    }
+    if (dynamic_cast<Function *>(o.getParent()) != nullptr) {
         return 0;
+    }
 
-    if (o.getSpan()) {
+    if (o.getSpan() != nullptr) {
         *(_outstream) << "( ";
         o.getSpan()->acceptVisitor(*this);
         *(_outstream) << " )";
@@ -1404,7 +1447,7 @@ int VHDLPrinter::visitUnsigned(Unsigned &o)
     return 0;
 }
 
-int VHDLPrinter::visitValueTPAssign(ValueTPAssign &o)
+auto VHDLPrinter::visitValueTPAssign(ValueTPAssign &o) -> int
 {
     *(_outstream) << o.getName() << " => ";
 
@@ -1412,7 +1455,7 @@ int VHDLPrinter::visitValueTPAssign(ValueTPAssign &o)
     return 0;
 }
 
-int VHDLPrinter::visitValueTP(ValueTP &o)
+auto VHDLPrinter::visitValueTP(ValueTP &o) -> int
 {
     _printComment(&o);
 
@@ -1437,12 +1480,13 @@ int VHDLPrinter::visitValueTP(ValueTP &o)
     return 0;
 }
 
-int VHDLPrinter::visitVariable(Variable &o)
+auto VHDLPrinter::visitVariable(Variable &o) -> int
 {
     _printComment(&o);
 
-    if (_printFileVariable(&o))
+    if (_printFileVariable(&o)) {
         return 0;
+    }
 
     // variable identifier : subtype_indication [ := expression ];
     // E.g.: variable name: integer range 7 downto 0;
@@ -1465,7 +1509,7 @@ int VHDLPrinter::visitVariable(Variable &o)
     return 0;
 }
 
-int VHDLPrinter::visitView(View &o)
+auto VHDLPrinter::visitView(View &o) -> int
 {
     _printComment(&o);
 
@@ -1484,35 +1528,39 @@ int VHDLPrinter::visitView(View &o)
     messageAssert(en != nullptr, "Unexpected nullptr entity", &o, _sem);
     en->acceptVisitor(*this);
 
-    if (!_isPrintingLibDefDecls)
-        *_outstream << ";" << std::endl;
+    if (!_isPrintingLibDefDecls) {
+        *_outstream << ";" << '\n';
+    }
 
     _outstream->newLine();
 
     // Visit the contents
-    if (cnt != nullptr)
+    if (cnt != nullptr) {
         cnt->acceptVisitor(*this);
-
-    return 0;
-}
-
-int VHDLPrinter::visitViewReference(ViewReference &o)
-{
-    if (!o.templateParameterAssigns.empty()) {
-        *(_outstream) << "GENERIC MAP(" << endl;
-        _outstream->indent();
-        _printList(o.templateParameterAssigns, ',', true);
-        _outstream->unindent();
-        *(_outstream) << std::endl << ")" << std::endl;
     }
 
     return 0;
 }
 
-int VHDLPrinter::visitWait(Wait &o)
+auto VHDLPrinter::visitViewReference(ViewReference &o) -> int
 {
-    if (o.getCondition() != nullptr || o.getRepetitions() != nullptr || o.getTime() != nullptr || o.sensitivity.empty())
+    if (!o.templateParameterAssigns.empty()) {
+        *(_outstream) << "GENERIC MAP(" << '\n';
+        _outstream->indent();
+        _printList(o.templateParameterAssigns, ',', true);
+        _outstream->unindent();
+        *(_outstream) << '\n' << ")" << '\n';
+    }
+
+    return 0;
+}
+
+auto VHDLPrinter::visitWait(Wait &o) -> int
+{
+    if (o.getCondition() != nullptr || o.getRepetitions() != nullptr || o.getTime() != nullptr ||
+        o.sensitivity.empty()) {
         messageError("Wait is not implemented yet.", &o, nullptr);
+    }
 
     // wait on
     *(_outstream) << "WAIT ON ";
@@ -1521,7 +1569,7 @@ int VHDLPrinter::visitWait(Wait &o)
     return 0;
 }
 
-int VHDLPrinter::visitWhen(When &o)
+auto VHDLPrinter::visitWhen(When &o) -> int
 {
     _outstream->indent();
     _printList(o.alts, " ELSE", true);
@@ -1534,7 +1582,7 @@ int VHDLPrinter::visitWhen(When &o)
     return 0;
 }
 
-int VHDLPrinter::visitWhenAlt(WhenAlt &o)
+auto VHDLPrinter::visitWhenAlt(WhenAlt &o) -> int
 {
     o.getValue()->acceptVisitor(*this);
     *(_outstream) << " WHEN ";
@@ -1543,7 +1591,7 @@ int VHDLPrinter::visitWhenAlt(WhenAlt &o)
     return 0;
 }
 
-int VHDLPrinter::visitWhile(While &o)
+auto VHDLPrinter::visitWhile(While &o) -> int
 {
     if (o.getName() != NameTable::getInstance()->none()) {
         *(_outstream) << o.getName() << ": ";
@@ -1551,7 +1599,7 @@ int VHDLPrinter::visitWhile(While &o)
 
     *(_outstream) << "WHILE ";
     o.getCondition()->acceptVisitor(*this);
-    *(_outstream) << " LOOP" << endl;
+    *(_outstream) << " LOOP" << '\n';
 
     _outstream->indent();
     _printList(o.actions, ";", true);
@@ -1561,7 +1609,7 @@ int VHDLPrinter::visitWhile(While &o)
     return 0;
 }
 
-int VHDLPrinter::visitWith(With &o)
+auto VHDLPrinter::visitWith(With &o) -> int
 {
     if (_isPrintWithCondition) {
         *(_outstream) << "WITH ";
@@ -1583,7 +1631,7 @@ int VHDLPrinter::visitWith(With &o)
     return 0;
 }
 
-int VHDLPrinter::visitWithAlt(WithAlt &o)
+auto VHDLPrinter::visitWithAlt(WithAlt &o) -> int
 {
     o.getValue()->acceptVisitor(*this);
 
@@ -1593,14 +1641,14 @@ int VHDLPrinter::visitWithAlt(WithAlt &o)
     return 0;
 }
 
-int VHDLPrinter::_createDirectory(string dirName)
+auto VHDLPrinter::_createDirectory(const string &dirName) -> int
 {
     hif::application_utils::FileStructure dir(dirName);
     // Empty directory if it already exists.
     if (dir.exists()) {
         vector<string> fileList = dir.list();
-        for (vector<string>::iterator it = fileList.begin(); it != fileList.end(); ++it) {
-            hif::application_utils::FileStructure fileIn(*it);
+        for (auto &it : fileList) {
+            hif::application_utils::FileStructure fileIn(it);
             fileIn.rmfile_weak();
         }
     }
@@ -1612,7 +1660,7 @@ int VHDLPrinter::_createDirectory(string dirName)
     return 1;
 }
 
-void VHDLPrinter::_initializeOutstream(string fileName, string subdirectory)
+void VHDLPrinter::_initializeOutstream(const string &fileName, const string &subdirectory)
 {
     if (fileName.empty()) {
         messageError("Empty file name", nullptr, nullptr);
@@ -1620,8 +1668,9 @@ void VHDLPrinter::_initializeOutstream(string fileName, string subdirectory)
 
     string path = _outDir + "/src/" + subdirectory + fileName;
 
-    if (_outstream != nullptr)
+    {
         delete _outstream;
+    }
 
     _outstream = new hif::backends::IndentedStream(path, "vhd");
     _outstream->setComment("--", "--", "");
@@ -1631,14 +1680,15 @@ void VHDLPrinter::_initializeOutstream(string fileName, string subdirectory)
 
 void VHDLPrinter::_printComment(Object *o)
 {
-    if (!o->hasComments())
+    if (!o->hasComments()) {
         return;
+    }
 
     _outstream->newLine();
-    for (std::list<std::string>::iterator it = o->getComments().begin(); it != o->getComments().end(); ++it) {
+    for (auto &it : o->getComments()) {
         // A new line is necessary to not interfere with current printing.
         _outstream->setCommentMode(true);
-        *(_outstream) << *it;
+        *(_outstream) << it;
         _outstream->setCommentMode(false);
         _outstream->newLine();
     }
@@ -1680,14 +1730,16 @@ void VHDLPrinter::_printLibraries(BList<Library> &libraries)
     for (BList<Library>::iterator it = libraries.begin(); it != libraries.end(); ++it) {
         Library *lib = *it;
         libraryName  = lib->getName();
-        if (lib->isStandard())
+        if (lib->isStandard()) {
             continue;
+        }
 
-        if (libraryName == "standard")
+        if (libraryName == "standard") {
             continue;
+        }
 
         if (!libDecl) {
-            Library *terminal = dynamic_cast<Library *>(hif::getTerminalInstance(lib));
+            auto *terminal = dynamic_cast<Library *>(hif::getTerminalInstance(lib));
             if (terminal->getName() == "ieee") {
                 *(_outstream) << "library IEEE;";
                 _outstream->newLine();
@@ -1702,11 +1754,12 @@ void VHDLPrinter::_printLibraries(BList<Library> &libraries)
     }
 }
 
-bool VHDLPrinter::_printFileVariable(Variable *o)
+auto VHDLPrinter::_printFileVariable(Variable *o) -> bool
 {
     File *f = dynamic_cast<File *>(hif::semantics::getBaseType(o->getType(), false, _sem));
-    if (f == nullptr)
+    if (f == nullptr) {
         return false;
+    }
 
     FunctionCall *fc = nullptr;
     if (o->getValue() != nullptr) {
@@ -1734,25 +1787,29 @@ bool VHDLPrinter::_printFileVariable(Variable *o)
     return true;
 }
 
-bool VHDLPrinter::_printAssertStatement(ProcedureCall *o)
+auto VHDLPrinter::_printAssertStatement(ProcedureCall *o) -> bool
 {
     // void ASSERT(bool CONDITION, string REPORT = "", severity_level LEVEL = NOTE)
 
-    if (o->getName() != "assert")
+    if (o->getName() != "assert") {
         return false;
+    }
     const BList<ParameterAssign>::size_t size = o->parameterAssigns.size();
-    if (size < 1 || size > 3)
+    if (size < 1 || size > 3) {
         return false;
+    }
 
     *(_outstream) << "assert ";
 
     ParameterAssign *p1 = o->parameterAssigns.at(0);
     ParameterAssign *p2 = nullptr;
-    if (size > 1)
+    if (size > 1) {
         p2 = o->parameterAssigns.at(1);
+    }
     ParameterAssign *p3 = nullptr;
-    if (size > 2)
+    if (size > 2) {
         p3 = o->parameterAssigns.at(2);
+    }
 
     p1->getValue()->acceptVisitor(*this);
 
@@ -1771,41 +1828,48 @@ bool VHDLPrinter::_printAssertStatement(ProcedureCall *o)
 
 void VHDLPrinter::_printValueInstance(Value *v)
 {
-    if (v == nullptr)
+    if (v == nullptr) {
         return;
+    }
 
     const bool needParen = (dynamic_cast<Expression *>(v) != nullptr);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << "(";
+    }
     v->acceptVisitor(*this);
-    if (needParen)
+    if (needParen) {
         *(_outstream) << ")";
+    }
 
     bool printDot = false;
 
-    Instance *inst = dynamic_cast<Instance *>(v);
+    auto *inst = dynamic_cast<Instance *>(v);
     if (inst != nullptr) {
-        Library *lib = dynamic_cast<Library *>(inst->getReferencedType());
-        if (lib != nullptr && lib->isStandard())
+        auto *lib = dynamic_cast<Library *>(inst->getReferencedType());
+        if (lib != nullptr && lib->isStandard()) {
             return;
+        }
 
         printDot = true;
     }
 
-    if (printDot)
+    if (printDot) {
         *(_outstream) << ".";
-    else
+    } else {
         *(_outstream) << "'";
+    }
 }
 
 void VHDLPrinter::_printTypeInstance(ReferencedType *v)
 {
-    if (v == nullptr)
+    if (v == nullptr) {
         return;
+    }
 
-    Library *lib = dynamic_cast<Library *>(v);
-    if (lib != nullptr && lib->isStandard())
+    auto *lib = dynamic_cast<Library *>(v);
+    if (lib != nullptr && lib->isStandard()) {
         return;
+    }
 
     v->acceptVisitor(*this);
 
@@ -1814,30 +1878,33 @@ void VHDLPrinter::_printTypeInstance(ReferencedType *v)
 
 template <typename T> void VHDLPrinter::_printList(BList<T> &list, const char separator, const bool needNewLine)
 {
-    BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
+    auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, std::string() + separator, needNewLine);
 }
 
 template <typename T> void VHDLPrinter::_printList(BList<T> &list, const std::string &separator, const bool needNewLine)
 {
-    BList<Object> *o = reinterpret_cast<BList<Object> *>(&list);
+    auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, separator, needNewLine);
 }
 
 void VHDLPrinter::_printList(BList<Object> &list, const std::string &separator, const bool needNewLine)
 {
-    if (list.empty())
+    if (list.empty()) {
         return;
+    }
 
     for (BList<Object>::iterator it(list.begin()); it != list.end(); ++it) {
         if (it != list.begin()) {
-            if (separator != " ")
+            if (separator != " ") {
                 *(_outstream) << separator << " ";
-            else if (!needNewLine)
+            } else if (!needNewLine) {
                 *(_outstream) << " ";
+            }
 
-            if (needNewLine && _outstream != nullptr)
+            if (needNewLine && _outstream != nullptr) {
                 _outstream->newLine();
+            }
         }
 
         (*it)->acceptVisitor(*this);
@@ -1851,7 +1918,7 @@ void VHDLPrinter::_setRealRange(Range *o)
         return;
     }
 
-    DataDeclaration *dd = dynamic_cast<DataDeclaration *>(o->getParent());
+    auto *dd = dynamic_cast<DataDeclaration *>(o->getParent());
     if (dd == nullptr) {
         _isRealRange = false;
         return;

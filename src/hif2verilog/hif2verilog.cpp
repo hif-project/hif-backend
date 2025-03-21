@@ -42,10 +42,10 @@ void perform_post_refinement(hif::System &o, hif2verilogParseLine &cLine);
 void perform_code_generation(hif::System &o, hif2verilogParseLine &cLine);
 
 /// @brief Called on a stable system, perform all required checks.
-void checkStep(System *s, const std::string &stepName, const bool fixed);
+void checkStep(System *s, const std::string &stepName, bool fixed);
 
 /// @brief Generate the step name.
-std::string getStepName(const std::string &);
+auto getStepName(const std::string & /*n*/) -> std::string;
 
 /////////////////////////////////////////
 // global variables
@@ -60,7 +60,7 @@ hif::application_utils::StepFileManager _stepFileManager;
 // hif2verilog main function
 /////////////////////////////////////////
 
-int main(int argc, char *argv[])
+auto main(int argc, char *argv[]) -> int
 {
     hif::application_utils::initializeLogHeader("HIF2VERILOG", "");
 
@@ -75,8 +75,9 @@ int main(int argc, char *argv[])
 #ifdef HIF2VERILOG_DEBUG_PRINT_STEP_FILES
     _stepFileManager.setPrint(true);
 #endif
-    if (cLine.isAutostep())
+    if (cLine.isAutostep()) {
         _stepFileManager.setAutoStepFile(inputFile);
+    }
 
     // Read the system description.
     System *pSys = dynamic_cast<System *>(hif::readFile(inputFile));
@@ -170,9 +171,8 @@ int main(int argc, char *argv[])
 
     // Preliminary check on directory structure
     messageInfo("Directory structure generation.");
-    hif::backends::CHifDirStruct *pdsRepository =
-        new hif::backends::CHifDirStruct(*pSys, cLine.getOutputDirectory().c_str());
-    auto status = pdsRepository->Check();
+    auto *pdsRepository = new hif::backends::CHifDirStruct(*pSys, cLine.getOutputDirectory().c_str());
+    auto status         = pdsRepository->Check();
     if ((status != hif::backends::CHifDirStruct::DST_OK) && (status != hif::backends::CHifDirStruct::DST_ALRDY_EXIST)) {
         pdsRepository->printError(status);
     }
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
     //delete pSys;
 
     // Command done
-    string command = "";
+    string command;
     for (int i = 0; i < argc; i++) {
         command += string(argv[i]) + " ";
     }
@@ -233,7 +233,7 @@ void checkStep(System *s, const std::string &stepName, const bool isFixed)
         //opt.checkOnCopy = true;
 
         if (hif::semantics::checkHif(s, hifLanguage, opt) != 0) {
-            std::clog << "\nWrong HIF description after " << stepName << std::endl;
+            std::clog << "\nWrong HIF description after " << stepName << '\n';
             assert(false);
             exit(1);
         }
@@ -245,12 +245,13 @@ void checkStep(System *s, const std::string &stepName, const bool isFixed)
 #endif
 }
 
-std::string getStepName(const std::string &n)
+auto getStepName(const std::string &n) -> std::string
 {
     std::stringstream s;
     const int nr = _stepFileManager.getStepNumber();
-    if (nr < 10)
+    if (nr < 10) {
         s << "0";
+    }
     s << nr;
     s << " " << n;
     return s.str();

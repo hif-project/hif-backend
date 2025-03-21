@@ -9,9 +9,12 @@
 #include <cstring>
 #include <ios>
 #include <sstream>
+#include <utility>
 
 #include "hif2scSupport/hif_systemc_extensions.hpp"
 #include "hif2scSupport/hif_vhdl_std_textio.hpp"
+
+#include <math.h>
 
 #if (defined _MSC_VER)
 #pragma warning(disable : 4127)
@@ -36,17 +39,18 @@ void justifyPrint(
     const hif_vhdl_side justified)
 {
     if (justified == hif_vhdl_left) {
-        for (hif_vhdl_width i = static_cast<hif_vhdl_width>(dataSize); i < field; ++i) {
+        for (auto i = static_cast<hif_vhdl_width>(dataSize); i < field; ++i) {
             *l += " ";
         }
     }
 }
 
-std::string trim(const std::string &str, const std::string &whitespace = " \t")
+auto trim(const std::string &str, const std::string &whitespace = " \t") -> std::string
 {
     const std::size_t strBegin = str.find_first_not_of(whitespace);
-    if (strBegin == std::string::npos)
+    if (strBegin == std::string::npos) {
         return ""; // no content
+    }
 
     const std::size_t strEnd   = str.find_last_not_of(whitespace);
     const std::size_t strRange = strEnd - strBegin + 1;
@@ -64,10 +68,11 @@ hif_vhdl_text hif_vhdl_output = stdout;
 
 // Routines to support standard statements.
 
-hif_vhdl_text hif_vhdl_file_open(std::string external_name, hif_vhdl_standard::hif_vhdl_file_open_kind open_kind)
+auto hif_vhdl_file_open(std::string external_name, hif_vhdl_standard::hif_vhdl_file_open_kind open_kind)
+    -> hif_vhdl_text
 {
-    hif_vhdl_text f;
-    hif_vhdl_file_open(f, external_name, open_kind);
+    hif_vhdl_text f = nullptr;
+    hif_vhdl_file_open(f, std::move(external_name), open_kind);
     return f;
 }
 
@@ -79,13 +84,13 @@ void hif_vhdl_file_open(
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind)
 {
     hif_vhdl_standard::hif_vhdl_file_open_status s;
-    hif_vhdl_file_open(s, f, external_name, open_kind);
+    hif_vhdl_file_open(s, f, std::move(external_name), open_kind);
 }
 
 void hif_vhdl_file_open(
     hif_vhdl_standard::hif_vhdl_file_open_status &status,
     hif_vhdl_text &f,
-    std::string external_name,
+    const std::string &external_name,
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind)
 {
     const char *type = nullptr;
@@ -110,10 +115,11 @@ void hif_vhdl_file_open(
     // hif_vhdl_status_error,
     // hif_vhdl_name_error,
     // hif_vhdl_mode_error
-    if (f == nullptr)
+    if (f == nullptr) {
         status = hif_vhdl_standard::hif_vhdl_name_error;
-    else
+    } else {
         status = hif_vhdl_standard::hif_vhdl_open_ok;
+    }
 }
 
 void hif_vhdl_file_close(hif_vhdl_text &f) { fclose(f); }
@@ -133,7 +139,7 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value)
         }
 
         const std::size_t s = std::strlen(buffer);
-        continueReading     = (buffer[s - 1] != '\n') && !feof(f);
+        continueReading     = (buffer[s - 1] != '\n') && (feof(f) == 0);
 
         if (buffer[s - 1] == '\n') {
             buffer[s - 1] = '\0';
@@ -143,14 +149,15 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value)
     } while (continueReading);
 }
 
-void hif_vhdl_write(hif_vhdl_text &f, std::string value) { fprintf(f, "%s", value.c_str()); }
+void hif_vhdl_write(hif_vhdl_text &f, const std::string &value) { fprintf(f, "%s", value.c_str()); }
 
 void hif_vhdl_readline(hif_vhdl_text &f, hif_vhdl_line &l)
 {
     // C does not have a direct method to get a line...
     // do it manually!
-    if (l == nullptr)
+    if (l == nullptr) {
         l = new std::string();
+    }
     l->clear();
     if (f == nullptr) {
         std::cerr << "ERROR: file argument is nullptr.\n";
@@ -177,17 +184,18 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_dt::sc_bit &value, bool &good)
 
     *l = l->substr(1);
 
-    if (s == "1")
+    if (s == "1") {
         value = '1';
-    else
+    } else {
         value = '0';
+    }
 
     good = true;
 }
 
 void hif_vhdl_read(hif_vhdl_line &l, sc_dt::sc_bit &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -210,7 +218,7 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_dt::sc_bv_base &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, sc_dt::sc_bv_base &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -226,17 +234,14 @@ void hif_vhdl_read(hif_vhdl_line &l, bool &value, bool &good)
 
     *l = l->substr(s.size());
 
-    if (s == "TRUE")
-        value = true;
-    else
-        value = false;
+    value = s == "TRUE";
 
     good = true;
 }
 
 void hif_vhdl_read(hif_vhdl_line &l, bool &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -259,7 +264,7 @@ void hif_vhdl_read(hif_vhdl_line &l, char &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, char &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -283,7 +288,7 @@ void hif_vhdl_read(hif_vhdl_line &l, int32_t &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, int32_t &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -307,7 +312,7 @@ void hif_vhdl_read(hif_vhdl_line &l, double &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, double &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -331,13 +336,13 @@ void hif_vhdl_read(hif_vhdl_line &l, std::string &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, std::string &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
 void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value, bool &good)
 {
-    double d;
+    double d = NAN;
     std::string unit;
     std::string restore = *l;
     hif_vhdl_read(l, d, good);
@@ -354,19 +359,19 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value, bool &good)
     }
 
     sc_core::sc_time_unit u;
-    if (unit == "fs")
+    if (unit == "fs") {
         u = sc_core::SC_FS;
-    else if (unit == "ps")
+    } else if (unit == "ps") {
         u = sc_core::SC_PS;
-    else if (unit == "ns")
+    } else if (unit == "ns") {
         u = sc_core::SC_NS;
-    else if (unit == "us")
+    } else if (unit == "us") {
         u = sc_core::SC_US;
-    else if (unit == "ms")
+    } else if (unit == "ms") {
         u = sc_core::SC_MS;
-    else if (unit == "sec")
+    } else if (unit == "sec") {
         u = sc_core::SC_SEC;
-    else {
+    } else {
         *l   = restore;
         good = false;
         return;
@@ -378,7 +383,7 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value, bool &good)
 
 void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value)
 {
-    bool good;
+    bool good = false;
     hif_vhdl_read(l, value, good);
 }
 
@@ -390,25 +395,28 @@ void hif_vhdl_writeline(hif_vhdl_text &f, hif_vhdl_line &l)
     l->clear();
 }
 
-void hif_vhdl_write(hif_vhdl_line &l, sc_dt::sc_bit value, hif_vhdl_side justified, hif_vhdl_width field)
+void hif_vhdl_write(hif_vhdl_line &l, const sc_dt::sc_bit &value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     justifyPrint(l, 1, field, justified);
 
-    if (value == '1')
+    if (value == '1') {
         *l += "1";
-    else
+    } else {
         *l += "0";
+    }
 
     justifyPrint(l, 1, field, justified);
 }
 
-void hif_vhdl_write(hif_vhdl_line &l, sc_dt::sc_bv_base value, hif_vhdl_side justified, hif_vhdl_width field)
+void hif_vhdl_write(hif_vhdl_line &l, const sc_dt::sc_bv_base &value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     justifyPrint(l, value.to_string().size(), field, justified);
 
@@ -419,23 +427,26 @@ void hif_vhdl_write(hif_vhdl_line &l, sc_dt::sc_bv_base value, hif_vhdl_side jus
 
 void hif_vhdl_write(hif_vhdl_line &l, bool value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     justifyPrint(l, value ? 4 : 5, field, justified);
 
-    if (value)
+    if (value) {
         *l += "TRUE";
-    else
+    } else {
         *l += "FALSE";
+    }
 
     justifyPrint(l, 1, field, justified);
 }
 
 void hif_vhdl_write(hif_vhdl_line &l, char value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     justifyPrint(l, 1, field, justified);
 
@@ -446,8 +457,9 @@ void hif_vhdl_write(hif_vhdl_line &l, char value, hif_vhdl_side justified, hif_v
 
 void hif_vhdl_write(hif_vhdl_line &l, int32_t value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     std::stringstream ss;
     ss << value;
@@ -461,8 +473,9 @@ void hif_vhdl_write(hif_vhdl_line &l, int32_t value, hif_vhdl_side justified, hi
 
 void hif_vhdl_write(hif_vhdl_line &l, int32_t value, hif_vhdl_side justified, hif_vhdl_width field, uint32_t digits)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     std::stringstream ss;
     if (digits == 0) {
@@ -476,8 +489,9 @@ void hif_vhdl_write(hif_vhdl_line &l, int32_t value, hif_vhdl_side justified, hi
     std::string s;
     ss >> s;
 
-    if (digits != 0)
+    if (digits != 0) {
         s = s.substr(0, s.find('.') + digits);
+    }
 
     justifyPrint(l, s.size(), field, justified);
 
@@ -486,10 +500,11 @@ void hif_vhdl_write(hif_vhdl_line &l, int32_t value, hif_vhdl_side justified, hi
     justifyPrint(l, s.size(), field, justified);
 }
 
-void hif_vhdl_write(hif_vhdl_line &l, std::string value, hif_vhdl_side justified, hif_vhdl_width field)
+void hif_vhdl_write(hif_vhdl_line &l, const std::string &value, hif_vhdl_side justified, hif_vhdl_width field)
 {
-    if (!l->empty())
+    if (!l->empty()) {
         *l += " ";
+    }
 
     justifyPrint(l, value.size(), field, justified);
 
@@ -562,6 +577,6 @@ void hif_vhdl_write(
 
 //  -- File Position Predicates
 
-bool hif_vhdl_endfile(hif_vhdl_text f) { return (feof(f) != 0); }
+auto hif_vhdl_endfile(hif_vhdl_text f) -> bool { return (feof(f) != 0); }
 
 } // namespace hif_vhdl_std_textio

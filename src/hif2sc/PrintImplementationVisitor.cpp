@@ -51,7 +51,7 @@ private:
     /// on the kind of object).
     /// @param headerImplementation Used to distinguish between print of
     /// templated and non-templated components.
-    void _printImplementation(hif::Object &o, string fileName, bool headerImplementation);
+    void _printImplementation(hif::Object &o, const string &fileName, bool headerImplementation);
 
     auto _getSourceExtensionByLanguage(Object *obj) -> std::string;
     auto _getSourceFilename(
@@ -203,7 +203,7 @@ auto PrintImplementationVisitor::visitSystem(System &o) -> int
     return 0;
 }
 
-void PrintImplementationVisitor::_printImplementation(Object &o, string fileName, bool headerImplementation)
+void PrintImplementationVisitor::_printImplementation(Object &o, const string &fileName, bool headerImplementation)
 {
     if (fileName.empty()) {
         return;

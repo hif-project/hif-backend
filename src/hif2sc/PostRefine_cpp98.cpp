@@ -95,11 +95,11 @@ CppStandardRefineVisitor::CppStandardRefineVisitor(
 
 CppStandardRefineVisitor::~CppStandardRefineVisitor()
 {
-    for (auto s : _fixedSet) {
+    for (auto *s : _fixedSet) {
         s->removeProperty(PROPERTY_CONSTEXPR);
     }
 
-    for (auto s : _methodsWithTPDefaultValue) {
+    for (auto *s : _methodsWithTPDefaultValue) {
         for (BList<Declaration>::iterator j = s->templateParameters.begin(); j != s->templateParameters.end(); ++j) {
             Declaration *tp = *j;
             if (dynamic_cast<TypeTP *>(tp) != nullptr) {
@@ -355,9 +355,10 @@ auto CppStandardRefineVisitor::_hasTemplateDefaultValues(BList<Declaration> &tem
             // found
             return true;
         } // value TP
-        ValueTP *vtp = static_cast<ValueTP *>(*i);
-        if (vtp->getValue() == nullptr)
+        auto *vtp = dynamic_cast<ValueTP *>(*i);
+        if (vtp->getValue() == nullptr) {
             continue;
+        }
 
         // found
         return true;

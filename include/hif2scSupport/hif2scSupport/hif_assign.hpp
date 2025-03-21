@@ -21,10 +21,10 @@ namespace hif_systemc_extensions
 // /////////////////////////////////////////////////////////////////////////
 
 HIF2SCSUPPORT_EXPORT
-auto to_bit(sc_dt::sc_logic v) -> sc_dt::sc_logic_value_t;
+auto to_bit(const sc_dt::sc_logic &v) -> sc_dt::sc_logic_value_t;
 
 HIF2SCSUPPORT_EXPORT
-auto to_bit(sc_dt::sc_bit v) -> sc_dt::sc_logic_value_t;
+auto to_bit(const sc_dt::sc_bit &v) -> sc_dt::sc_logic_value_t;
 
 HIF2SCSUPPORT_EXPORT
 auto to_bit(bool v) -> bool;

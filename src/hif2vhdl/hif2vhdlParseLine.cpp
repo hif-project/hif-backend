@@ -45,10 +45,12 @@ hif2vhdlParseLine::~hif2vhdlParseLine()
 
 void hif2vhdlParseLine::_validateArguments()
 {
-    if (!_options['h'].value.empty())
+    if (!_options['h'].value.empty()) {
         printHelp();
-    if (!_options['v'].value.empty())
+    }
+    if (!_options['v'].value.empty()) {
         printVersion();
+    }
 
     if (_files.empty()) {
         messageError(
@@ -84,10 +86,10 @@ void hif2vhdlParseLine::_validateArguments()
 
     // Establish output dir name
     std::string out = _options['D'].value;
-    if (out == "") {
+    if (out.empty()) {
         out = "hif2vhdl_out";
     }
     _options['D'].value = out;
 }
 
-int &hif2vhdlParseLine::getStep() { return _step; }
+auto hif2vhdlParseLine::getStep() -> int & { return _step; }

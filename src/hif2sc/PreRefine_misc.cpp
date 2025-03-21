@@ -37,7 +37,7 @@ void _fixBreaks(System *root, hif::semantics::ILanguageSemantics * /*sem*/)
     hif::HifTypedQuery<Break> q;
     hif::search(res, root, q);
 
-    for (auto o : res) {
+    for (auto *o : res) {
         if (o->getName() == NameTable::getInstance()->none()) {
             continue;
         }
@@ -80,7 +80,7 @@ auto collectObjectMethod(Object *o, const HifQueryBase * /*unused*/) -> bool
         return true;
     }
     if (dynamic_cast<Assign *>(o) != nullptr) {
-        Assign *ass = static_cast<Assign *>(o);
+        auto *ass = dynamic_cast<Assign *>(o);
         return (ass->getDelay() != nullptr);
     }
 
@@ -584,7 +584,7 @@ auto PreRefine_misc::visitGlobalAction(GlobalAction &o) -> int
     GuideVisitor::visitGlobalAction(o);
     std::set<StateTable *> list;
     hif::manipulation::transformGlobalActions(&o, list, _sem);
-    for (auto i : list) {
+    for (auto *i : list) {
         i->acceptVisitor(*this);
     }
 
@@ -1042,7 +1042,7 @@ auto PreRefine_misc::_fixConstArray(Const *o) -> bool
         v->setType(o->setType(nullptr));
         v->setValue(o->setValue(nullptr));
 
-        for (auto ref : _refMap[o]) {
+        for (auto *ref : _refMap[o]) {
             hif::semantics::setDeclaration(ref, v);
         }
         _refMap[v].insert(_refMap[o].begin(), _refMap[o].end());
@@ -1072,7 +1072,7 @@ auto PreRefine_misc::_fixStaticInitialization(Const *o) -> bool
     hif::semantics::SymbolList list;
     hif::semantics::collectSymbols(list, o->getValue(), _sem, true);
     bool toFix = false;
-    for (auto symbol : list) {
+    for (auto *symbol : list) {
         Declaration *decl = hif::semantics::getDeclaration(symbol, _sem);
         // May be nullptr in case of Instance with Library.
         if (decl == nullptr) {
@@ -1242,7 +1242,7 @@ void PreRefine_misc::_fixReturnArrayType(Function &o)
     }
 
     // For each function ref reset type and add FieldReference
-    for (auto it : _refMap[&o]) {
+    for (auto *it : _refMap[&o]) {
         auto *val = dynamic_cast<Value *>(it);
         if (val == nullptr) {
             continue;
@@ -1265,7 +1265,7 @@ void PreRefine_misc::_fixReturnArrayType(Function &o)
         _sem->getTypeDefaultValue(retTd->getType(), retTd));
     o.getStateTable()->declarations.push_back(retVar);
 
-    for (auto ret : retList) {
+    for (auto *ret : retList) {
         Value *returnedValue = ret->getValue();
         messageAssert(ret->isInBList(), "Unexpected return statement", ret, _sem);
         BList<Action>::iterator jt(ret);
@@ -1634,7 +1634,7 @@ auto PreRefine_misc::_fixAssignFromRecordValue(Assign *o) -> bool
         _trash.insert(o);
     }
 
-    for (auto toCheck : objToCheck) {
+    for (auto *toCheck : objToCheck) {
         toCheck->acceptVisitor(*this);
     }
 
@@ -1716,7 +1716,7 @@ void PreRefine_misc::_fixNonCompiletimeTemplates(View *o)
 
         // It is a ctor.
         // Add params with default values:
-        for (auto vtp : templates) {
+        for (auto *vtp : templates) {
             auto *p = new Parameter;
             p->setName(vtp->getName() + std::string("_"));
             p->setType(hif::copy(vtp->getType()));
@@ -1768,7 +1768,7 @@ void _mapRangesToNative(hif::System *o, hif::semantics::ILanguageSemantics *sem)
 
     hif::semantics::ILanguageSemantics *checkSem = hif::semantics::SystemCSemantics::getInstance();
 
-    for (auto r : list) {
+    for (auto *r : list) {
         if (r->getLeftBound() != nullptr) {
             hif::manipulation::mapToNative(r->getLeftBound(), sem, checkSem);
         }

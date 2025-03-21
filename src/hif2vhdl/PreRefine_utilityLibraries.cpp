@@ -30,28 +30,28 @@ namespace
 class PreRefine_utilityLibraries : public hif::GuideVisitor
 {
 public:
-    typedef std::set<LibraryDef *> LibraryDefSet;
+    using LibraryDefSet = std::set<LibraryDef *>;
 
     /// @brief Default constructor and destructor.
     PreRefine_utilityLibraries(System *root, hif::semantics::ILanguageSemantics *sem);
-    virtual ~PreRefine_utilityLibraries();
+    ~PreRefine_utilityLibraries() override;
 
-    virtual int visitContents(hif::Contents &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitSigned(hif::Signed &o);
-    virtual int visitSystem(hif::System &o);
-    virtual int visitUnsigned(hif::Unsigned &o);
-    virtual int visitView(hif::View &o);
+    auto visitContents(hif::Contents &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitSigned(hif::Signed &o) -> int override;
+    auto visitSystem(hif::System &o) -> int override;
+    auto visitUnsigned(hif::Unsigned &o) -> int override;
+    auto visitView(hif::View &o) -> int override;
 
     /// @brief Tells whether support libraries have been introduced.
-    bool hasIntroducedLibraries();
+    auto hasIntroducedLibraries() const -> bool;
 
     void addLibraryDefs();
 
 private:
     // Disabled.
-    PreRefine_utilityLibraries(const PreRefine_utilityLibraries &);
-    PreRefine_utilityLibraries &operator=(const PreRefine_utilityLibraries &);
+    PreRefine_utilityLibraries(const PreRefine_utilityLibraries &)                     = delete;
+    auto operator=(const PreRefine_utilityLibraries &) -> PreRefine_utilityLibraries & = delete;
 
     /// @name Support creation common methods.
     //@{
@@ -65,10 +65,10 @@ private:
     System *_root;
 
     /// @brief The current scope (View) where library references will be added.
-    Object *_scope;
+    Object *_scope{nullptr};
 
     /// @brief Tells whether at least a library reference has been added.
-    bool _introducedLibraries;
+    bool _introducedLibraries{false};
 
     LibraryDefSet _libraryDefSet;
 
@@ -78,8 +78,6 @@ private:
 
 PreRefine_utilityLibraries::PreRefine_utilityLibraries(System *root, hif::semantics::ILanguageSemantics *sem)
     : _root(root)
-    , _scope(nullptr)
-    , _introducedLibraries(false)
     , _libraryDefSet()
     , _sem(sem)
     , _factory(sem)
@@ -92,16 +90,16 @@ PreRefine_utilityLibraries::~PreRefine_utilityLibraries()
     // ntd
 }
 
-bool PreRefine_utilityLibraries::hasIntroducedLibraries() { return _introducedLibraries; }
+auto PreRefine_utilityLibraries::hasIntroducedLibraries() const -> bool { return _introducedLibraries; }
 
 void PreRefine_utilityLibraries::addLibraryDefs()
 {
-    for (LibraryDefSet::iterator i = _libraryDefSet.begin(); i != _libraryDefSet.end(); ++i) {
-        hif::manipulation::addUniqueObject(*i, _root->libraryDefs);
+    for (auto i : _libraryDefSet) {
+        hif::manipulation::addUniqueObject(i, _root->libraryDefs);
     }
 }
 
-int PreRefine_utilityLibraries::visitContents(hif::Contents &o)
+auto PreRefine_utilityLibraries::visitContents(hif::Contents &o) -> int
 {
     //Object * restore = _scope;
     //_scope = &o;
@@ -110,7 +108,7 @@ int PreRefine_utilityLibraries::visitContents(hif::Contents &o)
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o)
+auto PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -119,14 +117,14 @@ int PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o)
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitSigned(Signed &o)
+auto PreRefine_utilityLibraries::visitSigned(Signed &o) -> int
 {
     GuideVisitor::visitSigned(o);
     _libraryDefSet.insert(_sem->getStandardLibrary("hif_vhdl_ieee_numeric_std"));
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitSystem(hif::System &o)
+auto PreRefine_utilityLibraries::visitSystem(hif::System &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -135,14 +133,14 @@ int PreRefine_utilityLibraries::visitSystem(hif::System &o)
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitUnsigned(Unsigned &o)
+auto PreRefine_utilityLibraries::visitUnsigned(Unsigned &o) -> int
 {
     GuideVisitor::visitUnsigned(o);
     _libraryDefSet.insert(_sem->getStandardLibrary("hif_vhdl_ieee_numeric_std"));
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitView(hif::View &o)
+auto PreRefine_utilityLibraries::visitView(hif::View &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -161,7 +159,7 @@ void PreRefine_utilityLibraries::_addHifLibrary(const char *c)
 
 } // namespace
 
-bool fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem)
+auto fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem) -> bool
 {
     hif::application_utils::initializeLogHeader("HIF2VHDL", "fixUtilityLibraries");
 
