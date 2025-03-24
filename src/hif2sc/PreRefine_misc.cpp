@@ -11,8 +11,6 @@
 
 #include "hif2sc/PreRefineMethods.hpp"
 
-using std::list;
-using std::string;
 using namespace hif;
 
 #ifdef __clang__

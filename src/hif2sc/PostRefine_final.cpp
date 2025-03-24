@@ -778,7 +778,7 @@ void FinalRefineVisitor::_addHifGlobalsLibrary(Object *declarationScope)
         return;
     }
 
-    Library *globLib = _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, nullptr, false, false);
+    Library *globLib = _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, "", false, false);
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
     addOpt.deleteIfNotAdded             = true;
@@ -890,7 +890,7 @@ void FinalRefineVisitor::_includeParentLibraryDefinitions(Object *o)
         return;
     }
 
-    Library *intLib = _factory.library(ld->getName(), nullptr, nullptr, false, false);
+    Library *intLib = _factory.library(ld->getName(), nullptr, "", false, false);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;

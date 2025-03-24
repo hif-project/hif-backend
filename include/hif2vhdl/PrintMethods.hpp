@@ -25,7 +25,7 @@ void printVHDL(hif::System *sys, const std::string &outDir);
 void splitFileName(const std::string &f, std::string &base, std::string &ext);
 
 /// @brief: Open and return stream associated to a specific file.
-int openFileStream(const std::string &name, std::ofstream *stream);
+auto openFileStream(const std::string &name, std::ofstream *stream) -> int;
 
 /// @brief: Close the output stream.
 void closeFileStream(std::ofstream *stream);

@@ -10,6 +10,8 @@
 #include <utility>
 
 #include "hif2verilog/PrintVerilogVisitor.hpp"
+
+#include <math.h>
 //#include "hif2verilog/PrintVerilogMethods.hpp"
 
 PrintVerilogVisitor::PrintVerilogVisitor(
@@ -28,9 +30,6 @@ PrintVerilogVisitor::~PrintVerilogVisitor()
 {
     // empty
 }
-
-// Namespace standard library
-using namespace std;
 
 // Namespace hifsuite
 using namespace hif;
@@ -717,9 +716,9 @@ auto PrintVerilogVisitor::visitLibraryDef(LibraryDef &o) -> int
         return 0;
     }
 
-    string libraryDefName = o.getName();
+    std::string libraryDefName = o.getName();
     // Create the subdirectory
-    string dirName        = _outDir + "/src/" + libraryDefName;
+    std::string dirName        = _outDir + "/src/" + libraryDefName;
     _createDirectory(dirName);
 
     // Initialize the output stream
@@ -989,9 +988,9 @@ auto PrintVerilogVisitor::visitRealValue(RealValue &o) -> int
 {
     *(_outstream) << o.getValue();
 
-    double whole;
-    double decimal;
-    decimal = std::modf(o.getValue(), &whole);
+    double whole   = NAN;
+    double decimal = NAN;
+    decimal        = std::modf(o.getValue(), &whole);
     if (_approximatelyEqual(decimal, 0.0, 0.001)) {
         //if (decimal == 0.0) {
         *(_outstream) << ".0";
@@ -1213,7 +1212,7 @@ auto PrintVerilogVisitor::visitSystem(System &o) -> int
     _currentSystem = &o;
 
     // Create the source directory
-    string dirName = _outDir + "/src";
+    std::string dirName = _outDir + "/src";
     _createDirectory(dirName);
 
     visitList(o.libraryDefs);
@@ -1469,13 +1468,13 @@ auto PrintVerilogVisitor::visitWithAlt(WithAlt &o) -> int
     return 0;
 }
 
-void PrintVerilogVisitor::_initializeOutstream(const string &fileName, const string &subdirectory)
+void PrintVerilogVisitor::_initializeOutstream(const std::string &fileName, const std::string &subdirectory)
 {
     if (fileName.empty()) {
         messageError("Empty file name", nullptr, nullptr);
     }
 
-    string path = _outDir + "/src/" + subdirectory + fileName;
+    std::string path = _outDir + "/src/" + subdirectory + fileName;
 
     {
         delete _outstream;
@@ -1487,12 +1486,12 @@ void PrintVerilogVisitor::_initializeOutstream(const string &fileName, const str
     //_printInitBanner();
 }
 
-auto PrintVerilogVisitor::_createDirectory(const string &dirName) -> int
+auto PrintVerilogVisitor::_createDirectory(const std::string &dirName) -> int
 {
     hif::application_utils::FileStructure dir(dirName);
     // Empty directory if it already exists.
     if (dir.exists()) {
-        vector<string> fileList = dir.list();
+        std::vector<std::string> fileList = dir.list();
         for (auto &it : fileList) {
             hif::application_utils::FileStructure fileIn(it);
             fileIn.rmfile_weak();
@@ -1668,7 +1667,7 @@ void PrintVerilogVisitor::_printPortDirection(PortDirection dir)
 void PrintVerilogVisitor::_printLibraries(BList<Library> &libraries)
 {
     bool libDecl = false;
-    string libraryName;
+    std::string libraryName;
 
     // First print the eventual IEEE libraries
     for (BList<Library>::iterator it = libraries.begin(); it != libraries.end(); ++it) {
@@ -1733,7 +1732,7 @@ auto PrintVerilogVisitor::_printFileVariable(Variable *o) -> bool
 
 auto PrintVerilogVisitor::_printAssertStatement(ProcedureCall *o) -> bool
 {
-    // void ASSERT(bool CONDITION, string REPORT = "", severity_level LEVEL = NOTE)
+    // void ASSERT(bool CONDITION, std::string REPORT = std::string(), severity_level LEVEL = NOTE)
 
     if (o->getName() != "assert") {
         return false;

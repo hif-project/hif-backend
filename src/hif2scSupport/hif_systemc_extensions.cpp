@@ -46,9 +46,9 @@ auto hif_mod(const long long int a, const long long int n) -> long long int
     if (a >= 0LL && n >= 0LL) {
         return a % n;
     }
-    if (a < 0ll && n < 0ll) {
+    if (a < 0LL && n < 0LL) {
         return -((-a) % (-n));
-    } else if (a < 0ll && n >= 0ll) {
+    } if (a < 0ll && n >= 0ll) {
         return ((n - ((-a) % (n))) % n);
     } else //if(a >= 0 && n < 0)
     {
@@ -125,9 +125,9 @@ auto hif_caseXZ(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2, co
     if (param1 == param2) {
         return true;
     }
-    if (param1 == 'Z' || param2 == 'Z')
+    if (param1 == 'Z' || param2 == 'Z') {
         return true;
-    else if (param3 && (param1 == 'X' || param2 == 'X'))
+    } if (param3 && (param1 == 'X' || param2 == 'X'))
         return true;
 
     return false;

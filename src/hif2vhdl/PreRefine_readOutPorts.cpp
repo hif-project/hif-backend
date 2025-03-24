@@ -107,7 +107,7 @@ auto PreRefine_readOutPorts::visitPort(Port &o) -> int
 
 auto PreRefine_readOutPorts::_needFix(ObjectList &list) -> bool
 {
-    for (auto it : list) {
+    for (auto *it : list) {
         if (hif::manipulation::isInLeftHandSide(it)) {
             continue;
         }
@@ -136,7 +136,7 @@ void PreRefine_readOutPorts::_doFix(Port *p, View *view, ObjectList &list)
 
     hif::semantics::ResetDeclarationsOptions ropt;
     ropt.onlyCurrent = true;
-    for (auto it : list) {
+    for (auto *it : list) {
         objectSetName(it, n);
         hif::semantics::resetDeclarations(it, ropt);
     }

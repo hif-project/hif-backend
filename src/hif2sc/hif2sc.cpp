@@ -39,13 +39,6 @@
 #include "hif2sc/hif2scParseLine.hpp"
 
 /////////////////////////////////////////
-// Namespaces
-/////////////////////////////////////////
-
-using namespace hif;
-using std::string;
-
-/////////////////////////////////////////
 // Utility functions prototypes
 /////////////////////////////////////////
 
@@ -62,7 +55,7 @@ void perform_post_refinement(hif::System &o, hif2scParseLine &cLine);
 void perform_code_generation(hif::System &o, hif2scParseLine &cLine);
 
 /// @brief Called on a stable system, perform all checks.
-void checkStep(System *s, const std::string &stepName, bool isFixed);
+void checkStep(hif::System *s, const std::string &stepName, bool isFixed);
 
 /// @brief Generate the step name.
 auto getStepName(const std::string & /*n*/) -> std::string;
@@ -75,27 +68,38 @@ namespace
 
 hif::application_utils::StepFileManager _stepFileManager;
 
-void _addScCoreLibrary(Object *ref, hif::semantics::ILanguageSemantics *sem)
+void _addScCoreLibrary(hif::Object *ref, hif::semantics::ILanguageSemantics *sem)
 {
-    // Add sc_core librarydef and library
-    LibraryDef *ld = sem->getStandardLibrary("hif_systemc_sc_core");
-    auto *sys      = dynamic_cast<System *>(ref);
+    // So, now we need to add sc_core librarydef and library.
+
+    // Get the library definition.
+    auto ld  = sem->getStandardLibrary("hif_systemc_sc_core");
+    // Cast the reference to a system.
+    auto sys = dynamic_cast<hif::System *>(ref);
+    // If the reference is not a system, get the nearest parent system.
     if (sys == nullptr) {
-        sys = hif::getNearestParent<System>(ref);
+        sys = hif::getNearestParent<hif::System>(ref);
     }
+    // Prepare the options for adding the library definition.
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
     addOpt.position                     = 0;
+    // Add the library definition to the system.
     hif::manipulation::addUniqueObject(ld, sys->libraryDefs, addOpt);
-    hif::HifFactory f(sem);
-    Library *refl = f.library("hif_systemc_sc_core", nullptr, "", false, true);
-    Scope *c      = hif::getNearestScope(ref, false, true, false);
-    if (dynamic_cast<Contents *>(c) != nullptr) {
-        c = dynamic_cast<Scope *>(c->getParent());
+    // Prepare the HIF factory.
+    hif::HifFactory factory(sem);
+    // Create a library object.
+    auto refl     = factory.library("hif_systemc_sc_core", nullptr, "", false, true);
+    // Get the nearest scope.
+    auto contents = hif::getNearestScope(ref, false, true, false);
+    if (dynamic_cast<hif::Contents *>(contents) != nullptr) {
+        contents = dynamic_cast<hif::Scope *>(contents->getParent());
     }
+    // Prepare the options for adding the library.
     hif::manipulation::AddUniqueObjectOptions addOpt2;
     addOpt2.deleteIfNotAdded = true;
-    hif::manipulation::addUniqueObject(refl, c, addOpt2);
+    // Add the library to the contents.
+    hif::manipulation::addUniqueObject(refl, contents, addOpt2);
 }
 
 } // namespace
@@ -124,7 +128,7 @@ auto main(int argc, char *argv[]) -> int
     }
 
     // Read the system description.
-    System *pSys = dynamic_cast<System *>(hif::readFile(inputFile));
+    hif::System *pSys = dynamic_cast<hif::System *>(hif::readFile(inputFile));
 
     // Check the parsing.
     if (pSys == nullptr) {
@@ -190,8 +194,8 @@ auto main(int argc, char *argv[]) -> int
 
     // Preliminary check on directory structure
     messageInfo("Generating output directory structure");
-    auto *pdsRepository = new hif::backends::CHifDirStruct(*pSys, cLine.getOutputDirectory().c_str());
-    auto status         = pdsRepository->Check();
+    auto pdsRepository = new hif::backends::CHifDirStruct(*pSys, cLine.getOutputDirectory().c_str());
+    auto status        = pdsRepository->Check();
     if ((status != hif::backends::CHifDirStruct::DST_OK) && (status != hif::backends::CHifDirStruct::DST_ALRDY_EXIST)) {
         pdsRepository->printError(status);
     }
@@ -229,9 +233,9 @@ auto main(int argc, char *argv[]) -> int
 /////////////////////////////////////////
 
 #ifdef NDEBUG
-void checkStep(System *s, const std::string &stepName, const bool /*isFixed*/)
+void checkStep(hif::System *s, const std::string &stepName, const bool /*isFixed*/)
 #else
-void checkStep(System *s, const std::string &stepName, const bool isFixed)
+void checkStep(hif::System *s, const std::string &stepName, const bool isFixed)
 #endif
 {
 
@@ -243,7 +247,7 @@ void checkStep(System *s, const std::string &stepName, const bool isFixed)
     if (isFixed) {
         messageInfo(("   Checking step: " + stepName));
 
-        hif::semantics::ILanguageSemantics *hifLanguage = hif::semantics::HIFSemantics::getInstance();
+        auto hifLanguage = hif::semantics::HIFSemantics::getInstance();
 
         hif::semantics::CheckOptions opt;
         opt.checkFlushingCaches = true;
@@ -274,13 +278,13 @@ auto getStepName(const std::string &n) -> std::string
     return s.str();
 }
 
-void perform_pre_refinement(System &o, hif2scParseLine &cLine)
+void perform_pre_refinement(hif::System &o, hif2scParseLine &cLine)
 {
     messageInfo("Performing refinement steps...");
 
-    hif::semantics::ILanguageSemantics *hifSem = hif::semantics::HIFSemantics::getInstance();
+    auto hifSem = hif::semantics::HIFSemantics::getInstance();
 
-    hif::semantics::ILanguageSemantics *sysCSem = hif::semantics::SystemCSemantics::getInstance();
+    auto sysCSem = hif::semantics::SystemCSemantics::getInstance();
 
     // ////////////////////////////
     // Fix nested declarations
@@ -400,15 +404,15 @@ void perform_pre_refinement(System &o, hif2scParseLine &cLine)
     }
 }
 
-void perform_post_refinement(System &o, hif2scParseLine &cLine)
+void perform_post_refinement(hif::System &o, hif2scParseLine &cLine)
 {
-    hif::semantics::ILanguageSemantics *sysCSem = hif::semantics::SystemCSemantics::getInstance();
+    auto sysCSem = hif::semantics::SystemCSemantics::getInstance();
 
     // ////////////////////////////
     // Adding sc_core library
     // ////////////////////////////
     if (!cLine.useHDTLib()) {
-        LibraryDef *coreLib = sysCSem->getStandardLibrary("sc_core");
+        auto coreLib = sysCSem->getStandardLibrary("sc_core");
         hif::manipulation::AddUniqueObjectOptions addOpt;
         addOpt.equalsOptions.checkOnlyNames = true;
         addOpt.position                     = 0;
@@ -450,7 +454,7 @@ void perform_post_refinement(System &o, hif2scParseLine &cLine)
     messageInfo("Refinement steps completed.");
 }
 
-void perform_code_generation(System &o, hif2scParseLine &cLine)
+void perform_code_generation(hif::System &o, hif2scParseLine &cLine)
 {
     // Note: do not change order of visitors
     messageInfo("Generating code...");
@@ -461,7 +465,7 @@ void perform_code_generation(System &o, hif2scParseLine &cLine)
     _stepFileManager.printStep(&o, "Final_tree");
 #endif
 
-    hif::semantics::ILanguageSemantics *syscSem = hif::semantics::SystemCSemantics::getInstance();
+    auto syscSem = hif::semantics::SystemCSemantics::getInstance();
 
     PrintSystemCVisitor::ConstTemplateMap ctmList;
     collectConstTemplates(&o, ctmList, syscSem);

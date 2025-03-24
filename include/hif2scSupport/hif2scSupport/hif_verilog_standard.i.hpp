@@ -31,7 +31,7 @@ auto hif_verilog_iterated_concat(sc_dt::sc_lv<size> expression) -> sc_dt::sc_lv<
 }
 
 template <size_t L, int W>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     sc_dt::sc_bv<W> (&memory_name)[L],
     const int start_addr,
@@ -90,7 +90,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L, int W>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     sc_dt::sc_lv<W> (&memory_name)[L],
     const int start_addr,
@@ -149,7 +149,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     uint8_t (&memory_name)[L],
     const int start_addr,
@@ -205,7 +205,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     uint16_t (&memory_name)[L],
     const int start_addr,
@@ -261,7 +261,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     uint32_t (&memory_name)[L],
     const int start_addr,
@@ -317,7 +317,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     uint64_t (&memory_name)[L],
     const int start_addr,
@@ -373,7 +373,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     int8_t (&memory_name)[L],
     const int start_addr,
@@ -429,7 +429,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     int16_t (&memory_name)[L],
     const int start_addr,
@@ -485,7 +485,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     int32_t (&memory_name)[L],
     const int start_addr,
@@ -541,7 +541,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     int64_t (&memory_name)[L],
     const int start_addr,
@@ -597,7 +597,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemb(
+void hif_verilog_system_readmemb(
     const std::string &file_name,
     bool (&memory_name)[L],
     const int start_addr,
@@ -653,7 +653,7 @@ void hif_verilog__system_readmemb(
 }
 
 template <size_t L, int W>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     sc_dt::sc_bv<W> (&memory_name)[L],
     const int start_addr,
@@ -713,7 +713,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L, int W>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     sc_dt::sc_lv<W> (&memory_name)[L],
     const int start_addr,
@@ -773,7 +773,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     uint8_t (&memory_name)[L],
     const int start_addr,
@@ -830,7 +830,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     uint16_t (&memory_name)[L],
     const int start_addr,
@@ -887,7 +887,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     uint32_t (&memory_name)[L],
     const int start_addr,
@@ -944,7 +944,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     uint64_t (&memory_name)[L],
     const int start_addr,
@@ -1001,7 +1001,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     int8_t (&memory_name)[L],
     const int start_addr,
@@ -1058,7 +1058,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     int16_t (&memory_name)[L],
     const int start_addr,
@@ -1115,7 +1115,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     int32_t (&memory_name)[L],
     const int start_addr,
@@ -1172,7 +1172,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     int64_t (&memory_name)[L],
     const int start_addr,
@@ -1229,7 +1229,7 @@ void hif_verilog__system_readmemh(
 }
 
 template <size_t L>
-void hif_verilog__system_readmemh(
+void hif_verilog_system_readmemh(
     const std::string &file_name,
     bool (&memory_name)[L],
     const int start_addr,

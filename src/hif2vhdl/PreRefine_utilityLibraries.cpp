@@ -94,7 +94,7 @@ auto PreRefine_utilityLibraries::hasIntroducedLibraries() const -> bool { return
 
 void PreRefine_utilityLibraries::addLibraryDefs()
 {
-    for (auto i : _libraryDefSet) {
+    for (auto *i : _libraryDefSet) {
         hif::manipulation::addUniqueObject(i, _root->libraryDefs);
     }
 }

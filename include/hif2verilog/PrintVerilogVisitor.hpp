@@ -12,192 +12,192 @@
 class PrintVerilogVisitor : public hif::GuideVisitor
 {
 public:
-    typedef std::set<hif::View *> ViewSet;
-    typedef std::map<hif::View *, ViewSet> ViewMap;
+    using ViewSet = std::set<hif::View *>;
+    using ViewMap = std::map<hif::View *, ViewSet>;
 
     PrintVerilogVisitor(hif::backends::IndentedStream *outstream, std::string baseName, std::string extension);
 
-    virtual ~PrintVerilogVisitor();
+    ~PrintVerilogVisitor() override;
 
-    virtual int visitAggregate(hif::Aggregate &o);
+    auto visitAggregate(hif::Aggregate &o) -> int override ;
 
-    virtual int visitAggregateAlt(hif::AggregateAlt &o);
+    auto visitAggregateAlt(hif::AggregateAlt &o) -> int override ;
 
-    virtual int visitAlias(hif::Alias &o);
+    auto visitAlias(hif::Alias &o) -> int override ;
 
-    virtual int visitArray(hif::Array &o);
+    auto visitArray(hif::Array &o) -> int override ;
 
-    virtual int visitAssign(hif::Assign &o);
+    auto visitAssign(hif::Assign &o) -> int override ;
 
-    virtual int visitBit(hif::Bit &o);
+    auto visitBit(hif::Bit &o) -> int override ;
 
-    virtual int visitBitValue(hif::BitValue &o);
+    auto visitBitValue(hif::BitValue &o) -> int override ;
 
-    virtual int visitBitvector(hif::Bitvector &o);
+    auto visitBitvector(hif::Bitvector &o) -> int override ;
 
-    virtual int visitBitvectorValue(hif::BitvectorValue &o);
+    auto visitBitvectorValue(hif::BitvectorValue &o) -> int override ;
 
-    virtual int visitBool(hif::Bool &o);
+    auto visitBool(hif::Bool &o) -> int override ;
 
-    virtual int visitBoolValue(hif::BoolValue &o);
+    auto visitBoolValue(hif::BoolValue &o) -> int override ;
 
-    virtual int visitBreak(hif::Break &o);
+    auto visitBreak(hif::Break &o) -> int override ;
 
-    virtual int visitCast(hif::Cast &o);
+    auto visitCast(hif::Cast &o) -> int override ;
 
-    virtual int visitChar(hif::Char &o);
+    auto visitChar(hif::Char &o) -> int override ;
 
-    virtual int visitCharValue(hif::CharValue &o);
+    auto visitCharValue(hif::CharValue &o) -> int override ;
 
-    virtual int visitConst(hif::Const &o);
+    auto visitConst(hif::Const &o) -> int override ;
 
-    virtual int visitContents(hif::Contents &o);
+    auto visitContents(hif::Contents &o) -> int override ;
 
-    virtual int visitContinue(hif::Continue &o);
+    auto visitContinue(hif::Continue &o) -> int override ;
 
-    virtual int visitDesignUnit(hif::DesignUnit &o);
+    auto visitDesignUnit(hif::DesignUnit &o) -> int override ;
 
-    virtual int visitEntity(hif::Entity &o);
+    auto visitEntity(hif::Entity &o) -> int override ;
 
-    virtual int visitEnum(hif::Enum &o);
+    auto visitEnum(hif::Enum &o) -> int override ;
 
-    virtual int visitEnumValue(hif::EnumValue &o);
+    auto visitEnumValue(hif::EnumValue &o) -> int override ;
 
-    virtual int visitEvent(hif::Event &o);
+    auto visitEvent(hif::Event &o) -> int override ;
 
-    virtual int visitExpression(hif::Expression &o);
+    auto visitExpression(hif::Expression &o) -> int override ;
 
-    virtual int visitField(hif::Field &o);
+    auto visitField(hif::Field &o) -> int override ;
 
-    virtual int visitFieldReference(hif::FieldReference &o);
+    auto visitFieldReference(hif::FieldReference &o) -> int override ;
 
-    virtual int visitFile(hif::File &o);
+    auto visitFile(hif::File &o) -> int override ;
 
-    virtual int visitFor(hif::For &o);
+    auto visitFor(hif::For &o) -> int override ;
 
-    virtual int visitFunction(hif::Function &o);
+    auto visitFunction(hif::Function &o) -> int override ;
 
-    virtual int visitFunctionCall(hif::FunctionCall &o);
+    auto visitFunctionCall(hif::FunctionCall &o) -> int override ;
 
-    virtual int visitForGenerate(hif::ForGenerate &o);
+    auto visitForGenerate(hif::ForGenerate &o) -> int override ;
 
-    virtual int visitGlobalAction(hif::GlobalAction &o);
+    auto visitGlobalAction(hif::GlobalAction &o) -> int override ;
 
-    virtual int visitIdentifier(hif::Identifier &o);
+    auto visitIdentifier(hif::Identifier &o) -> int override ;
 
-    virtual int visitIf(hif::If &o);
+    auto visitIf(hif::If &o) -> int override ;
 
-    virtual int visitIfAlt(hif::IfAlt &o);
+    auto visitIfAlt(hif::IfAlt &o) -> int override ;
 
-    virtual int visitIfGenerate(hif::IfGenerate &o);
+    auto visitIfGenerate(hif::IfGenerate &o) -> int override ;
 
-    virtual int visitInstance(hif::Instance &o);
+    auto visitInstance(hif::Instance &o) -> int override ;
 
-    virtual int visitInt(hif::Int &o);
+    auto visitInt(hif::Int &o) -> int override ;
 
-    virtual int visitIntValue(hif::IntValue &o);
+    auto visitIntValue(hif::IntValue &o) -> int override ;
 
-    virtual int visitLibrary(hif::Library &o);
+    auto visitLibrary(hif::Library &o) -> int override ;
 
-    virtual int visitLibraryDef(hif::LibraryDef &o);
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override ;
 
-    virtual int visitMember(hif::Member &o);
+    auto visitMember(hif::Member &o) -> int override ;
 
-    virtual int visitTransition(hif::Transition &o);
+    auto visitTransition(hif::Transition &o) -> int override ;
 
-    virtual int visitNull(hif::Null &o);
+    auto visitNull(hif::Null &o) -> int override ;
 
-    virtual int visitParameter(hif::Parameter &o);
+    auto visitParameter(hif::Parameter &o) -> int override ;
 
-    virtual int visitParameterAssign(hif::ParameterAssign &o);
+    auto visitParameterAssign(hif::ParameterAssign &o) -> int override ;
 
-    virtual int visitPointer(hif::Pointer &o);
+    auto visitPointer(hif::Pointer &o) -> int override ;
 
-    virtual int visitPortAssign(hif::PortAssign &o);
+    auto visitPortAssign(hif::PortAssign &o) -> int override ;
 
-    virtual int visitPort(hif::Port &o);
+    auto visitPort(hif::Port &o) -> int override ;
 
-    virtual int visitProcedure(hif::Procedure &o);
+    auto visitProcedure(hif::Procedure &o) -> int override ;
 
-    virtual int visitRange(hif::Range &o);
+    auto visitRange(hif::Range &o) -> int override ;
 
-    virtual int visitProcedureCall(hif::ProcedureCall &o);
+    auto visitProcedureCall(hif::ProcedureCall &o) -> int override ;
 
-    virtual int visitReal(hif::Real &o);
+    auto visitReal(hif::Real &o) -> int override ;
 
-    virtual int visitRealValue(hif::RealValue &o);
+    auto visitRealValue(hif::RealValue &o) -> int override ;
 
-    virtual int visitRecord(hif::Record &o);
+    auto visitRecord(hif::Record &o) -> int override ;
 
-    virtual int visitRecordValue(hif::RecordValue &o);
+    auto visitRecordValue(hif::RecordValue &o) -> int override ;
 
-    virtual int visitRecordValueAlt(hif::RecordValueAlt &o);
+    auto visitRecordValueAlt(hif::RecordValueAlt &o) -> int override ;
 
-    virtual int visitReference(hif::Reference &o);
+    auto visitReference(hif::Reference &o) -> int override ;
 
-    virtual int visitReturn(hif::Return &o);
+    auto visitReturn(hif::Return &o) -> int override ;
 
-    virtual int visitSignal(hif::Signal &o);
+    auto visitSignal(hif::Signal &o) -> int override ;
 
-    virtual int visitSigned(hif::Signed &o);
+    auto visitSigned(hif::Signed &o) -> int override ;
 
-    virtual int visitSlice(hif::Slice &o);
+    auto visitSlice(hif::Slice &o) -> int override ;
 
-    virtual int visitState(hif::State &o);
+    auto visitState(hif::State &o) -> int override ;
 
-    virtual int visitStateTable(hif::StateTable &o);
+    auto visitStateTable(hif::StateTable &o) -> int override ;
 
-    virtual int visitString(hif::String &o);
+    auto visitString(hif::String &o) -> int override ;
 
-    virtual int visitSystem(hif::System &o);
+    auto visitSystem(hif::System &o) -> int override ;
 
-    virtual int visitSwitch(hif::Switch &o);
+    auto visitSwitch(hif::Switch &o) -> int override ;
 
-    virtual int visitSwitchAlt(hif::SwitchAlt &o);
+    auto visitSwitchAlt(hif::SwitchAlt &o) -> int override ;
 
-    virtual int visitStringValue(hif::StringValue &o);
+    auto visitStringValue(hif::StringValue &o) -> int override ;
 
-    virtual int visitTime(hif::Time &o);
+    auto visitTime(hif::Time &o) -> int override ;
 
-    virtual int visitTimeValue(hif::TimeValue &o);
+    auto visitTimeValue(hif::TimeValue &o) -> int override ;
 
-    virtual int visitTypeDef(hif::TypeDef &o);
+    auto visitTypeDef(hif::TypeDef &o) -> int override ;
 
-    virtual int visitTypeReference(hif::TypeReference &o);
+    auto visitTypeReference(hif::TypeReference &o) -> int override ;
 
-    virtual int visitTypeTP(hif::TypeTP &o);
+    auto visitTypeTP(hif::TypeTP &o) -> int override ;
 
-    virtual int visitTypeTPAssign(hif::TypeTPAssign &o);
+    auto visitTypeTPAssign(hif::TypeTPAssign &o) -> int override ;
 
-    virtual int visitUnsigned(hif::Unsigned &o);
+    auto visitUnsigned(hif::Unsigned &o) -> int override ;
 
-    virtual int visitValueStatement(hif::ValueStatement &o);
+    auto visitValueStatement(hif::ValueStatement &o) -> int override ;
 
-    virtual int visitValueTP(hif::ValueTP &o);
+    auto visitValueTP(hif::ValueTP &o) -> int override ;
 
-    virtual int visitValueTPAssign(hif::ValueTPAssign &o);
+    auto visitValueTPAssign(hif::ValueTPAssign &o) -> int override ;
 
-    virtual int visitVariable(hif::Variable &o);
+    auto visitVariable(hif::Variable &o) -> int override ;
 
-    virtual int visitView(hif::View &o);
+    auto visitView(hif::View &o) -> int override ;
 
-    virtual int visitViewReference(hif::ViewReference &o);
+    auto visitViewReference(hif::ViewReference &o) -> int override ;
 
-    virtual int visitWait(hif::Wait &o);
+    auto visitWait(hif::Wait &o) -> int override ;
 
-    virtual int visitWhen(hif::When &o);
+    auto visitWhen(hif::When &o) -> int override ;
 
-    virtual int visitWhenAlt(hif::WhenAlt &o);
+    auto visitWhenAlt(hif::WhenAlt &o) -> int override ;
 
-    virtual int visitWhile(hif::While &o);
+    auto visitWhile(hif::While &o) -> int override ;
 
-    virtual int visitWith(hif::With &o); // includes VisitWithAlt.
-    virtual int visitWithAlt(hif::WithAlt &o);
+    auto visitWith(hif::With &o) -> int override ; // includes VisitWithAlt.
+    auto visitWithAlt(hif::WithAlt &o) -> int override ;
 
 private:
     PrintVerilogVisitor(const PrintVerilogVisitor &);
 
-    PrintVerilogVisitor &operator=(const PrintVerilogVisitor &);
+    auto operator=(const PrintVerilogVisitor &) -> PrintVerilogVisitor &;
 
     /// @brief The reference semantics.
     hif::semantics::ILanguageSemantics *_sem;
@@ -257,16 +257,16 @@ private:
     void _initializeOutstream(const std::string &fileName, const std::string &subdirectory);
 
     /// @brief Function to create the output directory.
-    static int _createDirectory(const std::string &dirName);
+    static auto _createDirectory(const std::string &dirName) -> int;
 
     /// @brief Function to check if it is a support declaration.
-    bool _isSupportDeclaration(hif::Declaration *d);
+    static auto _isSupportDeclaration(hif::Declaration *d) -> bool;
 
     /// @brief Function to check if starts with str.
-    static bool _startsWith(const std::string &str, const std::string &target);
+    static auto _startsWith(const std::string &str, const std::string &target) -> bool;
 
     /// @brief Function to check if ends with str.
-    static bool _endsWith(const std::string &str, const std::string &target);
+    static auto _endsWith(const std::string &str, const std::string &target) -> bool;
 
     /// @name Print a list of objects.
     /// @param list The list to be printed.
@@ -275,11 +275,11 @@ private:
     /// element.
     /// @{
 
-    template <class T> void _printList(hif::BList<T> &list, const char separator, const bool needNewLine);
+    template <class T> void _printList(hif::BList<T> &list, char separator, bool needNewLine);
 
-    template <class T> void _printList(hif::BList<T> &list, const std::string &separator, const bool needNewLine);
+    template <class T> void _printList(hif::BList<T> &list, const std::string &separator, bool needNewLine);
 
-    void _printList(hif::BList<hif::Object> &list, const std::string &separator, const bool needNewLine);
+    void _printList(hif::BList<hif::Object> &list, const std::string &separator, bool needNewLine);
 
     /// @}
 
@@ -299,13 +299,13 @@ private:
     void _printLibraries(hif::BList<hif::Library> &libraries);
 
     /// @brief Special printing for file variables.
-    bool _printFileVariable(hif::Variable *o);
+    auto _printFileVariable(hif::Variable *o) -> bool;
 
     /// @brief Special printing for assert statement.
-    bool _printAssertStatement(hif::ProcedureCall *o);
+    auto _printAssertStatement(hif::ProcedureCall *o) -> bool;
 
     /// @brief Floating point comparison.
-    static bool _approximatelyEqual(double a, double b, double epsilon);
+    static auto _approximatelyEqual(double a, double b, double epsilon) -> bool;
 
     /// @brief Processes all declarations within the given contents.
     /// @param o The contents containing declarations.

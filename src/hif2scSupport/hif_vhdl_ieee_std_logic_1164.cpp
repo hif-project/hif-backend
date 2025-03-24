@@ -63,8 +63,9 @@ auto hif_vhdl_to_bit(const sc_dt::sc_logic &s, const bool xmap) -> bool
     if (s == sc_dt::SC_LOGIC_1) {
         return true;
     }
-    if (s == sc_dt::SC_LOGIC_0)
+    if (s == sc_dt::SC_LOGIC_0) {
         return false;
+}
     return xmap;
 }
 

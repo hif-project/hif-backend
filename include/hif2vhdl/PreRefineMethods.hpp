@@ -10,7 +10,7 @@
 #include <hif/hif.hpp>
 
 /// @brief Add utility library definitions and references.
-bool fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem);
+auto fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem) -> bool;
 
 /// @brief In VHDL the names of identifiers can not contains '__' (double
 /// underscore) and have the underscore character as prefix.

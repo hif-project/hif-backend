@@ -16,10 +16,10 @@ namespace hif_vhdl_ieee_numeric_std
 /// @{
 
 HIF2SCSUPPORT_EXPORT
-int32_t hif_vhdl_to_integer_signed(const sc_dt::sc_lv_base &param1);
+auto hif_vhdl_to_integer_signed(const sc_dt::sc_lv_base &param1) -> int32_t;
 
 HIF2SCSUPPORT_EXPORT
-uint32_t hif_vhdl_to_integer_unsigned(const sc_dt::sc_lv_base &param1);
+auto hif_vhdl_to_integer_unsigned(const sc_dt::sc_lv_base &param1) -> uint32_t;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
@@ -35,10 +35,10 @@ template <int W> uint32_t hif_vhdl_to_integer_unsigned(const hdtlib::hl_lv_t<W> 
 /// @{
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_std_match(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2);
+auto hif_vhdl_std_match(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2) -> bool;
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_std_match(const sc_dt::sc_lv_base &param1, const sc_dt::sc_lv_base &param2);
+auto hif_vhdl_std_match(const sc_dt::sc_lv_base &param1, const sc_dt::sc_lv_base &param2) -> bool;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
@@ -54,7 +54,7 @@ template <int W> bool hif_vhdl_std_match(const hdtlib::hl_lv_t<W> &param1, const
 /// @name Arithmetic operators.
 /// @{
 
-template <int size> sc_dt::sc_lv<size> hif_vhdl__op_abs(sc_dt::sc_lv<size> arg);
+template <int size> auto hif_vhdl__op_abs(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<size>;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
@@ -67,21 +67,21 @@ template <int size> hdtlib::hl_lv_t<size> hif_vhdl__op_abs(hdtlib::hl_lv_t<size>
 /// @name Relational operators
 /// @{
 
-template <int size> bool hif_vhdl__op_eq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_eq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
-template <int size> bool hif_vhdl__op_neq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_neq_signed(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
-template <typename T, size_t size> bool hif_vhdl__op_eq_signed(T (&v1)[size], T (&v2)[size]);
+template <typename T, size_t size> auto hif_vhdl__op_eq_signed(T (&v1)[size], T (&v2)[size]) -> bool;
 
-template <typename T, size_t size> bool hif_vhdl__op_neq_signed(T (&v1)[size], T (&v2)[size]);
+template <typename T, size_t size> auto hif_vhdl__op_neq_signed(T (&v1)[size], T (&v2)[size]) -> bool;
 
-template <int size> bool hif_vhdl__op_eq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_eq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
-template <int size> bool hif_vhdl__op_neq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_neq_unsigned(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
-template <typename T, size_t size> bool hif_vhdl__op_eq_unsigned(T (&v1)[size], T (&v2)[size]);
+template <typename T, size_t size> auto hif_vhdl__op_eq_unsigned(T (&v1)[size], T (&v2)[size]) -> bool;
 
-template <typename T, size_t size> bool hif_vhdl__op_neq_unsigned(T (&v1)[size], T (&v2)[size]);
+template <typename T, size_t size> auto hif_vhdl__op_neq_unsigned(T (&v1)[size], T (&v2)[size]) -> bool;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 

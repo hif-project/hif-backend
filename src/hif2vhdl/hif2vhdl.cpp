@@ -44,7 +44,6 @@
 /////////////////////////////////////////
 
 using namespace hif;
-using std::string;
 
 /////////////////////////////////////////
 // Utility functions prototypes
@@ -100,7 +99,7 @@ auto main(int argc, char *argv[]) -> int
     if (cLine.isPrintOnly()) {
         ReadHifOptions opt;
         opt.sem      = hif::semantics::VHDLSemantics::getInstance();
-        System *pSys = dynamic_cast<System *>(hif::readFile(cLine.getFiles().front(), opt));
+        auto *pSys = dynamic_cast<System *>(hif::readFile(cLine.getFiles().front(), opt));
 
         perform_code_generation(*pSys, cLine.getOutputDirectory());
         return 0;
@@ -191,9 +190,9 @@ auto main(int argc, char *argv[]) -> int
     delete pSys;
 
     // Command done
-    string command;
+    std::string command;
     for (int i = 0; i < argc; i++) {
-        command += string(argv[i]) + " ";
+        command += std::string(argv[i]) + " ";
     }
     messageInfo(" -- Command \"" + command + "\" Done --");
 

@@ -23,11 +23,11 @@ enum hif_vhdl_severity_level { hif_vhdl_note, hif_vhdl_warning, hif_vhdl_error, 
 
 // hif_vhdl_time_units --> sc_core::sc_time_unit
 
-typedef sc_core::sc_time hif_vhdl_delay_length;
+using hif_vhdl_delay_length = sc_core::sc_time;
 
 enum hif_vhdl_file_open_kind { hif_vhdl_read_mode, hif_vhdl_write_mode, hif_vhdl_append_mode };
 
-enum hif_vhdl_file_open_status { hif_vhdl_open_ok, hif_vhdl_status_error, hif_vhdl_name_error, hif_vhdl_mode_error };
+enum hif_vhdl_file_open_status { hif_vhdl__open_ok, hif_vhdl_status_error, hif_vhdl_name_error, hif_vhdl_mode_error };
 
 // ///////////////////////////////////////////////////////////////////
 // Methods
@@ -35,12 +35,12 @@ enum hif_vhdl_file_open_status { hif_vhdl_open_ok, hif_vhdl_status_error, hif_vh
 
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_assert(
-    const bool condition,
+    bool condition,
     const std::string &report           = std::string(),
-    const hif_vhdl_severity_level level = hif_vhdl_error);
+    hif_vhdl_severity_level level = hif_vhdl_error);
 
 HIF2SCSUPPORT_EXPORT
-long long int hif_vhdl_castRealToInt(double param, int size, bool sign);
+auto hif_vhdl_castRealToInt(double param, int size, bool sign) -> long long int;
 
 // hif_vhdl_now() --> sc_core::sc_time_stamp()
 

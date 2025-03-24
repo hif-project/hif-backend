@@ -58,9 +58,9 @@ auto _toLogic(const std::string &s) -> char
     if (s == "1") {
         return '1';
     }
-    if (s == "0")
+    if (s == "0") {
         return '0';
-    else if (s == "x" || s == "X")
+    } if (s == "x" || s == "X")
         return 'X';
     else if (s == "z" || s == "Z")
         return 'Z';

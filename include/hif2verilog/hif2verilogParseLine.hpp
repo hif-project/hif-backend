@@ -13,11 +13,11 @@ class hif2verilogParseLine : public hif::application_utils::CommandLineParser
 {
 public:
     hif2verilogParseLine(int argc, char **argv);
-    ~hif2verilogParseLine();
+    ~hif2verilogParseLine() override;
 
 private:
     void _validateArguments();
 
     hif2verilogParseLine(const hif2verilogParseLine &);
-    hif2verilogParseLine &operator=(const hif2verilogParseLine &);
+    auto operator=(const hif2verilogParseLine &) -> hif2verilogParseLine &;
 };

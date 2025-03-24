@@ -10,7 +10,6 @@
 #include "hif2vhdl/PreRefineMethods.hpp"
 
 using namespace hif;
-using std::string;
 
 namespace
 { // anon.namespace
@@ -39,9 +38,9 @@ private:
 
     DeclarationsMap _declarationsMap;
 
-    auto _analyzeString(const std::string &n) -> std::string;
+    static auto _analyzeString(const std::string &n) -> std::string;
 
-    static auto _replaceFirstUnderscore(std::string nameStr) -> std::string;
+    static auto _replaceFirstUnderscore(const std::string &nameStr) -> std::string;
 
     static auto _replaceDoubleUnderscore(std::string nameStr) -> std::string;
 };
@@ -133,12 +132,10 @@ auto PreRefine_identifierNames::AfterVisit(Object &o) -> int
 
 auto PreRefine_identifierNames::_analyzeString(const std::string &n) -> std::string
 {
-    std::string nameStr = _replaceFirstUnderscore(n);
-
-    return _replaceDoubleUnderscore(nameStr);
+    return _replaceDoubleUnderscore(_replaceFirstUnderscore(n));
 }
 
-auto PreRefine_identifierNames::_replaceFirstUnderscore(string nameStr) -> string
+auto PreRefine_identifierNames::_replaceFirstUnderscore(const std::string &nameStr) -> std::string
 {
     if (!nameStr.empty()) {
         if (nameStr.at(0) == '_') {
@@ -148,7 +145,7 @@ auto PreRefine_identifierNames::_replaceFirstUnderscore(string nameStr) -> strin
     return nameStr;
 }
 
-auto PreRefine_identifierNames::_replaceDoubleUnderscore(string nameStr) -> string
+auto PreRefine_identifierNames::_replaceDoubleUnderscore(std::string nameStr) -> std::string
 {
     if (!nameStr.empty()) {
         std::size_t found = nameStr.find("__");

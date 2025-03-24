@@ -351,9 +351,9 @@ auto hif_caseXZ(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const bool par
         if (s1[i] == s2[i]) {
             continue;
         }
-        if (s1[i] == 'Z' || s2[i] == 'Z')
+        if (s1[i] == 'Z' || s2[i] == 'Z') {
             continue;
-        else if (param3 && (s1[i] == 'X' || s2[i] == 'X'))
+        } if (param3 && (s1[i] == 'X' || s2[i] == 'X'))
             continue;
 
         return false;

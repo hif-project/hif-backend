@@ -15,8 +15,6 @@
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-using std::ofstream;
-using std::string;
 using namespace hif;
 
 namespace
@@ -300,17 +298,17 @@ auto getLanguage(LanguageID language) -> std::string
 {
     switch (language) {
     case hif::rtl:
-        return string("SystemC");
+        return std::string("SystemC");
     case hif::tlm:
-        return string("TLM2.0 SystemC");
+        return std::string("TLM2.0 SystemC");
     case hif::cpp:
-        return string("C++");
+        return std::string("C++");
     case hif::c:
-        return string("C");
+        return std::string("C");
     case hif::psl:
-        return string("PSL");
+        return std::string("PSL");
     case hif::ams:
-        return string("AMS");
+        return std::string("AMS");
     default:
         break;
     }

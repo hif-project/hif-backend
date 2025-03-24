@@ -44,7 +44,7 @@ private:
     /// on the kind of object).
     /// @param headerImplementation Used to distinguish between print of
     /// templated and non-templated components.
-    void _printImplementation(hif::Object &o, std::string fileName);
+    void _printImplementation(hif::Object &o, const std::string& fileName);
 
     /// @brief The output stream to write on.
     hif::backends::IndentedStream *_outstream{nullptr};
@@ -138,7 +138,7 @@ auto VerilogVisitor::visitSystem(System &o) -> int
     return 0;
 }
 
-void VerilogVisitor::_printImplementation(Object &o, std::string fileName)
+void VerilogVisitor::_printImplementation(Object &o, const std::string& fileName)
 {
     if (fileName.empty()) {
         return;

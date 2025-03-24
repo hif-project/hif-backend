@@ -29,8 +29,6 @@
 #endif
 #endif
 
-using std::endl;
-using std::string;
 using namespace hif;
 
 namespace
@@ -719,12 +717,13 @@ auto PrintSystemCVisitor::visitRecordValue(RecordValue &o) -> int
         messageAssert(tr != nullptr, "Expected typeref type", dd->getType(), _sem);
         tr->acceptVisitor(*this);
     }
-    PrintListOpt opt(
+    PrintListOpt opt{
         !_opt.insideInitList, // _mandatoryParen
         _opt.insideInitList,  // _mandatoryNoParen
         false,                // _angularParen
         dd == nullptr,        // _curlyParen?
-        true);                // _breakLine
+        true,                 // _breakLine
+    };
     _printList(o.alts, opt);
     return 0;
 }
@@ -793,7 +792,7 @@ auto PrintSystemCVisitor::visitTypeReference(TypeReference &o) -> int
 
     TypeDeclaration *tdect = hif::semantics::getDeclaration(&o, _sem);
 
-    PrintListOpt opt(false, false, true, false, false);
+    PrintListOpt opt{false, false, true, false, false};
     if (dynamic_cast<TypeDef *>(tdect) != nullptr) {
         auto *td = dynamic_cast<TypeDef *>(tdect);
         _printList(td->templateParameters, opt);
@@ -835,7 +834,7 @@ auto PrintSystemCVisitor::visitViewReference(ViewReference &o) -> int
 
     // Print the template-parameter assigns if present, or print empty
     // angulars if considering the View-TPs default values.
-    PrintListOpt opt(mandatoryParen, false, true, false, false);
+    PrintListOpt opt{mandatoryParen, false, true, false, false};
     _printList(o.templateParameterAssigns, opt);
 
     return 0;
@@ -865,11 +864,11 @@ auto PrintSystemCVisitor::visitAggregate(Aggregate &o) -> int
             return 0;
         }
         if (stringType != nullptr) {
-            // print string ctor: string(size, char)
+            // print std::string ctor: std::string(size, char)
             if (stringType->getSpanInformation() == nullptr) {
                 // dont print plain others! it will be a single char,
                 // leading to invalid ctor call!
-                // printing string concat!
+                // printing std::string concat!
                 *(_outstream) << "std::string() + (";
                 o.getOthers()->acceptVisitor(*this);
                 *(_outstream) << ")";
@@ -894,7 +893,7 @@ auto PrintSystemCVisitor::visitAggregate(Aggregate &o) -> int
 
     *(_outstream) << "{";
     _outstream->indent();
-    PrintListOpt opt(false, true, false, false, true);
+    PrintListOpt opt{false, true, false, false, true};
     _printList(o.alts, opt);
     _outstream->unindent();
     _outstream->newLine();
@@ -2105,7 +2104,7 @@ auto PrintSystemCVisitor::visitInstance(Instance &o) -> int
             auto *vrI  = dynamic_cast<ViewReference *>(o.getReferencedType());
             auto *trI  = dynamic_cast<TypeReference *>(o.getReferencedType());
             auto *libI = dynamic_cast<Library *>(o.getReferencedType());
-            string instName;
+            std::string instName;
             if (trI != nullptr) {
                 instName = trI->getName();
             } else if (vrI != nullptr) {
@@ -2361,7 +2360,7 @@ auto PrintSystemCVisitor::visitProcedure(Procedure &o) -> int
 
     if (!_opt.printImplementation) {
         if (du != nullptr && _isCppDestructor(&o)) {
-            string dtorName = string("~") + du->getName();
+            std::string dtorName = std::string("~") + du->getName();
             _printSubProgramDeclaration(o, dtorName);
             _outstream->newLine();
         } else if (_opt.printType) {
@@ -2875,7 +2874,7 @@ auto PrintSystemCVisitor::visitFor(For &o) -> int
         _restoreVisitMode(backup);
     } else if (!o.initValues.empty()) {
         // Initial assignment(s) are present. Print it/them.
-        PrintListOpt opt(false, true, false, false, false);
+        PrintListOpt opt{false, true, false, false, false};
         _printList(o.initValues, opt);
         *(_outstream) << ";";
     }
@@ -2887,7 +2886,7 @@ auto PrintSystemCVisitor::visitFor(For &o) -> int
     *(_outstream) << "; ";
 
     // Loop step actions.
-    PrintListOpt opt(false, true, false, false, false);
+    PrintListOpt opt{false, true, false, false, false};
     _printList(o.stepActions, opt);
 
     *(_outstream) << ")";
@@ -3532,7 +3531,7 @@ void PrintSystemCVisitor::_printIndividualInit(DataDeclaration *ddo, Array *base
                 _printTypeSpanSize(arrRange);
                 *(_outstream) << ");";
                 _outstream->newLine();
-                printVectorInitialization = "";
+                printVectorInitialization = std::string();
             }
 
             auto forIndex   = hif::NameTable::getInstance()->getFreshName("ind");
@@ -4088,7 +4087,7 @@ void PrintSystemCVisitor::_visitType(Type *type, bool different_management)
         return;
     }
     if (dynamic_cast<Int *>(type) != nullptr) {
-        _visitTypeBitField(static_cast<Int *>(type), different_management);
+        _visitTypeBitField(dynamic_cast<Int *>(type), different_management);
         return;
     }
 
@@ -4223,7 +4222,7 @@ void PrintSystemCVisitor::_printCppConstructor(FunctionCall &o)
         _restoreVisitMode(backup);
     }
 
-    PrintListOpt opt(independentValue, _opt.insideInitList, false, false, false);
+    PrintListOpt opt{independentValue, _opt.insideInitList, false, false, false};
     _printList(o.parameterAssigns, opt);
 
     // It can be a ctor + port binding description.
@@ -4296,7 +4295,7 @@ auto PrintSystemCVisitor::_printNativeFunctionCall_new(FunctionCall &o) -> bool
         auto *inst = dynamic_cast<Instance *>(ctor->getInstance());
         _printInstanceBindingStatements(inst, &o, true);
     } else if (o.templateParameterAssigns.size() == 1) {
-        // constructor of native types like string * l = new string("any");
+        // constructor of native types like std::string * l = new std::string("any");
         // ref. design: vhdl/gaisler/can_oc
         messageAssert(
             dynamic_cast<TypeTPAssign *>(o.templateParameterAssigns.front()), "Expected one template type parameter",
@@ -4415,14 +4414,14 @@ void PrintSystemCVisitor::_printNativeProcedureCall(ProcedureCall &o)
         if (dynamic_cast<Array *>(paBaseType) != nullptr) {
             *(_outstream) << "[] ";
         }
-        PrintListOpt opt(false, false, false, false, false);
+        PrintListOpt opt{false, false, false, false, false};
         _printList(o.parameterAssigns, opt);
     } else if (objectMatchName(&o, "free")) {
         messageAssert(!o.parameterAssigns.empty(), "Expected one parameter assign", &o, _sem);
         messageDebugAssert(o.parameterAssigns.size() == 1, "Unexpected parameterAssigns list size", &o, _sem);
 
         *(_outstream) << "free ";
-        PrintListOpt opt(true, false, false, false, false);
+        PrintListOpt opt{true, false, false, false, false};
         _printList(o.parameterAssigns, opt);
     } else if (objectMatchName(&o, "placement_new") && o.parameterAssigns.size() == 2) {
         // placement new: first parameter is the address
@@ -4704,7 +4703,7 @@ void PrintSystemCVisitor::_printModuleDeclaration(DesignUnit &o)
 
     if (_design_unit_scope.size() == 1) // Top module.
     {
-        _printCommonHeader(o.getName(), duView->getLanguageID());
+        _printCommonHeader(o.getName());
         _printHeaderGuardBegin(o.getName());
         _printIncludes(duView->libraries, &o);
 
@@ -4912,7 +4911,7 @@ auto PrintSystemCVisitor::_printTemplateParameters(BList<Declaration> &temp_para
         *(_outstream) << "template";
     }
 
-    PrintListOpt opt(true, false, true, false, false);
+    PrintListOpt opt{true, false, true, false, false};
     _printList(temp_params, opt);
 
     _restoreVisitMode(backup);
@@ -5172,7 +5171,8 @@ auto PrintSystemCVisitor::_getOperatorPrecedence(Object *v) -> PrintSystemCVisit
         dynamic_cast<Slice *>(v) != nullptr) {
         // Slices will be translated as function calls (.range())
         return prec_call;
-    } else if (dynamic_cast<FieldReference *>(v) != nullptr) {
+    }
+    if (dynamic_cast<FieldReference *>(v) != nullptr) {
         FieldReference *fr = static_cast<FieldReference *>(v);
 
         if (dynamic_cast<Instance *>(fr->getPrefix()) != nullptr) {
@@ -5298,7 +5298,6 @@ auto PrintSystemCVisitor::_isAMSPort(Port *o) -> bool
 
 void PrintSystemCVisitor::_printImplementationBegin(Object *obj)
 {
-    LanguageID lang = hif::rtl; // default
     std::string guardName;
 
     auto *du  = dynamic_cast<DesignUnit *>(obj);
@@ -5306,19 +5305,16 @@ void PrintSystemCVisitor::_printImplementationBegin(Object *obj)
     auto *sys = dynamic_cast<System *>(obj);
     if (du != nullptr) {
         messageDebugAssert(!du->views.empty() && du->views.size() == 1, "Unexpected number of view", du, _sem);
-        lang      = du->views.front()->getLanguageID();
         guardName = du->getName();
     } else if (ld != nullptr) {
-        lang      = ld->getLanguageID();
         guardName = ld->getName();
     } else if (sys != nullptr) {
-        lang      = sys->getLanguageID();
         guardName = NameTable::getInstance()->hifGlobals();
     } else {
         messageDebugAssert(false, "Unexpected case", obj, _sem);
     }
 
-    _printCommonHeader(guardName, lang);
+    _printCommonHeader(guardName);
 
     if (_opt.printImplementation_ihh) {
         if (ld != nullptr) {
@@ -5356,7 +5352,7 @@ void PrintSystemCVisitor::_printHeaderGuardBegin(const std::string &guardName)
         return;
     }
 
-    string suffix = (!_opt.printImplementation) ? "_HH" : "__I_HH";
+    std::string suffix = (!_opt.printImplementation) ? "_HH" : "__I_HH";
 
     std::string header = _capitalize(guardName.c_str());
 
@@ -5733,7 +5729,7 @@ void PrintSystemCVisitor::_printLibraryComponentInclusion(
     const std::string &guardName,
     const std::string &includeName)
 {
-    _printCommonHeader(guardName, ld->getLanguageID());
+    _printCommonHeader(guardName);
     _printHeaderGuardBegin(guardName);
 
     (*_outstream) << "#include \"" << includeName << "\"\n\n";
@@ -5981,10 +5977,10 @@ void PrintSystemCVisitor::_printConstants(BList<Declaration> &declarations, Obje
     }
 }
 
-void PrintSystemCVisitor::_printCommonHeader(const std::string &filename, LanguageID language)
+void PrintSystemCVisitor::_printCommonHeader(const std::string &filename)
 {
     *(_outstream) << "/// @file " << filename << "\n";
-    *(_outstream) << "/// @brief This " << getLanguage(language) << "file was generated by hif2sc.\n";
+    *(_outstream) << "/// @brief This file was generated by hif2sc.\n";
     *(_outstream) << "/// @details\n";
     *(_outstream) << "/// Generate with HIF version " << hif::application_utils::getHIFVersion() << ".\n\n";
 }
@@ -5997,7 +5993,7 @@ void PrintSystemCVisitor::_printLibraryDeclaration(LibraryDef &o)
     _outstream->setComment("// ", "// ", "");
 
     const std::string guardName = o.getName() + _dataTypesString;
-    _printCommonHeader(filename, o.getLanguageID());
+    _printCommonHeader(filename);
     _printHeaderGuardBegin(guardName);
 
     _printIncludes(o.libraries, nullptr);
@@ -6033,7 +6029,7 @@ void PrintSystemCVisitor::_printLibraryDeclaration(LibraryDef &o)
 
 void PrintSystemCVisitor::_printSystemDeclaration(System &o)
 {
-    _printCommonHeader(NameTable::getInstance()->hifGlobals(), o.getLanguageID());
+    _printCommonHeader(NameTable::getInstance()->hifGlobals());
     _printHeaderGuardBegin(NameTable::getInstance()->hifGlobals());
     _printIncludes(o.libraries, nullptr);
 
@@ -6123,13 +6119,15 @@ void PrintSystemCVisitor::_printDeclarations_H(
             continue;
         }
         if (dynamic_cast<Variable *>(*it) != nullptr) {
-            if (ld != nullptr && !insideNamespace)
+            if (ld != nullptr && !insideNamespace) {
                 continue;
+            }
             _opt.printType = false;
             *(_outstream) << "extern ";
         } else if (dynamic_cast<Signal *>(*it) != nullptr) {
-            if (ld != nullptr && !insideNamespace)
+            if (ld != nullptr && !insideNamespace) {
                 continue;
+            }
             _opt.printType = false;
             *(_outstream) << "extern ";
         } else {
@@ -6249,10 +6247,10 @@ auto PrintSystemCVisitor::_calculateInclude(Object *where, Library *lib) -> std:
     if (!includes.empty() && includes.back()->isStandard()) {
         // Printing "absolute" path for standard libs.
         // Ref design OSTC step 3.
-        dots = "";
+        dots = std::string();
     }
 
-    // Calculating descending string:
+    // Calculating descending std::string:
     Library *l = lib;
     std::string dirs;
     for (; i > 0; --i) {
@@ -6410,47 +6408,6 @@ void PrintSystemCVisitor::_printTypeSpanSize(Range *span)
     Value *tmp  = span->setLeftBound(size);
     size->acceptVisitor(*this);
     delete span->setLeftBound(tmp);
-}
-
-PrintSystemCVisitor::PrintListOpt::PrintListOpt()
-    : _mandatoryParen(false)
-    , _mandatoryNoParen(false)
-    , _angularParen(false)
-    , _curlyParen(false)
-    , _breakLine(false)
-{
-    // ntd
-}
-
-PrintSystemCVisitor::PrintListOpt::PrintListOpt(
-    const bool mandatoryParen,
-    const bool mandatoryNoParen,
-    const bool angularParen,
-    const bool curlyParen,
-    const bool breakLine)
-    : _mandatoryParen(mandatoryParen)
-    , _mandatoryNoParen(mandatoryNoParen)
-    , _angularParen(angularParen)
-    , _curlyParen(curlyParen)
-    , _breakLine(breakLine)
-{
-}
-
-PrintSystemCVisitor::PrintListOpt::PrintListOpt(const PrintListOpt &other)
-
-    = default;
-
-auto PrintSystemCVisitor::PrintListOpt::operator=(const PrintListOpt &other) -> PrintSystemCVisitor::PrintListOpt &
-{
-    if (this == &other) {
-        return *this;
-    }
-    this->_mandatoryParen   = other._mandatoryParen;
-    this->_mandatoryNoParen = other._mandatoryNoParen;
-    this->_angularParen     = other._angularParen;
-    this->_curlyParen       = other._curlyParen;
-    this->_breakLine        = other._breakLine;
-    return *this;
 }
 
 template <class T> void PrintSystemCVisitor::_printList(BList<T> &list, PrintListOpt opt)
@@ -6977,7 +6934,7 @@ template <typename T> auto PrintSystemCVisitor::_printCall(T &o) -> int
 
     *(_outstream) << o.getName();
 
-    PrintListOpt opt(false, false, true, false, false);
+    PrintListOpt opt{false, false, true, false, false};
     _printList(o.templateParameterAssigns, opt);
 
     opt._mandatoryParen = true;

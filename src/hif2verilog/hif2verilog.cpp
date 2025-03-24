@@ -23,7 +23,6 @@
 #include "hif2verilog/hif2verilogParseLine.hpp"
 
 using namespace hif;
-using std::string;
 
 /////////////////////////////////////////
 // Utility functions prototypes
@@ -196,9 +195,9 @@ auto main(int argc, char *argv[]) -> int
     //delete pSys;
 
     // Command done
-    string command;
+    std::string command;
     for (int i = 0; i < argc; i++) {
-        command += string(argv[i]) + " ";
+        command += std::string(argv[i]) + " ";
     }
     messageInfo(" -- Command \"" + command + "\" Done --");
 

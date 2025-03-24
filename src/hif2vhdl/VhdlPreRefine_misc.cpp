@@ -368,7 +368,7 @@ auto PreRefine_misc::visitSystem(System &o) -> int
 
     for (BList<Declaration>::iterator i = ld->declarations.begin(); i != ld->declarations.end(); ++i) {
         Declaration *d = *i;
-        for (auto obj : _refMap[d]) {
+        for (auto *obj : _refMap[d]) {
             if (hif::getNearestParent<LibraryDef>(obj) == ld) {
                 continue;
             }
@@ -527,12 +527,12 @@ auto PreRefine_misc::visitWhen(When &o) -> int
             if (vtp != nullptr) {
                 ValueTP *np = hif::copy(vtp);
                 f->templateParameters.push_back(np);
-                ValueTPAssign *pa = new ValueTPAssign();
+                auto *pa = new ValueTPAssign();
                 pa->setName(np->getName());
                 pa->setValue(new Identifier(np->getName()));
                 fc->templateParameterAssigns.push_back(pa);
                 continue;
-            } else if (v != nullptr) {
+            } if (v != nullptr) {
                 Parameter *np = new Parameter();
                 np->setType(hif::copy(v->getType()));
                 np->setName(v->getName());
@@ -617,7 +617,7 @@ auto PreRefine_misc::_buildSensitivityCondition(
 {
     using hif::analysis::ProcessInfos;
 
-    for (auto ref : refs) {
+    for (auto *ref : refs) {
         if (ref == skipReset) {
             continue;
         }

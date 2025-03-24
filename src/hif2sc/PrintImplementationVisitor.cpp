@@ -9,9 +9,6 @@
 
 #include "hif2sc/PrintMethods.hpp"
 
-using std::endl;
-using std::ofstream;
-using std::string;
 using namespace hif;
 
 namespace
@@ -51,7 +48,7 @@ private:
     /// on the kind of object).
     /// @param headerImplementation Used to distinguish between print of
     /// templated and non-templated components.
-    void _printImplementation(hif::Object &o, const string &fileName, bool headerImplementation);
+    void _printImplementation(hif::Object &o, const std::string &fileName, bool headerImplementation);
 
     auto _getSourceExtensionByLanguage(Object *obj) -> std::string;
     auto _getSourceFilename(
@@ -70,7 +67,7 @@ private:
 
     /// @brief The main output directory, used to create the directory hierarchy
     /// related to this HIF tree.
-    string _outdirName;
+    std::string _outdirName;
 
     /// @name Flags related to nested components.
     //@{
@@ -203,7 +200,7 @@ auto PrintImplementationVisitor::visitSystem(System &o) -> int
     return 0;
 }
 
-void PrintImplementationVisitor::_printImplementation(Object &o, const string &fileName, bool headerImplementation)
+void PrintImplementationVisitor::_printImplementation(Object &o, const std::string &fileName, bool headerImplementation)
 {
     if (fileName.empty()) {
         return;
@@ -271,7 +268,7 @@ auto PrintImplementationVisitor::_getSourceFilename(
     Object *obj,
     const std::string &fileName) -> std::string
 {
-    string ret;
+    std::string ret;
     if (obj == nullptr) {
         return ret;
     }
@@ -290,8 +287,8 @@ auto PrintImplementationVisitor::_getSourceFilename(
         return ret;
     }
     messageAssert(du != nullptr || !fileName.empty(), "Unexpected case", nullptr, nullptr);
-    string fn = (du == nullptr) ? fileName : du->getName();
-    string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
+    std::string fn = (du == nullptr) ? fileName : du->getName();
+    std::string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
 
     ret = outDir + "/src/" + ld + fn + _getSourceExtensionByLanguage(obj);
     return ret;
@@ -303,7 +300,7 @@ auto PrintImplementationVisitor::_getHeaderInlineFilename(
     Object *obj,
     const std::string &fileName) -> std::string
 {
-    string ret;
+    std::string ret;
     if (obj == nullptr) {
         return ret;
     }
@@ -323,8 +320,8 @@ auto PrintImplementationVisitor::_getHeaderInlineFilename(
     messageAssert(du != nullptr || !fileName.empty(), "Unexpected case", nullptr, nullptr);
 
     PrintSystemCVisitor vis(_ctmList);
-    string fn = (du == nullptr) ? fileName : du->getName();
-    string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
+    std::string fn = (du == nullptr) ? fileName : du->getName();
+    std::string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
 
     ret = outDir + "/inc/" + ld + fn + ".i.hpp";
     return ret;

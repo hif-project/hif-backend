@@ -9,10 +9,6 @@
 
 #include "hif2sc/PrintMethods.hpp"
 
-using std::endl;
-using std::ofstream;
-using std::string;
-using std::vector;
 using namespace hif;
 
 namespace
@@ -52,13 +48,13 @@ private:
     auto _printHeader(hif::DesignUnit &o) -> int;
     auto _printHeader(hif::LibraryDef &o) -> int;
     auto _printHeader(hif::System &o) -> int;
-    auto _printHeader(hif::Object &o, const string &fileName) -> int;
+    auto _printHeader(hif::Object &o, const std::string &fileName) -> int;
 
     //@}
 
-    static auto _createDirectory(const string &dirName) -> int;
+    static auto _createDirectory(const std::string &dirName) -> int;
     static auto _createDirectories(
-        const string &outdirName,
+        const std::string &outdirName,
         const std::string &libDefName,
         PrintSystemCVisitor::ConstTemplateMap &ctmList) -> int;
     auto _getHeaderExtensionByLanguage(Object *obj) -> std::string;
@@ -73,7 +69,7 @@ private:
     /// @brief The main output directory, used to create the directory hierarchy
     /// related to this HIF tree.
     ///
-    string _outdirName;
+    std::string _outdirName;
 
     /// @name The fields related to nested components.
     //@{
@@ -186,14 +182,14 @@ auto PrintHeaderVisitor::_printHeader(DesignUnit &o) -> int
     }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(duView->getLanguageID()) + " code for unit " + o.getName() + ".");
+    messageInfo(std::string("Generating ") + getLanguage(duView->getLanguageID()) + " code for unit " + o.getName() + ".");
 
     // Note: directories have already been created.
     std::string ldName;
     if (_currentLibraryDef != nullptr) {
         ldName = _currentLibraryDef->getName();
     }
-    string fileName = _getFileName(_outdirName, ldName, DUName, duView);
+    std::string fileName = _getFileName(_outdirName, ldName, DUName, duView);
     _printHeader(o, fileName);
 
     return 0;
@@ -212,9 +208,9 @@ auto PrintHeaderVisitor::_printHeader(LibraryDef &o) -> int
     }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(o.getLanguageID()) + " code for library " + o.getName() + ".");
+    messageInfo(std::string("Generating ") + getLanguage(o.getLanguageID()) + " code for library " + o.getName() + ".");
 
-    string fileName = _getFileName(_outdirName, ldName, ldName, &o);
+    std::string fileName = _getFileName(_outdirName, ldName, ldName, &o);
     _printHeader(o, fileName);
 
     return 0;
@@ -232,19 +228,19 @@ auto PrintHeaderVisitor::_printHeader(System &o) -> int
     }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(o.getLanguageID()) + " code for global declarations.");
+    messageInfo(std::string("Generating ") + getLanguage(o.getLanguageID()) + " code for global declarations.");
 
-    string fileName = _getFileName(_outdirName, nullptr, NameTable::getInstance()->hifGlobals(), &o);
+    std::string fileName = _getFileName(_outdirName, nullptr, NameTable::getInstance()->hifGlobals(), &o);
     _printHeader(o, fileName);
 
     return 0;
 }
 
-auto PrintHeaderVisitor::_printHeader(Object &o, const string &fileName) -> int
+auto PrintHeaderVisitor::_printHeader(Object &o, const std::string &fileName) -> int
 {
-    ofstream actualStream;
+    std::ofstream actualStream;
     if (hif::backends::openFileStream(fileName, &actualStream) == 0) {
-        messageError(string("Error writing file ") + fileName, nullptr, nullptr);
+        messageError(std::string("Error writing file ") + fileName, nullptr, nullptr);
     }
     actualStream.close();
 
@@ -276,12 +272,12 @@ auto PrintHeaderVisitor::_printHeader(Object &o, const string &fileName) -> int
     return 0;
 }
 
-auto PrintHeaderVisitor::_createDirectory(const string &dirName) -> int
+auto PrintHeaderVisitor::_createDirectory(const std::string &dirName) -> int
 {
     hif::application_utils::FileStructure dir(dirName);
     // Empty directory if it already exists.
     if (dir.exists()) {
-        vector<string> fileList = dir.list();
+        std::vector<std::string> fileList = dir.list();
         for (auto &it : fileList) {
             hif::application_utils::FileStructure fileIn(it);
             fileIn.rmfile_weak();
@@ -303,9 +299,9 @@ auto PrintHeaderVisitor::_createDirectories(
     PrintSystemCVisitor vis(ctmList);
     // To portability under Windows, directory paths must not end with a trailing '/' character.
     // Thus, we manage the concatenation directly in ld var.
-    string ld = (libDefName.empty()) ? "" : "/" + std::string(libDefName);
+    std::string ld = (libDefName.empty()) ? "" : "/" + std::string(libDefName);
 
-    string dirName = outdirName + "/inc" + ld;
+    std::string dirName = outdirName + "/inc" + ld;
     if (_createDirectory(dirName) == 0) {
         return 0;
     }
@@ -337,9 +333,9 @@ auto PrintHeaderVisitor::_getFileName(
     const std::string &fileName,
     Object *obj) -> std::string
 {
-    string ret;
-    string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
-    string fn = (fileName.empty()) ? "" : fileName;
+    std::string ret;
+    std::string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
+    std::string fn = (fileName.empty()) ? "" : fileName;
 
     ret = outDir + "/inc/" + ld + fn + _getHeaderExtensionByLanguage(obj);
     return ret;

@@ -17,6 +17,9 @@ public:
     hif2scParseLine(int argc, char *argv[]);
     ~hif2scParseLine() override;
 
+    hif2scParseLine(const hif2scParseLine &)                     = delete;
+    auto operator=(const hif2scParseLine &) -> hif2scParseLine & = delete;
+
     auto useResolved() const -> bool;
     auto useHDTLib() const -> bool;
     auto useCpp98() const -> bool;
@@ -27,7 +30,7 @@ public:
     auto getSourcesExtension() const -> std::string;
     auto getHeadersExtension() const -> std::string;
 
-protected:
+private:
     /// @brief Validates and configures the arguments.
     void _validateArguments();
 
@@ -40,8 +43,4 @@ protected:
     uint64_t _maxWhen;
     std::string _sourcesExtension;
     std::string _headersExtension;
-
-private:
-    hif2scParseLine(const hif2scParseLine &);
-    auto operator=(const hif2scParseLine &) -> hif2scParseLine &;
 };

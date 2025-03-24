@@ -205,8 +205,8 @@ auto FinalRefineVisitor::visitLibrary(Library &o) -> int
         libraryInclude = "std";
         package        = "textio";
     } else if (libName == "standard") {
-        libraryInclude = "";
-        package        = "";
+        libraryInclude = std::string();
+        package        = std::string();
     } else {
         messageError("Unexpected standard library (2)", &o, _sem);
     }
@@ -229,7 +229,7 @@ auto FinalRefineVisitor::visitLibrary(Library &o) -> int
         return 0;
     }
 
-    Library *l = _factory.library(libraryInclude, nullptr, nullptr, false, true);
+    Library *l = _factory.library(libraryInclude, nullptr, "", false, true);
     lib->setName(package);
     lib->setInstance(l);
 
@@ -258,9 +258,8 @@ void FinalRefineVisitor::doFixes()
 {
     for (auto &i : _libraryMap) {
         const std::string &libName = i.first;
-        for (auto j = i.second.begin(); j != i.second.end(); ++j) {
-            Scope *s     = *j;
-            Library *lib = _factory.library(libName, nullptr, nullptr, false, true);
+        for (auto s : i.second) {
+            Library *lib = _factory.library(libName, nullptr, "", false, true);
             hif::manipulation::AddUniqueObjectOptions addOpt;
             addOpt.equalsOptions.checkOnlyNames = true;
             addOpt.deleteIfNotAdded             = true;
@@ -277,7 +276,7 @@ void FinalRefineVisitor::doFixes()
         }
     }
 
-    for (auto fr : _frSet) {
+    for (auto *fr : _frSet) {
         auto *id = new Identifier(fr->getName());
         fr->replace(id);
         delete fr;

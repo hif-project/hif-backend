@@ -14,7 +14,6 @@
 #include "hif2sc/globals.hpp"
 
 using namespace hif;
-using std::stringstream;
 
 namespace
 {
@@ -1179,7 +1178,7 @@ auto PreRefine_utilityLibraries::_fixArrayConcat(Expression *o) -> bool
         "instance",
         _factory.viewRef(
             "hif_systemc_ArrayConcat", "cpp",
-            _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+            _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
             (_factory.templateTypeArgument("T", hif::copy(ae->getType())))),
         _factory.noParameterArguments(), _factory.noTemplateArguments());
 
@@ -1511,7 +1510,7 @@ auto PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *target, Val
 
     Value *tgtNarrow = hif::manipulation::narrowToCardinality(target, srcCard, _sem, false);
     if (tgtNarrow == nullptr) {
-        stringstream ss;
+        std::stringstream ss;
         ss << "Cannot calculate narrowToCardinality with cardinality=" << srcCard;
         messageDebug("Source value:", sourceValue, _sem);
         messageError(ss.str(), target, _sem);
@@ -1992,7 +1991,7 @@ auto PreRefine_utilityLibraries::_createAggregateCall(const std::string &callNam
         mainCall   = _factory.classConstructorCall(
             "instance",
             _factory.viewRef(
-                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
                 (_factory.templateTypeArgument("T", hif::copy(tArr->getType())),
                  _factory.templateValueArgument("size", sizeParam))),
             _factory.noParameterArguments(), _factory.noTemplateArguments());
@@ -2000,7 +1999,7 @@ auto PreRefine_utilityLibraries::_createAggregateCall(const std::string &callNam
         mainCall = _factory.classConstructorCall(
             "instance",
             _factory.viewRef(
-                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
                 (_factory.templateValueArgument("size", sizeParam))),
             _factory.noParameterArguments(), _factory.noTemplateArguments());
     }
@@ -2252,9 +2251,9 @@ auto PreRefine_utilityLibraries::_inSignedUnsignedRelatedLibrary(const std::stri
         if (func == "hif_vhdl_conv_integer") {
             return true;
         }
-        if (func == "hif_vhdl_conv_std_logic_vector")
+        if (func == "hif_vhdl_conv_std_logic_vector") {
             return true;
-        else if (func == "hif_vhdl_conv_unsigned")
+        } if (func == "hif_vhdl_conv_unsigned")
             return true;
         else if (func == "hif_vhdl_conv_signed")
             return true;
@@ -2276,9 +2275,9 @@ auto PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib,
         if (func == "hif_verilog__system_stop") {
             return true;
         }
-        if (func == "hif_verilog__system_stime")
+        if (func == "hif_verilog__system_stime") {
             return true;
-        else if (func == "hif_verilog__system_time")
+        } if (func == "hif_verilog__system_time")
             return true;
     } else if (lib == "hif_systemc_extensions") {
         if (func == "hif_logicEquals") {

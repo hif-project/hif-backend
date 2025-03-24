@@ -43,16 +43,15 @@ auto hif_vhdl_sign(double x) -> double
     if (x > 0.0) {
         return 1.0;
     }
-    if (x < 0.0)
+    if (x < 0.0) {
         return -1.0;
-    else
-        return 0.0;
+    }         return 0.0;
 }
 
 void hif_vhdl_uniform(int &seed1, int &seed2, double &x)
 {
-    int32_t z;
-    int32_t k;
+    int32_t z = 0;
+    int32_t k = 0;
 
     k     = seed1 / 53668;
     seed1 = 40014 * (seed1 - k * 53668) - k * 12211;

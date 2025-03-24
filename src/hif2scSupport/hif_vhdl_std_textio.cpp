@@ -14,7 +14,7 @@
 #include "hif2scSupport/hif_systemc_extensions.hpp"
 #include "hif2scSupport/hif_vhdl_std_textio.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #if (defined _MSC_VER)
 #pragma warning(disable : 4127)
@@ -80,11 +80,11 @@ auto hif_vhdl_file_open(std::string external_name, hif_vhdl_standard::hif_vhdl_f
 
 void hif_vhdl_file_open(
     hif_vhdl_text &f,
-    std::string external_name,
+    const std::string& external_name,
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind)
 {
     hif_vhdl_standard::hif_vhdl_file_open_status s;
-    hif_vhdl_file_open(s, f, std::move(external_name), open_kind);
+    hif_vhdl_file_open(s, f, external_name, open_kind);
 }
 
 void hif_vhdl_file_open(
@@ -111,14 +111,14 @@ void hif_vhdl_file_open(
     f = fopen(hif_systemc_extensions::hif_getResourceFileName(external_name).c_str(), type);
 
     // We are not able to detect errors. Returning general name_error.
-    // hif_vhdl_open_ok,
+    // hif_vhdl__open_ok,
     // hif_vhdl_status_error,
     // hif_vhdl_name_error,
     // hif_vhdl_mode_error
     if (f == nullptr) {
         status = hif_vhdl_standard::hif_vhdl_name_error;
     } else {
-        status = hif_vhdl_standard::hif_vhdl_open_ok;
+        status = hif_vhdl_standard::hif_vhdl__open_ok;
     }
 }
 
@@ -128,13 +128,13 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value)
 {
     char buffer[256];
 
-    value                = "";
+    value                = std::string();
     bool continueReading = true;
 
     do {
         char *res = fgets(buffer, sizeof(buffer), f);
         if (res == nullptr) {
-            value = "";
+            value = std::string();
             return;
         }
 
