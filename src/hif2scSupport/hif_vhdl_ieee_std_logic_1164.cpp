@@ -58,7 +58,7 @@ auto hif_vhdl_resolved(const sc_dt::sc_lv_base &s) -> sc_dt::sc_logic
     return result;
 }
 
-auto hif_vhdl_to_bit(const sc_dt::sc_logic &s, const bool xmap) -> bool
+auto hif_vhdl_to_bit(const sc_dt::sc_logic &s, bool xmap) -> bool
 {
     if (s == sc_dt::SC_LOGIC_1) {
         return true;
@@ -80,7 +80,7 @@ auto hif_vhdl_to_x01(const sc_dt::sc_logic &s) -> sc_dt::sc_logic
 auto hif_vhdl_to_ux01(const sc_dt::sc_logic &s) -> sc_dt::sc_logic { return hif_vhdl_to_x01(s); }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap)
+bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, bool xmap)
 {
     sc_dt::sc_logic tmp(s.to_char());
     return hif_vhdl_to_bit(tmp, xmap);

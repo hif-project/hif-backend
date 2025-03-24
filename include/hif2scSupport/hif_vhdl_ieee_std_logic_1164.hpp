@@ -46,10 +46,10 @@ auto hif_vhdl_to_ux01(const sc_dt::sc_logic &s) -> sc_dt::sc_logic;
 template <int size> hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s);
 
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, const bool xmap = false);
+bool hif_vhdl_to_bit(const hdtlib::hl_logic_t s, bool xmap = false);
 
 template <int size>
-hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, const bool xmap = false);
+hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, bool xmap = false);
 
 template <int size> hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s);
 

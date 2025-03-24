@@ -8,7 +8,7 @@
 #include <hif/backends/printFileMethods.hpp>
 
 #include "hif2verilog/PrintVerilogMethods.hpp"
-#include "hif2verilog/PrintVerilogVisitor.hpp"
+#include "hif2verilog/VerilogPrinter.hpp"
 
 using namespace hif;
 
@@ -176,7 +176,7 @@ void VerilogVisitor::_printImplementation(Object &o, const std::string& fileName
         *(_outstream) << "\n";
     }
 
-    PrintVerilogVisitor vis(_outstream, f, ext);
+    VerilogPrinter vis(_outstream);
     o.acceptVisitor(vis);
 
     if (_outstream != nullptr) {

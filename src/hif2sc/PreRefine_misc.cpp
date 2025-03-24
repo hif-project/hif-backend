@@ -440,7 +440,7 @@ template <typename T> void PreRefine_misc::_fixCaseSemantics(T *o)
     // checks type of condition.
     // It may be different from logic vector or logic bit in case of manipulation
     // (e.g. DDT). In this case CASE_X and CASE_Z are mapped in CASE_LITERAL.
-    const bool isLogic = hif::typeIsLogic(condBaseType, _sem);
+    bool isLogic = hif::typeIsLogic(condBaseType, _sem);
     if (isLogic) {
         return;
     }
@@ -832,12 +832,12 @@ auto PreRefine_misc::visitWait(Wait &o) -> int
 {
     GuideVisitor::visitWait(o);
 
-    const bool hasCondition      = (o.getCondition() != nullptr);
-    const bool hasRepetitions    = (o.getRepetitions() != nullptr);
-    const bool hasTime           = (o.getTime() != nullptr);
-    const bool hasSensitivity    = (!o.sensitivity.empty());
-    const bool hasSensitivityPos = (!o.sensitivityPos.empty());
-    const bool hasSensitivityNeg = (!o.sensitivityNeg.empty());
+    bool hasCondition      = (o.getCondition() != nullptr);
+    bool hasRepetitions    = (o.getRepetitions() != nullptr);
+    bool hasTime           = (o.getTime() != nullptr);
+    bool hasSensitivity    = (!o.sensitivity.empty());
+    bool hasSensitivityPos = (!o.sensitivityPos.empty());
+    bool hasSensitivityNeg = (!o.sensitivityNeg.empty());
 
     if (hasSensitivity) {
         _manageWaitSensitivity(o.sensitivity, SENSITIVITY_BOTH);
@@ -1304,7 +1304,7 @@ auto PreRefine_misc::_manageInitialProcessDeclarations(StateTable *o) -> Procedu
     return procedure;
 }
 
-auto PreRefine_misc::_checkWrongStatement(Object *root, const bool searchAllWrong) -> bool
+auto PreRefine_misc::_checkWrongStatement(Object *root, bool searchAllWrong) -> bool
 {
     hif::HifTypedQuery<Wait> q1;
     q1.sem                          = _sem;
@@ -1665,7 +1665,7 @@ void PreRefine_misc::_fixOutputsInitialization(View *o)
             continue;
         }
         Value *v           = _sem->getTypeDefaultValue(port->getType(), port);
-        const bool needFix = !hif::equals(port->getValue(), v);
+        bool needFix = !hif::equals(port->getValue(), v);
         delete v;
         if (!needFix) {
             continue;

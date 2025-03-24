@@ -20,13 +20,13 @@ namespace /* anon */
 
 auto trim(const std::string &str, const std::string &whitespace = " \t") -> std::string
 {
-    const std::size_t strBegin = str.find_first_not_of(whitespace);
+    std::size_t strBegin = str.find_first_not_of(whitespace);
     if (strBegin == std::string::npos) {
         return ""; // no content
     }
 
-    const std::size_t strEnd   = str.find_last_not_of(whitespace);
-    const std::size_t strRange = strEnd - strBegin + 1;
+    std::size_t strEnd   = str.find_last_not_of(whitespace);
+    std::size_t strRange = strEnd - strBegin + 1;
 
     return str.substr(strBegin, strRange);
 }

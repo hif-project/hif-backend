@@ -196,8 +196,8 @@ auto VHDLPrinter::visitBitvectorValue(BitvectorValue &o) -> int
 {
     // Actually, it is not possible to cast a const...
     // so it is an error to have a non-bit value type.
-    //const bool isSigned = dynamic_cast<Signed *>(o.getSyntacticType()) != nullptr;
-    //const bool isUnsigned = dynamic_cast<Unsigned *>(o.getSyntacticType()) != nullptr;
+    //bool isSigned = dynamic_cast<Signed *>(o.getSyntacticType()) != nullptr;
+    //bool isUnsigned = dynamic_cast<Unsigned *>(o.getSyntacticType()) != nullptr;
 
     //if (isSigned) *(_outstream) << "signed(";
     //else if (isUnsigned) *(_outstream) << "unsigned(";
@@ -675,7 +675,7 @@ auto VHDLPrinter::visitFunction(Function &o) -> int
 
     if (!_isPrintingLibDefDecls) {
         *(_outstream) << " IS" << '\n';
-        const bool restore = _isSubProgramBody;
+        bool restore = _isSubProgramBody;
         _isSubProgramBody  = true;
         o.getStateTable()->acceptVisitor(*this);
         _isSubProgramBody = restore;
@@ -824,7 +824,7 @@ auto VHDLPrinter::visitInstance(Instance &o) -> int
         }
         _printedComponents[parentView].insert(view);
 
-        const bool restore     = _isPrintingLibDefDecls;
+        bool restore     = _isPrintingLibDefDecls;
         _isPrintingLibDefDecls = true;
         view->getEntity()->acceptVisitor(*this);
         _isPrintingLibDefDecls = restore;
@@ -895,7 +895,7 @@ auto VHDLPrinter::visitLibraryDef(LibraryDef &o) -> int
 
     // Print LibraryDef content
     if (!o.declarations.empty()) {
-        const bool restore     = _isPrintingLibDefDecls;
+        bool restore     = _isPrintingLibDefDecls;
         _isPrintingLibDefDecls = true;
         _printList(o.declarations, ';', true);
         *(_outstream) << ";";
@@ -945,7 +945,7 @@ auto VHDLPrinter::visitLibrary(Library &o) -> int
 
 auto VHDLPrinter::visitMember(Member &o) -> int
 {
-    const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
+    bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
     if (needParen) {
         *(_outstream) << "(";
     }
@@ -1077,7 +1077,7 @@ auto VHDLPrinter::visitProcedure(Procedure &o) -> int
 
     if (!_isPrintingLibDefDecls) {
         *(_outstream) << " IS" << '\n';
-        const bool restore = _isSubProgramBody;
+        bool restore = _isSubProgramBody;
         _isSubProgramBody  = true;
         o.getStateTable()->acceptVisitor(*this);
         _isSubProgramBody = restore;
@@ -1088,7 +1088,7 @@ auto VHDLPrinter::visitProcedure(Procedure &o) -> int
 
 auto VHDLPrinter::visitRange(Range &o) -> int
 {
-    const bool restore = _isRealRange;
+    bool restore = _isRealRange;
     _setRealRange(&o);
 
     o.getLeftBound()->acceptVisitor(*this);
@@ -1214,7 +1214,7 @@ auto VHDLPrinter::visitSigned(Signed &o) -> int
 
 auto VHDLPrinter::visitSlice(Slice &o) -> int
 {
-    const bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
+    bool needParen = (dynamic_cast<Expression *>(o.getPrefix()) != nullptr);
     if (needParen) {
         *(_outstream) << "(";
     }
@@ -1792,7 +1792,7 @@ auto VHDLPrinter::_printAssertStatement(ProcedureCall *o) -> bool
     if (o->getName() != "assert") {
         return false;
     }
-    const BList<ParameterAssign>::size_t size = o->parameterAssigns.size();
+    auto size = o->parameterAssigns.size();
     if (size < 1 || size > 3) {
         return false;
     }
@@ -1830,7 +1830,7 @@ void VHDLPrinter::_printValueInstance(Value *v)
         return;
     }
 
-    const bool needParen = (dynamic_cast<Expression *>(v) != nullptr);
+    bool needParen = (dynamic_cast<Expression *>(v) != nullptr);
     if (needParen) {
         *(_outstream) << "(";
     }
@@ -1874,19 +1874,19 @@ void VHDLPrinter::_printTypeInstance(ReferencedType *v)
     *(_outstream) << ".";
 }
 
-template <typename T> void VHDLPrinter::_printList(BList<T> &list, const char separator, const bool needNewLine)
+template <typename T> void VHDLPrinter::_printList(BList<T> &list, const char separator, bool needNewLine)
 {
     auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, std::string() + separator, needNewLine);
 }
 
-template <typename T> void VHDLPrinter::_printList(BList<T> &list, const std::string &separator, const bool needNewLine)
+template <typename T> void VHDLPrinter::_printList(BList<T> &list, const std::string &separator, bool needNewLine)
 {
     auto *o = reinterpret_cast<BList<Object> *>(&list);
     _printList(*o, separator, needNewLine);
 }
 
-void VHDLPrinter::_printList(BList<Object> &list, const std::string &separator, const bool needNewLine)
+void VHDLPrinter::_printList(BList<Object> &list, const std::string &separator, bool needNewLine)
 {
     if (list.empty()) {
         return;

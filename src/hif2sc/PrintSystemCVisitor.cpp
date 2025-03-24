@@ -126,7 +126,7 @@ void _fillAggregateAltInfo(Aggregate *agg, AggregateInfos &infos, hif::semantics
     }
 }
 
-auto _getNativeConstantModifier(long long value, const bool isSigned, long long bits) -> std::string
+auto _getNativeConstantModifier(long long value, bool isSigned, long long bits) -> std::string
 {
     std::stringstream ss;
     if (bits <= 16) {
@@ -437,7 +437,7 @@ auto PrintSystemCVisitor::visitArray(Array &o) -> int
 
         // C++: print as reference: int (&) [5]
         _opt.printFullType = false;
-        const bool restore = _opt.printSquareSpan;
+        bool restore = _opt.printSquareSpan;
 
         // First round:
         _opt.printSquareSpan = false;
@@ -532,7 +532,7 @@ auto PrintSystemCVisitor::visitInt(Int &o) -> int
 
     _printComment(&o);
 
-    const bool isNativeBitField = o.getTypeVariant() == Type::SYSTEMC_INT_BITFIELD;
+    bool isNativeBitField = o.getTypeVariant() == Type::SYSTEMC_INT_BITFIELD;
     if (o.getTypeVariant() == Type::NATIVE_TYPE || isNativeBitField) {
         // Is native: int / unsigned int
         unsigned long long size = hif::semantics::spanGetBitwidth(o.getSpan(), _sem);
@@ -573,8 +573,8 @@ auto PrintSystemCVisitor::visitInt(Int &o) -> int
     }
 
     // SystemC types
-    const bool isScInt    = o.getTypeVariant() == Type::SYSTEMC_INT_SC_INT;
-    const bool isScBigInt = o.getTypeVariant() == Type::SYSTEMC_INT_SC_BIGINT;
+    bool isScInt    = o.getTypeVariant() == Type::SYSTEMC_INT_SC_INT;
+    bool isScBigInt = o.getTypeVariant() == Type::SYSTEMC_INT_SC_BIGINT;
     messageAssert(isScInt || isScBigInt, "Expected sc_int or sc_bigint types for given int", &o, _sem);
 
     if (_opt.useHDTLib) {
@@ -708,7 +708,7 @@ auto PrintSystemCVisitor::visitRecordValue(RecordValue &o) -> int
 
     // if inside init.list, parenthesis are already printed. Otherwise, print them
 
-    const bool isDataDeclarationInitialValue = dd != nullptr && dd->getValue() == &o;
+    bool isDataDeclarationInitialValue = dd != nullptr && dd->getValue() == &o;
     if (!_opt.insideInitList && isDataDeclarationInitialValue) {
         // In case of initial value of data declaration it must be printed using struct
         // constructor: recordName(field1val, field2val, ...)
@@ -830,7 +830,7 @@ auto PrintSystemCVisitor::visitViewReference(ViewReference &o) -> int
     View *v = hif::semantics::getDeclaration(&o, _sem);
     messageAssert(v != nullptr, "Declaration not found", &o, _sem);
 
-    const bool mandatoryParen = !v->templateParameters.empty();
+    bool mandatoryParen = !v->templateParameters.empty();
 
     // Print the template-parameter assigns if present, or print empty
     // angulars if considering the View-TPs default values.
@@ -874,7 +874,7 @@ auto PrintSystemCVisitor::visitAggregate(Aggregate &o) -> int
                 *(_outstream) << ")";
                 return 0;
             }
-            const bool printString = !_opt.insideInitList;
+            bool printString = !_opt.insideInitList;
             if (printString) {
                 *(_outstream) << "std::string(";
             }
@@ -1101,7 +1101,7 @@ auto PrintSystemCVisitor::visitCast(Cast &o) -> int
         return 0;
     }
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }
@@ -1110,7 +1110,7 @@ auto PrintSystemCVisitor::visitCast(Cast &o) -> int
     // Note: in case of cast of a name (e.g., in a concat operation),
     // old-style cast is interpreted as a call to constructor.
 
-    const bool restore         = _opt.printFullType;
+    bool restore         = _opt.printFullType;
     _opt.printFullType         = true;
     const hif::LanguageID lang = hif::objectGetLanguage(&o);
     if (lang == hif::c) {
@@ -1231,7 +1231,7 @@ auto PrintSystemCVisitor::visitExpression(Expression &o) -> int
 
         // Concatenation operator
     case op_concat: {
-        const bool isStringConcat = dynamic_cast<String *>(hif::semantics::getBaseType(
+        bool isStringConcat = dynamic_cast<String *>(hif::semantics::getBaseType(
                                         hif::semantics::getSemanticType(&o, _sem), false, _sem)) != nullptr;
 
         if (isStringConcat) {
@@ -1367,7 +1367,7 @@ auto PrintSystemCVisitor::visitFieldReference(FieldReference &o) -> int
 {
     _printComment(&o);
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }
@@ -1429,7 +1429,7 @@ auto PrintSystemCVisitor::visitIntValue(IntValue &o) -> int
 
     Type *t             = hif::semantics::getSemanticType(&o, _sem);
     Range *span         = hif::typeGetSpan(t, _sem);
-    const bool isSigned = hif::typeIsSigned(t, _sem);
+    bool isSigned = hif::typeIsSigned(t, _sem);
 
     if (t->getTypeVariant() == Type::NATIVE_TYPE) {
         unsigned long long size = hif::semantics::spanGetBitwidth(span, _sem);
@@ -1498,7 +1498,7 @@ auto PrintSystemCVisitor::visitMember(Member &o) -> int
 {
     _printComment(&o);
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }
@@ -1560,8 +1560,8 @@ auto PrintSystemCVisitor::visitRealValue(RealValue &o) -> int
     std::stringstream ss;
     ss << d;
     std::string s(ss.str());
-    const bool hasDot = (s.find('.') != std::string::npos);
-    const bool hasE   = (s.find('E') != std::string::npos) || (s.find('e') != std::string::npos);
+    bool hasDot = (s.find('.') != std::string::npos);
+    bool hasE   = (s.find('E') != std::string::npos) || (s.find('e') != std::string::npos);
     if ((!hasDot) && (!hasE)) {
         s += ".0";
     }
@@ -1595,7 +1595,7 @@ auto PrintSystemCVisitor::visitStringValue(StringValue &o) -> int
 {
     _printComment(&o);
 
-    const bool needString = _mayBeAmbiguous(&o);
+    bool needString = _mayBeAmbiguous(&o);
 
     if (needString) {
         *(_outstream) << "std::string(";
@@ -1634,7 +1634,7 @@ auto PrintSystemCVisitor::visitWhen(When &o) -> int
         return 0;
     }
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }
@@ -1788,10 +1788,10 @@ auto PrintSystemCVisitor::visitConst(Const &o) -> int
         }
     }
 
-    const bool isInModule =
+    bool isInModule =
         (dynamic_cast<StateTable *>(o.getParent()) == nullptr && hif::getNearestParent<View>(&o) != nullptr);
-    const bool isStatic    = (isInModule && !o.isInstance());
-    const bool isFullySpec = _isFullySpecifiedArrayConst(&o);
+    bool isStatic    = (isInModule && !o.isInstance());
+    bool isFullySpec = _isFullySpecifiedArrayConst(&o);
 
     if (!_opt.printImplementation) {
         // Constants are always public
@@ -1838,7 +1838,7 @@ auto PrintSystemCVisitor::visitConst(Const &o) -> int
         // If declared inside some component already inheriting TPs
         auto *sp           = hif::getNearestParent<SubProgram>(&o);
         auto *st           = hif::getNearestParent<StateTable>(&o);
-        const bool isLocal = (sp != nullptr || st != nullptr);
+        bool isLocal = (sp != nullptr || st != nullptr);
         if (!isLocal) {
             _printScopeTemplate();
         }
@@ -2075,7 +2075,7 @@ auto PrintSystemCVisitor::visitInstance(Instance &o) -> int
         messageAssert(o.getReferencedType() != nullptr, "Unexpected instance without ref type", &o, _sem);
 
         auto *bc = dynamic_cast<BaseContents *>(o.getParent());
-        const bool isSubmodule =
+        bool isSubmodule =
             (o.isInBList() && bc != nullptr && o.getBList() == reinterpret_cast<BList<Object> *>(&bc->instances));
 
         if (isSubmodule) {
@@ -2095,7 +2095,7 @@ auto PrintSystemCVisitor::visitInstance(Instance &o) -> int
 
         // Print instance constructor.
         Type *o_type         = hif::semantics::getSemanticType(&o, _sem);
-        const bool isPointer = dynamic_cast<Pointer *>(o_type) != nullptr;
+        bool isPointer = dynamic_cast<Pointer *>(o_type) != nullptr;
         // TODO check this after the introduction of __hif_new
 
         *(_outstream) << o.getName();
@@ -2149,7 +2149,7 @@ auto PrintSystemCVisitor::visitInstance(Instance &o) -> int
         // If the visit of Instance does not concern the constructor (i.e., it
         // is called by the visit of a Function.
 
-        const bool needWrapParen = _needWrapParen(&o);
+        bool needWrapParen = _needWrapParen(&o);
         if (needWrapParen) {
             *(_outstream) << "(";
         }
@@ -2213,7 +2213,7 @@ auto PrintSystemCVisitor::visitParameter(Parameter &o) -> int
     _visitType(o.getType(), false);
     Type *paramType  = hif::semantics::getBaseType(o.getType(), false, _sem);
     auto *ref        = dynamic_cast<Reference *>(paramType);
-    const bool isRef = (ref != nullptr);
+    bool isRef = (ref != nullptr);
     bool isArray     = false;
     if (isRef) {
         auto *refType = dynamic_cast<Array *>(hif::semantics::getBaseType(ref->getType(), false, _sem));
@@ -2267,8 +2267,8 @@ auto PrintSystemCVisitor::visitPort(Port &o) -> int
         Type *baseType      = hif::semantics::getBaseType(o.getType(), false, _sem);
         auto *array         = dynamic_cast<Array *>(baseType);
         auto *record        = dynamic_cast<Record *>(baseType);
-        const bool isArray  = (array != nullptr);
-        const bool isRecord = (record != nullptr);
+        bool isArray  = (array != nullptr);
+        bool isRecord = (record != nullptr);
 
         bool dontExpand = false;
         auto *tr        = dynamic_cast<TypeReference *>(o.getType());
@@ -2405,7 +2405,7 @@ auto PrintSystemCVisitor::visitProcedure(Procedure &o) -> int
         messageDebugAssert(!du->views.empty() && du->views.size() == 1, "Unexpected number of view", du, _sem);
 
         _printScopeTemplate();
-        const bool hasPrinted = _printTypedTP(o.templateParameters);
+        bool hasPrinted = _printTypedTP(o.templateParameters);
         if (hasPrinted) {
             _outstream->newLine();
         }
@@ -2726,7 +2726,7 @@ auto PrintSystemCVisitor::visitAssign(Assign &o) -> int
 
     messageAssert(o.getDelay() == nullptr, "Delay should be already refined!", &o, _sem);
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }
@@ -2813,7 +2813,7 @@ auto PrintSystemCVisitor::visitBreak(Break &o) -> int
 {
     _printComment(&o);
 
-    const bool hasName = (o.getName() != NameTable::getInstance()->none());
+    bool hasName = (o.getName() != NameTable::getInstance()->none());
 
     if (!hasName) {
         *(_outstream) << "break";
@@ -2836,7 +2836,7 @@ auto PrintSystemCVisitor::visitFor(For &o) -> int
     messageDebugAssert(o.initDeclarations.empty() || o.initValues.empty(), "Unexpected for", &o, _sem);
     _printComment(&o);
 
-    const bool hasName = (o.getName() != NameTable::getInstance()->none());
+    bool hasName = (o.getName() != NameTable::getInstance()->none());
 
     // If more than one init declaration is present, they are printed outside
     // the loop, which is inserted in a local scope.
@@ -2932,7 +2932,7 @@ auto PrintSystemCVisitor::visitContinue(Continue &o) -> int
 {
     _printComment(&o);
 
-    const bool hasName = (o.getName() != NameTable::getInstance()->none());
+    bool hasName = (o.getName() != NameTable::getInstance()->none());
 
     if (!hasName) {
         *(_outstream) << "continue";
@@ -3064,8 +3064,8 @@ auto PrintSystemCVisitor::visitWait(Wait &o) -> int
 
     messageAssert(o.getCondition() == nullptr, "Conditions are not supported in SystemC", &o, _sem);
     messageAssert(o.actions.empty(), "Actions in wait() are not supported in SystemC", &o, _sem);
-    const bool v1 = (o.getRepetitions() != nullptr);
-    const bool v2 = (o.getTime() != nullptr || !o.sensitivity.empty());
+    bool v1 = (o.getRepetitions() != nullptr);
+    bool v2 = (o.getTime() != nullptr || !o.sensitivity.empty());
     messageAssert(!(v1 && v2), "Not valid wait statement", &o, _sem);
 
     *(_outstream) << "wait(";
@@ -3099,7 +3099,7 @@ auto PrintSystemCVisitor::visitWhile(While &o) -> int
 {
     _printComment(&o);
 
-    const bool hasName = (o.getName() != NameTable::getInstance()->none());
+    bool hasName = (o.getName() != NameTable::getInstance()->none());
 
     if (!o.isDoWhile()) {
         *(_outstream) << "while (";
@@ -3218,7 +3218,7 @@ void PrintSystemCVisitor::_printSensitivitySuffix(Value *name, bool isPos, bool 
 
     auto *event = dynamic_cast<Event *>(exprType);
 
-    const bool isEvent = (event != nullptr);
+    bool isEvent = (event != nullptr);
 
     if (portDecl != nullptr) {
         if (isPos) {
@@ -3386,7 +3386,7 @@ auto PrintSystemCVisitor::_isFullySpecifiedArrayConst(Const *c) -> bool
         return false;
     }
 
-    const bool monoDimensional = (dynamic_cast<Array *>(t->getType()) == nullptr);
+    bool monoDimensional = (dynamic_cast<Array *>(t->getType()) == nullptr);
     return monoDimensional;
 #if 0
     // TODO fix the following code, or remove it from printer as too much complicated?
@@ -3395,7 +3395,7 @@ auto PrintSystemCVisitor::_isFullySpecifiedArrayConst(Const *c) -> bool
     IntValue* spanD = dynamic_cast<IntValue*>( ss );
     if (spanD == nullptr) return false;
 
-    const bool fullySpec = (altsN.getValue() == spanD->getValue());
+    bool fullySpec = (altsN.getValue() == spanD->getValue());
     delete spanD;
     return fullySpec;
 #endif
@@ -3432,13 +3432,13 @@ void PrintSystemCVisitor::_manageInitialization(DataDeclaration *ddo)
 
     // Some components must be visited twice (TLM constructs, C++ class instances,
     // Ports are already managed elsewhere).
-    const bool twiceInit = (dynamic_cast<Signal *>(ddo) != nullptr);
+    bool twiceInit = (dynamic_cast<Signal *>(ddo) != nullptr);
     if (_opt.insideConstructorBody && !twiceInit) {
         return;
     }
 
     // Manage all other kinds of initialization. May print nothing...
-    const bool isPrinted = _printNormalInit(ddo);
+    bool isPrinted = _printNormalInit(ddo);
 
     if (_opt.insideInitList) {
         _opt.emptyInitList = false;
@@ -3497,7 +3497,7 @@ void PrintSystemCVisitor::_printIndividualInit(DataDeclaration *ddo, Array *base
         return;
     }
 
-    const bool isScVector = dynamic_cast<Signal *>(ddo) != nullptr || dynamic_cast<Port *>(ddo) != nullptr;
+    bool isScVector = dynamic_cast<Signal *>(ddo) != nullptr || dynamic_cast<Port *>(ddo) != nullptr;
     AggregateInfos infos;
     _fillAggregateAltInfo(agg, infos, _sem);
     for (auto &info : infos) {
@@ -3604,9 +3604,9 @@ auto PrintSystemCVisitor::_printTLMInit(DataDeclaration *o) -> bool
     }
 
     auto *vr                     = dynamic_cast<ViewReference *>(o->getType());
-    const bool isTargetSocket    = vr != nullptr && vr->getDesignUnit() == std::string("tlm_target_socket");
-    const bool isInitiatorSocket = vr != nullptr && vr->getDesignUnit() == std::string("tlm_initiator_socket");
-    const bool isIOEvent         = objectMatchName(o, "io_event");
+    bool isTargetSocket    = vr != nullptr && vr->getDesignUnit() == std::string("tlm_target_socket");
+    bool isInitiatorSocket = vr != nullptr && vr->getDesignUnit() == std::string("tlm_initiator_socket");
+    bool isIOEvent         = objectMatchName(o, "io_event");
     messageAssert((isTargetSocket || isInitiatorSocket || isIOEvent), "Unexpected TLM component", o, _sem);
 
     if (_opt.insideInitList) {
@@ -3858,8 +3858,8 @@ auto PrintSystemCVisitor::_initListInitializationSignalPort(DataDeclaration *dd)
     Type *t     = hif::semantics::getBaseType(dd->getType(), false, _sem);
     auto *array = dynamic_cast<Array *>(t);
 
-    const bool isArray = (array != nullptr);
-    const bool isWrapper =
+    bool isArray = (array != nullptr);
+    bool isWrapper =
         ((sig != nullptr && sig->isWrapper() && sig->getValue() != nullptr) ||
          (port != nullptr && port->isWrapper() && port->getValue() != nullptr));
 
@@ -3933,7 +3933,7 @@ auto PrintSystemCVisitor::_printNormalInit(DataDeclaration *o) -> bool
         messageDebugAssert(
             _opt.printType || o->getValue() != nullptr || vr != nullptr, "Unexpected print flags", o, _sem);
 
-        const bool isSignal = (dynamic_cast<Signal *>(o) != nullptr);
+        bool isSignal = (dynamic_cast<Signal *>(o) != nullptr);
         if (dynamic_cast<Const *>(o) != nullptr) {
             // Type is already managed in visit of const
             const hif::LanguageID lang = hif::objectGetLanguage(o);
@@ -4016,7 +4016,7 @@ void PrintSystemCVisitor::_printSignalTypeAndName(Signal *o)
 {
     Type *t            = hif::semantics::getBaseType(o->getType(), false, _sem);
     auto *array        = dynamic_cast<Array *>(t);
-    const bool isArray = (array != nullptr);
+    bool isArray = (array != nullptr);
 
     if (o->isWrapper()) {
         // AMS
@@ -4143,11 +4143,11 @@ auto PrintSystemCVisitor::_isNeededTypename(ReferencedType *refType) -> bool
     }
 
     // If the scope has template
-    const bool templateScope = (parentList != nullptr && !parentList->empty());
+    bool templateScope = (parentList != nullptr && !parentList->empty());
 
     // In case of ViewReference, its declaration may in turn own TPs
     View *vrDecl      = hif::semantics::getDeclaration(vR, _sem);
-    const bool tpView = (vrDecl != nullptr && !vrDecl->templateParameters.empty());
+    bool tpView = (vrDecl != nullptr && !vrDecl->templateParameters.empty());
 
     // i.e., we are printing outside the normal scope
     if (dynamic_cast<Const *>(_opt.constManagement) != nullptr) {
@@ -4203,13 +4203,13 @@ void PrintSystemCVisitor::_printCppConstructor(FunctionCall &o)
     // (1) new Pippo(5)
     // (2) 5 + Pippo(4) + ...
 
-    const bool insideNew = (o.getParent() != nullptr && objectMatchName(o.getParent()->getParent(), "new"));
+    bool insideNew = (o.getParent() != nullptr && objectMatchName(o.getParent()->getParent(), "new"));
 
     auto *dd             = dynamic_cast<DataDeclaration *>(o.getParent());
     auto *pp             = dynamic_cast<Instance *>(o.getParent());
-    const bool isInitVal = ((dd != nullptr && &o == dd->getValue()) || (pp != nullptr && &o == pp->getValue()));
+    bool isInitVal = ((dd != nullptr && &o == dd->getValue()) || (pp != nullptr && &o == pp->getValue()));
 
-    const bool independentValue = (insideNew || !isInitVal);
+    bool independentValue = (insideNew || !isInitVal);
 
     if (independentValue) {
         BackupOpt backup = _backupVisitMode();
@@ -4242,7 +4242,7 @@ void PrintSystemCVisitor::_printCppDestructor(ProcedureCall &o)
     messageAssert(baseType != nullptr, "Cannot find instance base type", &o, _sem);
 
     auto *pointer        = dynamic_cast<Pointer *>(baseType);
-    const bool isPointer = pointer != nullptr;
+    bool isPointer = pointer != nullptr;
 
     Type *typeToPrint = nullptr;
     if (isPointer) {
@@ -4467,18 +4467,18 @@ void PrintSystemCVisitor::_printNativeProcedureCall(ProcedureCall &o)
     }
 }
 
-void PrintSystemCVisitor::_printInstanceBindingStatements(Instance *inst, Object *o, const bool useArrow)
+void PrintSystemCVisitor::_printInstanceBindingStatements(Instance *inst, Object *o, bool useArrow)
 {
     if (inst == nullptr || o == nullptr || inst->portAssigns.empty()) {
         return;
     }
 
     auto *parentAss        = dynamic_cast<Assign *>(o->getParent());
-    const bool isAssignRhs = parentAss != nullptr && parentAss->getRightHandSide() == o;
+    bool isAssignRhs = parentAss != nullptr && parentAss->getRightHandSide() == o;
 
     auto *var = dynamic_cast<Variable *>(o->getParent());
     Identifier id;
-    const bool isLocalVar = var != nullptr && getNearestParent<StateTable>(var) != nullptr;
+    bool isLocalVar = var != nullptr && getNearestParent<StateTable>(var) != nullptr;
 
     if (!_isStatement(o) && !isLocalVar) {
         return;
@@ -4932,8 +4932,8 @@ void PrintSystemCVisitor::_printNotCompileTimeTemplates(Object *o, PrintSystemCV
     }
 
     const hif::LanguageID lang   = hif::objectGetLanguage(o);
-    const bool isLangWithParents = lang == hif::rtl || lang == hif::tlm;
-    const bool hasDefaultParents =
+    bool isLangWithParents = lang == hif::rtl || lang == hif::tlm;
+    bool hasDefaultParents =
         dynamic_cast<View *>(o) != nullptr && (isLangWithParents || !dynamic_cast<View *>(o)->inheritances.empty());
 
     ObjectList &list = _ctmList[o];
@@ -5424,10 +5424,10 @@ void PrintSystemCVisitor::_printModuleContents_H(View *view)
     // Note: this is intended as a debug to catch unsupported components
 #ifndef NDEBUG
     for (BList<Declaration>::iterator it = view->declarations.begin(); it != view->declarations.end(); ++it) {
-        const bool isConst = (dynamic_cast<Const *>(*it) != nullptr);
+        bool isConst = (dynamic_cast<Const *>(*it) != nullptr);
 
         auto *sp           = dynamic_cast<SubProgram *>(*it);
-        const bool isMacro = (sp != nullptr && sp->getKind() == SubProgram::MACRO);
+        bool isMacro = (sp != nullptr && sp->getKind() == SubProgram::MACRO);
 
         messageAssert(isConst || isMacro, "Unexpected object in View declarations", *it, _sem);
     }
@@ -5537,7 +5537,7 @@ void PrintSystemCVisitor::_printModuleImplementation(DesignUnit &o)
     _outstream->openCommonTopBlock();
 
     // If nested in another DesignUnit, does not require some info.
-    const bool requireInclusions = (_design_unit_scope.size() == 1);
+    bool requireInclusions = (_design_unit_scope.size() == 1);
     if (requireInclusions) {
         _printImplementationBegin(&o);
 
@@ -5597,7 +5597,7 @@ void PrintSystemCVisitor::_printLibraryImplementation(LibraryDef &o)
     messageDebugAssert(_opt.printImplementation, "Unexpected print flags", &o, _sem);
 
     std::string filename(_baseName);
-    const bool isIHH = filename.size() >= 3 && filename.substr(filename.size() - 2) == ".i";
+    bool isIHH = filename.size() >= 3 && filename.substr(filename.size() - 2) == ".i";
     if (isIHH) {
         filename = filename.substr(0, filename.size() - 2);
     }
@@ -5618,7 +5618,7 @@ void PrintSystemCVisitor::_printLibraryImplementation(LibraryDef &o)
     _opt.insideConstructorBody = false;
     _opt.insideInitList        = false;
 
-    const bool isIndependentComps = _containsOnlyIndependentComponents(o);
+    bool isIndependentComps = _containsOnlyIndependentComponents(o);
 
     // Printing top block:
     _outstream->openCommonTopBlock();
@@ -5875,7 +5875,7 @@ auto PrintSystemCVisitor::_needInitializationList(View *view) -> bool
 
 auto PrintSystemCVisitor::_printInitializationList(View *view) -> int
 {
-    const bool isModule = view->getLanguageID() == hif::rtl || view->getLanguageID() == hif::tlm;
+    bool isModule = view->getLanguageID() == hif::rtl || view->getLanguageID() == hif::tlm;
 
     if (!isModule && !_needInitializationList(view)) {
         return 0;
@@ -5934,9 +5934,9 @@ auto PrintSystemCVisitor::_printOtherInitializations(View *view) -> int
     return 0;
 }
 
-void PrintSystemCVisitor::_printConstants(BList<Declaration> &declarations, Object *scope, const bool onlyDefines)
+void PrintSystemCVisitor::_printConstants(BList<Declaration> &declarations, Object *scope, bool onlyDefines)
 {
-    const bool isInModule = (dynamic_cast<DesignUnit *>(scope) != nullptr);
+    bool isInModule = (dynamic_cast<DesignUnit *>(scope) != nullptr);
 
     // LibraryDef, System do not own template parameters
     if (!isInModule && _opt.printImplementation_ihh) {
@@ -5944,7 +5944,7 @@ void PrintSystemCVisitor::_printConstants(BList<Declaration> &declarations, Obje
     }
 
     // Constants of non-template modules must be printed inside .cc
-    const bool templateModule =
+    bool templateModule =
         (isInModule && !dynamic_cast<DesignUnit *>(scope)->views.front()->templateParameters.empty());
 
     bool spacing = false;
@@ -6160,12 +6160,12 @@ void PrintSystemCVisitor::_printDeclarations_I(BList<Declaration> &declarations,
 
     _opt.printInitVal           = true;
     _opt.insideInitList         = false;
-    const bool restorePrintType = _opt.printType;
+    bool restorePrintType = _opt.printType;
 
     for (BList<Declaration>::iterator it(declarations.begin()); it != declarations.end(); ++it) {
-        const bool isMethod   = (dynamic_cast<Function *>(*it) != nullptr || dynamic_cast<Procedure *>(*it) != nullptr);
-        const bool isVariable = (dynamic_cast<Variable *>(*it) != nullptr);
-        const bool isSignal   = (dynamic_cast<Signal *>(*it) != nullptr);
+        bool isMethod   = (dynamic_cast<Function *>(*it) != nullptr || dynamic_cast<Procedure *>(*it) != nullptr);
+        bool isVariable = (dynamic_cast<Variable *>(*it) != nullptr);
+        bool isSignal   = (dynamic_cast<Signal *>(*it) != nullptr);
         if (!isMethod && !isVariable && !isSignal) {
             continue;
         }
@@ -6290,7 +6290,7 @@ void PrintSystemCVisitor::_printIncludes(BList<Library> &list, DesignUnit *du)
 
         LibraryDef *decl        = hif::semantics::getDeclaration(lib, _sem);
         std::string includePath = _calculateInclude(list.getParent(), lib);
-        const bool isSystem     = lib->isSystem();
+        bool isSystem     = lib->isSystem();
 
         if (lib->getFilename().empty()) {
             if (!includePath.empty()) {
@@ -6391,7 +6391,7 @@ void PrintSystemCVisitor::_printSubProgramImplementation(hif::SubProgram &o, con
     if (o.getStateTable() != nullptr) {
         _outstream->newLine();
         _outstream->indent();
-        const bool restore = _opt.printInitVal;
+        bool restore = _opt.printInitVal;
         _opt.printInitVal  = true;
         o.getStateTable()->acceptVisitor(*this);
         _opt.printInitVal = restore;
@@ -6547,7 +6547,7 @@ void PrintSystemCVisitor::_printScopeTemplate()
         if (v->templateParameters.empty()) {
             continue;
         }
-        const bool hasPrinted = _printTypedTP(v->templateParameters);
+        bool hasPrinted = _printTypedTP(v->templateParameters);
         if (hasPrinted) {
             _outstream->newLine();
         }
@@ -6569,7 +6569,7 @@ void PrintSystemCVisitor::_printScopeHierarchy()
     }
 }
 
-void PrintSystemCVisitor::_printInitialize(Port &o, Type *portType, std::list<std::string> &indexes, const bool isAMS)
+void PrintSystemCVisitor::_printInitialize(Port &o, Type *portType, std::list<std::string> &indexes, bool isAMS)
 {
     // FIXME Ad-hoc fix (2). An additional cast is needed, because
     // SystemC does not allow "direct" initialization.
@@ -6875,7 +6875,7 @@ template <typename T> auto PrintSystemCVisitor::_printCall(T &o) -> int
         messageError("Function declaration not found", &o, _sem);
     }
 
-    const bool needWrapParen = _needWrapParen(&o);
+    bool needWrapParen = _needWrapParen(&o);
     if (needWrapParen) {
         *(_outstream) << "(";
     }

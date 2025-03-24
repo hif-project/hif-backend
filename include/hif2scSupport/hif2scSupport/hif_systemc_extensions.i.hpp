@@ -278,7 +278,7 @@ auto hif_arrayEquals(T (&param1)[size], sc_core::sc_vector<P> &param2) -> bool
 }
 
 template <int W1, int W2>
-auto hif_logicEquals(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const bool sign) -> sc_dt::sc_logic
+auto hif_logicEquals(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, bool sign) -> sc_dt::sc_logic
 {
     enum Const { SIZE = (W1 > W2) ? W1 : W2 };
 
@@ -310,7 +310,7 @@ auto hif_logicEquals(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const boo
 }
 
 template <typename T1, typename T2, size_t size>
-auto hif_logicEquals(T1 (&param1)[size], T2 (&param2)[size], const bool sign) -> sc_dt::sc_logic
+auto hif_logicEquals(T1 (&param1)[size], T2 (&param2)[size], bool sign) -> sc_dt::sc_logic
 {
     sc_dt::sc_logic res = hif_logicEquals(param1[0], param2[0], sign);
     for (size_t i = 1; i < size; ++i) {
@@ -321,7 +321,7 @@ auto hif_logicEquals(T1 (&param1)[size], T2 (&param2)[size], const bool sign) ->
 }
 
 template <int W1, int W2>
-auto hif_caseXZ(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const bool param3, const bool sign) -> bool
+auto hif_caseXZ(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, bool param3, bool sign) -> bool
 {
     enum Const { SIZE = (W1 > W2) ? W1 : W2 };
 
@@ -364,7 +364,7 @@ auto hif_caseXZ(sc_dt::sc_lv<W1> param1, sc_dt::sc_lv<W2> param2, const bool par
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 template <int W1, int W2>
-hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, const bool sign)
+hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, bool sign)
 {
     enum Const { SIZE = (W1 > W2) ? W1 : W2 };
 
@@ -393,7 +393,7 @@ hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_lv_t<W1> param1, hdtlib::hl
 }
 
 template <typename T1, typename T2, size_t size>
-hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size], const bool sign)
+hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size], bool sign)
 {
     hdtlib::hl_logic_t res = hif_logicEquals_hdtlib(param1[0], param2[0], sign);
     for (size_t i = 1; i < size; ++i) {
@@ -404,7 +404,7 @@ hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size]
 }
 
 template <int W1, int W2>
-bool hif_caseXZ(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, const bool param3, const bool sign)
+bool hif_caseXZ(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, bool param3, bool sign)
 {
     enum Const { SIZE = (W1 > W2) ? W1 : W2 };
 

@@ -12,7 +12,7 @@
 namespace hif_vhdl_ieee_std_logic_1164
 {
 
-template <int size> auto hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap) -> sc_dt::sc_bv<size>
+template <int size> auto hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, bool xmap) -> sc_dt::sc_bv<size>
 {
     std::string sVal = s.to_string();
     for (std::string::size_type i = 0; i < sVal.length(); ++i) {
@@ -50,7 +50,7 @@ template <int size> hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<s
     return res;
 }
 
-template <int size> hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, const bool /*xmap*/)
+template <int size> hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, bool /*xmap*/)
 {
     sc_dt::sc_lv<size> tmp    = s.to_string().c_str();
     sc_dt::sc_bv<size> tmpRes = hif_vhdl_to_bitvector(tmp);

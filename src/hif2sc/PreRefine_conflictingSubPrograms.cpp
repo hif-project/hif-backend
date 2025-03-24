@@ -56,10 +56,10 @@ private:
     hif::semantics::ILanguageSemantics *_sem;
     Signatures _sigToChange;
 
-    const bool _keepBit;
+    bool _keepBit;
 };
 
-FixSubProgramVisitor::FixSubProgramVisitor(RefMap &map, const bool keepBit, hif::semantics::ILanguageSemantics *sem)
+FixSubProgramVisitor::FixSubProgramVisitor(RefMap &map, bool keepBit, hif::semantics::ILanguageSemantics *sem)
     : GuideVisitor()
     , _refMap(map)
     , _sem(sem)
@@ -337,7 +337,7 @@ auto FixSubProgramVisitor::_createFakeCall(SubProgram *o) -> ProcedureCall *
 
 } // namespace
 
-auto fixConflictingSubPrograms(hif::System *o, const bool keepBit, hif::semantics::ILanguageSemantics *sem) -> bool
+auto fixConflictingSubPrograms(hif::System *o, bool keepBit, hif::semantics::ILanguageSemantics *sem) -> bool
 {
     hif::application_utils::initializeLogHeader("HIF2SC", "fixConflictingSubPrograms");
 

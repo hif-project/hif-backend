@@ -34,7 +34,7 @@ namespace /* anon */
 
 void justifyPrint(
     hif_vhdl_line l,
-    const std::size_t dataSize,
+    std::size_t dataSize,
     const hif_vhdl_width field,
     const hif_vhdl_side justified)
 {
@@ -47,13 +47,13 @@ void justifyPrint(
 
 auto trim(const std::string &str, const std::string &whitespace = " \t") -> std::string
 {
-    const std::size_t strBegin = str.find_first_not_of(whitespace);
+    std::size_t strBegin = str.find_first_not_of(whitespace);
     if (strBegin == std::string::npos) {
         return ""; // no content
     }
 
-    const std::size_t strEnd   = str.find_last_not_of(whitespace);
-    const std::size_t strRange = strEnd - strBegin + 1;
+    std::size_t strEnd   = str.find_last_not_of(whitespace);
+    std::size_t strRange = strEnd - strBegin + 1;
 
     return str.substr(strBegin, strRange);
 }
@@ -138,7 +138,7 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value)
             return;
         }
 
-        const std::size_t s = std::strlen(buffer);
+        std::size_t s = std::strlen(buffer);
         continueReading     = (buffer[s - 1] != '\n') && (feof(f) == 0);
 
         if (buffer[s - 1] == '\n') {

@@ -210,10 +210,10 @@ auto main(int argc, char *argv[]) -> int
 /////////////////////////////////////////
 
 #ifdef NDEBUG
-void checkStep(System *s, const std::string &stepName, const bool /*isFixed*/)
+void checkStep(System *s, const std::string &stepName, bool /*isFixed*/)
 #else
 
-void checkStep(System *s, const std::string &stepName, const bool isFixed)
+void checkStep(System *s, const std::string &stepName, bool isFixed)
 #endif
 {
 #if HIF2VERILOG_DEBUG_PRINT_BEFORE

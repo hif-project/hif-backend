@@ -261,7 +261,7 @@ auto hif_caseXZ(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2, bo
 /// @param sign Whether extend with sign.
 /// @return The resulting logic value.
 template <int W1, int W2>
-hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, const bool sign);
+hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, bool sign);
 
 /// This method allows to compare two logic types, considering 'X' as false.
 /// @param param1 The first logic value.
@@ -276,7 +276,7 @@ hdtlib::hl_logic_t hif_logicEquals_hdtlib(hdtlib::hl_logic_t param1, hdtlib::hl_
 /// @param sign True if signed comparison must be performed.
 /// @return The resulting logic value.
 template <typename T1, typename T2, size_t size>
-hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size], const bool sign);
+hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size], bool sign);
 
 /// This method allows to compare two logic types, considering 'X' and 'Z' as dontcares.
 /// @param param1 The first logic value.
@@ -285,7 +285,7 @@ hdtlib::hl_logic_t hif_logicEquals_hdtlib(T1 (&param1)[size], T2 (&param2)[size]
 /// @param sign True if signed comparison must be performed.
 /// @return The resulting value.
 template <int W1, int W2>
-bool hif_caseXZ(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, const bool param3, const bool sign);
+bool hif_caseXZ(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, bool param3, bool sign);
 
 /// This method allows to compare two logic types, considering 'X' and 'Z' as dontcare.
 /// @param param1 The first logic value.
@@ -293,7 +293,7 @@ bool hif_caseXZ(hdtlib::hl_lv_t<W1> param1, hdtlib::hl_lv_t<W2> param2, const bo
 /// @param param3 If true consider also 'X' as dontcare.
 /// @return The resulting logic value.
 HIF2SCSUPPORT_EXPORT
-bool hif_caseXZ(hdtlib::hl_logic_t param1, hdtlib::hl_logic_t param2, const bool param3);
+bool hif_caseXZ(hdtlib::hl_logic_t param1, hdtlib::hl_logic_t param2, bool param3);
 
 #endif
 

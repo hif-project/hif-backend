@@ -263,7 +263,7 @@ void FinalRefineVisitor::doFixes()
             hif::manipulation::AddUniqueObjectOptions addOpt;
             addOpt.equalsOptions.checkOnlyNames = true;
             addOpt.deleteIfNotAdded             = true;
-            const bool added                    = hif::manipulation::addUniqueObject(lib, s, addOpt);
+            bool added                    = hif::manipulation::addUniqueObject(lib, s, addOpt);
             if (added) {
                 lib->acceptVisitor(*this);
                 lib->replace(nullptr);

@@ -40,16 +40,16 @@ private:
     HifFactory _factory;
 
     /// @brief Set whether use hdtlib types.
-    const bool _useHdtlib;
+    bool _useHdtlib;
 
     /// @brief Set whether C++98 standard is required.
-    const bool _useCpp98;
+    bool _useCpp98;
 
     /// @brief True is at least an optimization is performed.
     bool _optimized{false};
 };
 
-PimpCodeVisitor::PimpCodeVisitor(semantics::ILanguageSemantics *sem, const bool useHdtlib, const bool useCpp98)
+PimpCodeVisitor::PimpCodeVisitor(semantics::ILanguageSemantics *sem, bool useHdtlib, bool useCpp98)
     : hif::GuideVisitor()
     , _sem(sem)
     , _factory(sem)

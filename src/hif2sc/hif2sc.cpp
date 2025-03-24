@@ -233,9 +233,9 @@ auto main(int argc, char *argv[]) -> int
 /////////////////////////////////////////
 
 #ifdef NDEBUG
-void checkStep(hif::System *s, const std::string &stepName, const bool /*isFixed*/)
+void checkStep(hif::System *s, const std::string &stepName, bool /*isFixed*/)
 #else
-void checkStep(hif::System *s, const std::string &stepName, const bool isFixed)
+void checkStep(hif::System *s, const std::string &stepName, bool isFixed)
 #endif
 {
 
@@ -301,7 +301,7 @@ void perform_pre_refinement(hif::System &o, hif2scParseLine &cLine)
     // ////////////////////////////
     if (_stepFileManager.checkStepName()) {
         messageInfo(getStepName("Fixing generate statements"));
-        const bool fixed = hif::manipulation::expandGenerates(&o, hifSem);
+        bool fixed = hif::manipulation::expandGenerates(&o, hifSem);
         if (fixed) {
             messageWarning("Generate statements have been expanded.", nullptr, nullptr);
         }
@@ -372,7 +372,7 @@ void perform_pre_refinement(hif::System &o, hif2scParseLine &cLine)
     // ////////////////////////////
     if (_stepFileManager.checkStepName()) {
         messageInfo(getStepName("Fixing conflicting subprograms"));
-        const bool fixed = fixConflictingSubPrograms(&o, cLine.keepBit(), hifSem);
+        bool fixed = fixConflictingSubPrograms(&o, cLine.keepBit(), hifSem);
         checkStep(&o, "PreRefine_conflictingSupPrograms", fixed);
     }
 
@@ -399,7 +399,7 @@ void perform_pre_refinement(hif::System &o, hif2scParseLine &cLine)
     // ////////////////////////////
     if (_stepFileManager.checkStepName()) {
         messageInfo(getStepName("Introducing support utility libraries"));
-        const bool fixed = fixUtilityLibraries(&o, hifSem, cLine);
+        bool fixed = fixUtilityLibraries(&o, hifSem, cLine);
         checkStep(&o, "fixUtilityLibraries", fixed);
     }
 }

@@ -202,7 +202,7 @@ auto CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o) -> int
 
     // A fresh copy is required for safe manipulation.
     hif::FunctionCall::DeclarationType *decl = hif::copy(instDecl);
-    const bool can_replace                   = originalDecl->getParent() != nullptr;
+    bool can_replace                   = originalDecl->getParent() != nullptr;
     if (can_replace) {
         originalDecl->replace(decl);
         hif::semantics::updateDeclarations(decl, _sem);

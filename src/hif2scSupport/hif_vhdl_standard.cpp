@@ -12,7 +12,7 @@
 namespace hif_vhdl_standard
 {
 
-void hif_vhdl_assert(const bool condition, const std::string &report, const hif_vhdl_severity_level level)
+void hif_vhdl_assert(bool condition, const std::string &report, const hif_vhdl_severity_level level)
 {
     if (condition) {
         return;

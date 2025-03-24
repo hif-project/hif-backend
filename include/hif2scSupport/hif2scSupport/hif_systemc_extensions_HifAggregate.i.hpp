@@ -44,7 +44,7 @@ template <class C>
 typename HifAggregateVector<C>::ChildType &
 HifAggregateVector<C>::addPairSet(const int lbound, const int rbound, const ValueType value)
 {
-    const bool gt      = (lbound > rbound);
+    bool gt      = (lbound > rbound);
     const int minbound = gt ? rbound : lbound;
     const int maxbound = gt ? lbound : rbound;
 

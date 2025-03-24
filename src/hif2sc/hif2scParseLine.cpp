@@ -42,9 +42,9 @@ hif2scParseLine::hif2scParseLine(int argc, char *argv[])
     addOptimization();
 
 #ifdef NDEBUG
-    const bool isInternalRelease = false;
+    bool isInternalRelease = false;
 #else
-    const bool isInternalRelease = true;
+    bool isInternalRelease = true;
 #endif
 
     addOption('b', "bit", false, true, "Keep deprecated sc_bit type. Default is mapping to bool.");

@@ -251,7 +251,7 @@ private:
         SubProgram *&resolvedSub,
         SubProgram *&unresolvedSub) -> bool;
     auto
-    _getResolvedUnresolvedSubprogram(LibraryDef *ld, const std::string &subName, BListHost::size_t pos, bool resolved)
+    _getResolvedUnresolvedSubprogram(LibraryDef *ld, const std::string &subName, std::size_t pos, bool resolved)
         -> SubProgram *;
     static auto _inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
     static auto _inHDTLibRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
@@ -497,7 +497,7 @@ auto PreRefine_utilityLibraries::_fixModOperator(Expression *o) -> bool
     // introduce casts
     Real *r1            = dynamic_cast<Real *>(numT);
     Real *r2            = dynamic_cast<Real *>(divT);
-    const bool realCast = r1 != nullptr || r2 != nullptr;
+    bool realCast = r1 != nullptr || r2 != nullptr;
     if (realCast) {
         raiseUniqueWarning("Found at least one mod operation between real numbers. "
                            "Casting the operands to integers.");
@@ -532,8 +532,8 @@ auto PreRefine_utilityLibraries::_fixReverseOperator(Expression *o) -> bool
     messageAssert(valBaseType != nullptr, "Cannot type value1", o->getValue1(), _sem);
 
     auto *str           = dynamic_cast<String *>(valBaseType);
-    const bool isString = str != nullptr;
-    const bool isVector = hif::semantics::isVectorType(valBaseType, _sem);
+    bool isString = str != nullptr;
+    bool isVector = hif::semantics::isVectorType(valBaseType, _sem);
 
     if (!isString && !isVector) {
         return false;
@@ -681,8 +681,8 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
         return false;
     }
 
-    const bool isSupportedRelational = (hif::operatorIsRelational(o->getOperator()));
-    const bool isSupportedArith =
+    bool isSupportedRelational = (hif::operatorIsRelational(o->getOperator()));
+    bool isSupportedArith =
         (o->getOperator() == op_plus || o->getOperator() == op_minus || o->getOperator() == op_mult);
 
     if (!isSupportedRelational && !isSupportedArith) {
@@ -695,14 +695,14 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
     Type *in1 = hif::typeGetNestedType(t1, _sem);
     Type *in2 = hif::typeGetNestedType(t2, _sem);
 
-    const bool t1IsArith = (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr);
-    const bool t2IsArith = (dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
+    bool t1IsArith = (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr);
+    bool t2IsArith = (dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
 
-    const bool t1IsBv = (dynamic_cast<Bitvector *>(in1) != nullptr);
-    const bool t2IsBv = (dynamic_cast<Bitvector *>(in2) != nullptr);
+    bool t1IsBv = (dynamic_cast<Bitvector *>(in1) != nullptr);
+    bool t2IsBv = (dynamic_cast<Bitvector *>(in2) != nullptr);
 
-    const bool t1IsBit = (dynamic_cast<Bit *>(in1) != nullptr) && (dynamic_cast<Bit *>(in1)->isLogic());
-    const bool t2IsBit = (dynamic_cast<Bit *>(in2) != nullptr) && (dynamic_cast<Bit *>(in2)->isLogic());
+    bool t1IsBit = (dynamic_cast<Bit *>(in1) != nullptr) && (dynamic_cast<Bit *>(in1)->isLogic());
+    bool t2IsBit = (dynamic_cast<Bit *>(in2) != nullptr) && (dynamic_cast<Bit *>(in2)->isLogic());
 
     if ((!t1IsArith && !t1IsBv && !t1IsBit) || (!t2IsArith && !t2IsBv && !t2IsBit)) {
         return false;
@@ -713,7 +713,7 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
         return false;
     }
 
-    const bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le ||
+    bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le ||
                                       o->getOperator() == op_ge || o->getOperator() == op_gt;
 
     // For logic bits, only relationals have problems
@@ -829,7 +829,7 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
 
     Type *baseType = hif::semantics::getBaseType(t, false, _sem);
     hif::backends::makeParametersAssignable(call, _sem, true);
-    const bool added = hif::backends::addEventualCast(call, hif::semantics::getSemanticType(call, _sem), t);
+    bool added = hif::backends::addEventualCast(call, hif::semantics::getSemanticType(call, _sem), t);
     if (added && dynamic_cast<Bool *>(baseType) != nullptr) {
         // In case of relationals, the custom call returns a bit,
         // whilst the original code returned a bool.
@@ -937,7 +937,7 @@ auto PreRefine_utilityLibraries::_fixArrayEquals(Expression *o) -> bool
     t2             = hif::semantics::getBaseType(t2, false, _sem);
 
     messageAssert(t1 != nullptr && t2 != nullptr, "Expected types", o, _sem);
-    const bool negCond       = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
+    bool negCond       = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
     const hif::Operator opEq = negCond ? hif::operatorGetInverse(o->getOperator()) : o->getOperator();
 
     auto *arr1 = dynamic_cast<Array *>(t1);
@@ -1017,14 +1017,14 @@ auto PreRefine_utilityLibraries::_fixLogicEquality(Expression *o) -> bool
     Type *in1 = hif::typeGetNestedType(top1, _sem);
     Type *in2 = hif::typeGetNestedType(top2, _sem);
 
-    const bool t1IsLogic = hif::typeIsLogic(in1, _sem);
-    const bool t2IsLogic = hif::typeIsLogic(in2, _sem);
+    bool t1IsLogic = hif::typeIsLogic(in1, _sem);
+    bool t2IsLogic = hif::typeIsLogic(in2, _sem);
 
     if (!t1IsLogic && !t2IsLogic) {
         return false;
     }
 
-    const bool isLogicArith =
+    bool isLogicArith =
         (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr ||
          dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
 
@@ -1032,9 +1032,9 @@ auto PreRefine_utilityLibraries::_fixLogicEquality(Expression *o) -> bool
         return false; // falling into vhdl: logic arith or numeric_std
     }
 
-    const bool isSigned = hif::typeIsSigned(in1, _sem) && hif::typeIsSigned(in2, _sem);
+    bool isSigned = hif::typeIsSigned(in1, _sem) && hif::typeIsSigned(in2, _sem);
 
-    const bool isBitType = dynamic_cast<Bit *>(top1) != nullptr && (dynamic_cast<Bit *>(top2) != nullptr);
+    bool isBitType = dynamic_cast<Bit *>(top1) != nullptr && (dynamic_cast<Bit *>(top2) != nullptr);
 
     std::string fName("hif_systemc_hif_logicEquals");
     if (_cLine.useHDTLib()) {
@@ -1058,7 +1058,7 @@ auto PreRefine_utilityLibraries::_fixLogicEquality(Expression *o) -> bool
     }
 
     o->replace(fc);
-    const bool negCond = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
+    bool negCond = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
 
     _addHifLibrary("systemc_hif_systemc_extensions");
     hif::backends::makeParametersAssignable(fc, _sem, true);
@@ -1187,8 +1187,8 @@ auto PreRefine_utilityLibraries::_fixArrayConcat(Expression *o) -> bool
     Value *p1 = _checkArrayOfSizeOneCase(o->getValue1(), a1, a2);
     Value *p2 = _checkArrayOfSizeOneCase(o->getValue2(), a2, a1);
 
-    const bool isArray1 = a1 != nullptr && p1 == nullptr;
-    const bool isArray2 = a2 != nullptr && p2 == nullptr;
+    bool isArray1 = a1 != nullptr && p1 == nullptr;
+    bool isArray2 = a2 != nullptr && p2 == nullptr;
 
     if (isArray1 && isArray2) {
         concatName = "concatArrays";
@@ -1365,7 +1365,7 @@ auto PreRefine_utilityLibraries::_fixSlice(Slice *o) -> bool
     }
 
     FunctionCall *fCall      = nullptr;
-    const bool isStringSlice = (dynamic_cast<String *>(baseT) != nullptr);
+    bool isStringSlice = (dynamic_cast<String *>(baseT) != nullptr);
     if (isStringSlice) {
         Value *v = hif::semantics::spanGetSize(o->getSpan(), _sem);
         fCall    = _factory.functionCall(
@@ -1590,8 +1590,8 @@ auto PreRefine_utilityLibraries::_getHifAssignSource(Value *source) -> Value *
 
         Value *spanT           = hif::semantics::spanGetSize(hif::typeGetSpan(coT, _sem), _sem);
         Value *spanOp          = hif::semantics::spanGetSize(hif::typeGetSpan(opT, _sem), _sem);
-        const bool cmp         = hif::equals(spanT, spanOp);
-        const bool castToArray = (coTa != nullptr) && (opTa == nullptr);
+        bool cmp         = hif::equals(spanT, spanOp);
+        bool castToArray = (coTa != nullptr) && (opTa == nullptr);
         delete spanT;
         delete spanOp;
         if (!cmp && !castToArray) {
@@ -1983,7 +1983,7 @@ auto PreRefine_utilityLibraries::_createAggregateCall(const std::string &callNam
     // HifAggregateArray()
     Value *sizeParam = hif::semantics::spanGetSize(hif::typeGetSpan(t, _sem), _sem); // fresh
 
-    const bool isArray = (dynamic_cast<Array *>(t) != nullptr);
+    bool isArray = (dynamic_cast<Array *>(t) != nullptr);
 
     // constructor call
     if (isArray) {
@@ -2097,7 +2097,7 @@ auto PreRefine_utilityLibraries::_fixAfter(Assign *o) -> bool
     return true;
 }
 
-void PreRefine_utilityLibraries::_addHifLibrary(const std::string &c, const bool standard)
+void PreRefine_utilityLibraries::_addHifLibrary(const std::string &c, bool standard)
 {
     std::string nn("hif_");
     nn += c;
@@ -2217,8 +2217,8 @@ auto PreRefine_utilityLibraries::_isResolvedConflicting(
 auto PreRefine_utilityLibraries::_getResolvedUnresolvedSubprogram(
     LibraryDef *ld,
     const std::string &subName,
-    const BListHost::size_t pos,
-    const bool resolved) -> SubProgram *
+    std::size_t pos,
+    bool resolved) -> SubProgram *
 {
     if (ld == nullptr) {
         return nullptr;
@@ -2296,7 +2296,7 @@ auto fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem
 
     // Step 1: last_value
 
-    const bool lastValueFix = hif::manipulation::mapLastValueToSystemC(o);
+    bool lastValueFix = hif::manipulation::mapLastValueToSystemC(o);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;

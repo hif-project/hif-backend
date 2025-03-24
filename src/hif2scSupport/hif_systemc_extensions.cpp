@@ -120,7 +120,7 @@ auto hif__op_ge(const sc_dt::sc_logic &v1, const sc_dt::sc_logic &v2) -> sc_dt::
     return sc_dt::sc_logic(static_cast<int>(v1.to_bool()) >= static_cast<int>(v2.to_bool()));
 }
 
-auto hif_caseXZ(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2, const bool param3) -> bool
+auto hif_caseXZ(const sc_dt::sc_logic &param1, const sc_dt::sc_logic &param2, bool param3) -> bool
 {
     if (param1 == param2) {
         return true;
@@ -162,7 +162,7 @@ hdtlib::hl_logic_t hif__op_ge(const hdtlib::hl_logic_t &v1, const hdtlib::hl_log
     return v1.to_bool() >= v2.to_bool();
 }
 
-bool hif_caseXZ(hdtlib::hl_logic_t param1, hdtlib::hl_logic_t param2, const bool param3)
+bool hif_caseXZ(hdtlib::hl_logic_t param1, hdtlib::hl_logic_t param2, bool param3)
 {
     if (param1 == param2)
         return true;

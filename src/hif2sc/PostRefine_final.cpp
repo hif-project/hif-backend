@@ -306,10 +306,10 @@ private:
     Includes _includes;
 
     /// @brief Set whether use hdtlib types.
-    const bool _useHdtlib;
+    bool _useHdtlib;
 
     /// @brief Set whether C++98 standard is required.
-    const bool _useCpp98;
+    bool _useCpp98;
 
     /// @brief Set max nested when deep.
     const uint64_t _maxWhen;
@@ -330,8 +330,8 @@ private:
 FinalRefineVisitor::FinalRefineVisitor(
     System *root,
     semantics::ILanguageSemantics *sem,
-    const bool useHdtlib,
-    const bool useCpp98,
+    bool useHdtlib,
+    bool useCpp98,
     const uint64_t maxWhen,
     std::string sourcesExtension,
     std::string headerExtension)
@@ -605,8 +605,8 @@ auto FinalRefineVisitor::visitAggregate(Aggregate &o) -> int
     // Otherwise aggregate is better to be rolled in order to print as for.
     auto *c                    = dynamic_cast<Const *>(o.getParent());
     View *parentView           = hif::getNearestParent<View>(&o);
-    const bool isInGlobalScope = (parentView == nullptr);
-    const bool mustBeExpanded  = (c != nullptr && (c->isDefine() || isInGlobalScope));
+    bool isInGlobalScope = (parentView == nullptr);
+    bool mustBeExpanded  = (c != nullptr && (c->isDefine() || isInGlobalScope));
 
     if (mustBeExpanded) {
         messageAssert(!c->isDefine() || isInGlobalScope, "Unexpected define in view scope", c, _sem);
@@ -1170,7 +1170,7 @@ void FinalRefineVisitor::_generateInclude(Scope *destination, BList<Library> &de
     if (du != nullptr && !du->views.empty()) {
         tmpScope = du->views.front();
     }
-    const bool isSystem = (hif::declarationIsPartOfStandard(tmpScope));
+    bool isSystem = (hif::declarationIsPartOfStandard(tmpScope));
 
     if (_isInsideStandarLibDef(du)) {
         // avoid including of views belonging to standard library defs.
@@ -1195,7 +1195,7 @@ template <typename T> bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
     }
     const Operator op = operatorFromPlainString(call->getName(), "__systemc_");
 
-    const BList<ParameterAssign>::size_t paramNumber = call->parameterAssigns.size();
+    auto paramNumber = call->parameterAssigns.size();
     if (op == hif::op_none) {
         return false;
     }

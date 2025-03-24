@@ -188,7 +188,7 @@ auto PreRefine_misc::visitFor(For &o) -> int
     }
 
     // - Checking initial declarations
-    const BList<DataDeclaration>::size_t sizeDecl = o.initDeclarations.size();
+    auto sizeDecl = o.initDeclarations.size();
     if (sizeDecl != 1 && sizeDecl != 2) {
         return 0;
     }
@@ -215,7 +215,7 @@ auto PreRefine_misc::visitFor(For &o) -> int
     }
 
     // - Checking step actions
-    const BList<Action>::size_t sizeStepAct = o.stepActions.size();
+    auto sizeStepAct = o.stepActions.size();
     if (sizeStepAct != 1) {
         return 0;
     }
@@ -251,7 +251,7 @@ auto PreRefine_misc::visitFor(For &o) -> int
 
     hif::EqualsOptions opt;
     opt.skipNullBranches = true;
-    const bool equals    = hif::equals(templ, &o, opt);
+    bool equals    = hif::equals(templ, &o, opt);
     delete templ;
     if (!equals) {
         return 0;
@@ -316,7 +316,7 @@ auto PreRefine_misc::visitStateTable(StateTable &o) -> int
 
     // Fix sensitivity in case of pos/neg:
     analysis::AnalyzeProcessOptions::ProcessMap map;
-    const bool isOk = hif::analysis::analyzeProcesses(&o, map, _sem);
+    bool isOk = hif::analysis::analyzeProcesses(&o, map, _sem);
     messageAssert(isOk, "Unable to fix process.", &o, _sem);
 
     analysis::ProcessInfos &infos = map[&o];
@@ -591,7 +591,7 @@ void PreRefine_misc::addRequiredLibraries()
     }
 }
 
-auto PreRefine_misc::_buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, const bool skipReset) -> Value *
+auto PreRefine_misc::_buildAndExpression(StateTable *o, analysis::ProcessInfos &infos, bool skipReset) -> Value *
 {
     Value *expr = nullptr;
 
@@ -613,7 +613,7 @@ auto PreRefine_misc::_buildSensitivityCondition(
     hif::analysis::ProcessInfos::ReferredDeclarations &refs,
     DataDeclaration *clock,
     DataDeclaration *skipReset,
-    const bool isRising) -> Value *
+    bool isRising) -> Value *
 {
     using hif::analysis::ProcessInfos;
 
