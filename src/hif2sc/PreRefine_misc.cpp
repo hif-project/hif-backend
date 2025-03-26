@@ -72,7 +72,7 @@ void _fixBreaks(System *root, hif::semantics::ILanguageSemantics * /*sem*/)
 // Support functions
 // ///////////////////////////////////////////////////////////////////
 
-auto collectObjectMethod(Object *o, const HifQueryBase * /*unused*/) -> bool
+auto check_object_method(Object *o, const HifQueryBase * /*unused*/) -> bool
 {
     if (dynamic_cast<Wait *>(o) != nullptr) {
         return true;
@@ -1315,7 +1315,7 @@ auto PreRefine_misc::_checkWrongStatement(Object *root, bool searchAllWrong) -> 
     //hif::HifTypedQuery<Expression> q3;
 
     if (searchAllWrong) {
-        q1.collectObjectMethod = &collectObjectMethod;
+        q1.check_object_method = &check_object_method;
 
         q1.setNextQueryType(&q2);
         //q2.setNextQueryType(&q3);

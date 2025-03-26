@@ -51,7 +51,7 @@ PreRefine_identifierNames::PreRefine_identifierNames(hif::System *system, semant
     , _declarationsMap()
 {
     hif::semantics::GetReferencesOptions opt;
-    opt.includeUnreferenced = true;
+    opt.include_unreferenced = true;
     hif::semantics::getAllReferences(_declarationsMap, _sem, system, opt);
 }
 
