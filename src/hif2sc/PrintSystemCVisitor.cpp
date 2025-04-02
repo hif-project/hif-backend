@@ -989,6 +989,27 @@ auto PrintSystemCVisitor::visitBitValue(BitValue &o) -> int
     return 0;
 }
 
+inline auto __is_integer(hif::Type *type) -> bool
+{
+    if (auto bitvector = dynamic_cast<hif::Bitvector *>(type)) {
+        if (bitvector->isSigned()) {
+            // get the span of the bitvector type.
+            auto span = bitvector->getSpan();
+            if (span) {
+                // Get the left bound of the span.
+                auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                // Get the right bound of the span.
+                auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                // If both bounds are valid, compute the width.
+                if (left_bound && right_bound) {
+                    return left_bound->getValue() == 31 && right_bound->getValue() == 0;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 auto PrintSystemCVisitor::visitBitvector(Bitvector &o) -> int
 {
     _printComment(&o);

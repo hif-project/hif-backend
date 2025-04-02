@@ -250,8 +250,7 @@ private:
         SubProgram *decl,
         SubProgram *&resolvedSub,
         SubProgram *&unresolvedSub) -> bool;
-    auto
-    _getResolvedUnresolvedSubprogram(LibraryDef *ld, const std::string &subName, std::size_t pos, bool resolved)
+    auto _getResolvedUnresolvedSubprogram(LibraryDef *ld, const std::string &subName, std::size_t pos, bool resolved)
         -> SubProgram *;
     static auto _inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
     static auto _inHDTLibRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
@@ -495,8 +494,8 @@ auto PreRefine_utilityLibraries::_fixModOperator(Expression *o) -> bool
     Value *div = o->setValue2(nullptr);
 
     // introduce casts
-    Real *r1            = dynamic_cast<Real *>(numT);
-    Real *r2            = dynamic_cast<Real *>(divT);
+    Real *r1      = dynamic_cast<Real *>(numT);
+    Real *r2      = dynamic_cast<Real *>(divT);
     bool realCast = r1 != nullptr || r2 != nullptr;
     if (realCast) {
         raiseUniqueWarning("Found at least one mod operation between real numbers. "
@@ -531,7 +530,7 @@ auto PreRefine_utilityLibraries::_fixReverseOperator(Expression *o) -> bool
     Type *valBaseType = hif::semantics::getBaseType(valType, false, _sem);
     messageAssert(valBaseType != nullptr, "Cannot type value1", o->getValue1(), _sem);
 
-    auto *str           = dynamic_cast<String *>(valBaseType);
+    auto *str     = dynamic_cast<String *>(valBaseType);
     bool isString = str != nullptr;
     bool isVector = hif::semantics::isVectorType(valBaseType, _sem);
 
@@ -713,8 +712,8 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
         return false;
     }
 
-    bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le ||
-                                      o->getOperator() == op_ge || o->getOperator() == op_gt;
+    bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le || o->getOperator() == op_ge ||
+                                o->getOperator() == op_gt;
 
     // For logic bits, only relationals have problems
     if ((t1IsBit || t2IsBit) && !isComparisonOperator) {
@@ -757,8 +756,7 @@ auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
         // all relationals!
         fName = "hif_systemc_" + fName;
         if (!t1IsBit || !t2IsBit) {
-            hif::semantics::ILanguageSemantics::ExpressionTypeInfo info =
-                _sem->getExprType(in1, in2, o->getOperator(), o);
+            auto info = _sem->getExprType(in1, in2, o->getOperator(), o);
 
             if (hif::typeIsSigned(info.operationPrecision, _sem)) {
                 fName = fName + "_signed";
@@ -937,7 +935,7 @@ auto PreRefine_utilityLibraries::_fixArrayEquals(Expression *o) -> bool
     t2             = hif::semantics::getBaseType(t2, false, _sem);
 
     messageAssert(t1 != nullptr && t2 != nullptr, "Expected types", o, _sem);
-    bool negCond       = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
+    bool negCond             = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
     const hif::Operator opEq = negCond ? hif::operatorGetInverse(o->getOperator()) : o->getOperator();
 
     auto *arr1 = dynamic_cast<Array *>(t1);
@@ -1364,8 +1362,8 @@ auto PreRefine_utilityLibraries::_fixSlice(Slice *o) -> bool
         return false; // range on Array is managed through hif_range()
     }
 
-    FunctionCall *fCall      = nullptr;
-    bool isStringSlice = (dynamic_cast<String *>(baseT) != nullptr);
+    FunctionCall *fCall = nullptr;
+    bool isStringSlice  = (dynamic_cast<String *>(baseT) != nullptr);
     if (isStringSlice) {
         Value *v = hif::semantics::spanGetSize(o->getSpan(), _sem);
         fCall    = _factory.functionCall(
@@ -1588,8 +1586,8 @@ auto PreRefine_utilityLibraries::_getHifAssignSource(Value *source) -> Value *
             break;
         }
 
-        Value *spanT           = hif::semantics::spanGetSize(hif::typeGetSpan(coT, _sem), _sem);
-        Value *spanOp          = hif::semantics::spanGetSize(hif::typeGetSpan(opT, _sem), _sem);
+        Value *spanT     = hif::semantics::spanGetSize(hif::typeGetSpan(coT, _sem), _sem);
+        Value *spanOp    = hif::semantics::spanGetSize(hif::typeGetSpan(opT, _sem), _sem);
         bool cmp         = hif::equals(spanT, spanOp);
         bool castToArray = (coTa != nullptr) && (opTa == nullptr);
         delete spanT;
@@ -2253,7 +2251,8 @@ auto PreRefine_utilityLibraries::_inSignedUnsignedRelatedLibrary(const std::stri
         }
         if (func == "hif_vhdl_conv_std_logic_vector") {
             return true;
-        } if (func == "hif_vhdl_conv_unsigned")
+        }
+        if (func == "hif_vhdl_conv_unsigned")
             return true;
         else if (func == "hif_vhdl_conv_signed")
             return true;
@@ -2277,7 +2276,8 @@ auto PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib,
         }
         if (func == "hif_verilog__system_stime") {
             return true;
-        } if (func == "hif_verilog__system_time")
+        }
+        if (func == "hif_verilog__system_time")
             return true;
     } else if (lib == "hif_systemc_extensions") {
         if (func == "hif_logicEquals") {

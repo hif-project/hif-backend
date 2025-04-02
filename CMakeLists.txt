@@ -139,7 +139,6 @@ add_executable(
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/hif2verilogParseLine.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintVerilogMethods.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/VerilogPrinter.cpp
-    #${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintMethods.cpp
 )
 # Include directories.
 target_include_directories(hif2verilog PRIVATE ${CMAKE_SOURCE_DIR}/include ${HIF_INCLUDE_DIR})

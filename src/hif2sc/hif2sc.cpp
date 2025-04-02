@@ -11,7 +11,7 @@
 // Debug macros
 /////////////////////////////////////////
 
-//#define HIF2SC_DEBUG_PRINT_STEP_FILES
+#define HIF2SC_DEBUG_PRINT_STEP_FILES
 #define HIF2SC_DEBUG_PRINT_BEFORE 1
 //#define HIF2SC_PRINT_FINAL_TREE
 

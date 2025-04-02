@@ -895,12 +895,38 @@ auto VerilogPrinter::visitWithAlt(WithAlt &o) -> int { return GuideVisitor::visi
 // Private methods
 // ==============================================================================
 
+inline auto is_integer(hif::Type *type) -> bool
+{
+    if (auto bitvector = dynamic_cast<hif::Bitvector *>(type)) {
+        if (!bitvector->isSigned()) {
+            return false;
+        }
+        // get the span of the bitvector type.
+        auto span = bitvector->getSpan();
+        if (span) {
+            // Get the left bound of the span.
+            auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+            // Get the right bound of the span.
+            auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+            // If both bounds are valid, compute the width.
+            if (left_bound && right_bound) {
+                return left_bound->getValue() == 31 && right_bound->getValue() == 0;
+            }
+        }
+    }
+    return false;
+}
+
 std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
 {
     std::stringstream ss;
     if (auto variable = dynamic_cast<hif::Variable *>(declaration)) {
-        ss << "reg ";
-        ss << this->getBitwidth(variable->getType());
+        if (is_integer(variable->getType())) {
+            ss << "integer ";
+        } else {
+            ss << "reg ";
+            ss << this->getBitwidth(variable->getType());
+        }
         ss << variable->getName();
         auto value = this->getValue(variable->getValue());
         if (!value.empty()) {
@@ -967,24 +993,28 @@ std::string VerilogPrinter::getValue(hif::Value *value)
         }
     } else if (auto bitvector_value = dynamic_cast<BitvectorValue *>(value)) {
         if (bitvector_value->is01()) {
-            // Cast the type to Bitvector to get the width.
-            auto bitvector_type = dynamic_cast<hif::Bitvector *>(bitvector_value->getType());
-            // If the type is valid, get the width.
-            if (bitvector_type) {
-                // get the span of the bitvector type.
-                auto span = bitvector_type->getSpan();
-                if (span) {
-                    // Get the left bound of the span.
-                    auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
-                    // Get the right bound of the span.
-                    auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
-                    // If both bounds are valid, compute the width.
-                    if (left_bound && right_bound) {
-                        auto width = left_bound->getValue() - right_bound->getValue() + 1;
-                        ss << width << "'b";
+            if (is_integer(bitvector_value->getType())) {
+                ss << bitvector_value->getValueAsSigned();
+            } else {
+                // Cast the type to Bitvector to get the width.
+                auto bitvector_type = dynamic_cast<hif::Bitvector *>(bitvector_value->getType());
+                // If the type is valid, get the width.
+                if (bitvector_type) {
+                    // get the span of the bitvector type.
+                    auto span = bitvector_type->getSpan();
+                    if (span) {
+                        // Get the left bound of the span.
+                        auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                        // Get the right bound of the span.
+                        auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                        // If both bounds are valid, compute the width.
+                        if (left_bound && right_bound) {
+                            auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                            ss << width << "'b";
+                        }
                     }
+                    ss << bitvector_value->getValue();
                 }
-                ss << bitvector_value->getValue();
             }
         }
     } else if (auto identifier = dynamic_cast<hif::Identifier *>(value)) {
