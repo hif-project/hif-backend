@@ -29,6 +29,18 @@ if(VERILOG2HIF_EXECUTABLE)
     # without hiding it - if the underlying gap ever gets fixed, this test
     # flips to an unexpected failure instead of quietly staying green.
     set_tests_properties(unresolved_parameter PROPERTIES WILL_FAIL TRUE)
+
+    # Regression: hif2verilog crashes printing op_andrd/op_orrd (the
+    # reduction-AND/OR operators used internally to implement ~& and ~|).
+    add_test(
+        NAME reduction_operators
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/reduction_operators.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/reduction_operators_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/reduction_operators_test.cmake
+    )
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter test.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators tests.")
 endif()
