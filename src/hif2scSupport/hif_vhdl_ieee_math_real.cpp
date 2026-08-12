@@ -7,8 +7,8 @@
 
 #include <cfloat>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
-#include <stdint.h>
 
 #include "hif2scSupport/hif_vhdl_ieee_math_real.hpp"
 #include "hif2scSupport/hif_vhdl_standard.hpp"
@@ -38,42 +38,46 @@ const long double math_sqrt_pi       = 1.77245385090551602730L;
 const long double math_deg_to_rad    = 0.01745329251994329577L;
 const long double math_rad_to_deg    = 57.29577951308232087685L;
 
-double hif_vhdl_sign(double x)
+auto hif_vhdl_sign(double x) -> double
 {
-    if (x > 0.0)
+    if (x > 0.0) {
         return 1.0;
-    else if (x < 0.0)
+    }
+    if (x < 0.0) {
         return -1.0;
-    else
-        return 0.0;
+    }         return 0.0;
 }
 
 void hif_vhdl_uniform(int &seed1, int &seed2, double &x)
 {
-    int32_t z, k;
+    int32_t z = 0;
+    int32_t k = 0;
 
     k     = seed1 / 53668;
     seed1 = 40014 * (seed1 - k * 53668) - k * 12211;
 
-    if (seed1 < 0)
+    if (seed1 < 0) {
         seed1 = seed1 + 2147483563;
+    }
 
     k     = seed2 / 52774;
     seed2 = 40692 * (seed2 - k * 52774) - k * 3791;
 
-    if (seed2 < 0)
+    if (seed2 < 0) {
         seed2 = seed2 + 2147483399;
+    }
 
     z = seed1 - seed2;
-    if (z < 1)
+    if (z < 1) {
         z = z + 2147483562;
+    }
 
     x = double(z) * 4.656613e-10;
 }
 
-long long int hif_vhdl_get_rand_max() { return RAND_MAX; }
+auto hif_vhdl_get_rand_max() -> long long int { return RAND_MAX; }
 
-double hif_vhdl_log(const double x)
+auto hif_vhdl_log(const double x) -> double
 {
     if (x <= 0.0) {
         hif_vhdl_standard::hif_vhdl_assert(false, "X <= 0.0 in LOG(X)", hif_vhdl_standard::hif_vhdl_error);
@@ -83,7 +87,7 @@ double hif_vhdl_log(const double x)
     return log(x);
 }
 
-double hif_vhdl_log2(const double x)
+auto hif_vhdl_log2(const double x) -> double
 {
     if (x <= 0.0) {
         hif_vhdl_standard::hif_vhdl_assert(false, "X <= 0.0 in LOG2(X)", hif_vhdl_standard::hif_vhdl_error);
@@ -93,7 +97,7 @@ double hif_vhdl_log2(const double x)
     return log2(x);
 }
 
-double hif_vhdl_log10(const double x)
+auto hif_vhdl_log10(const double x) -> double
 {
     if (x <= 0.0) {
         hif_vhdl_standard::hif_vhdl_assert(false, "X <= 0.0 in LOG10(X)", hif_vhdl_standard::hif_vhdl_error);
@@ -103,7 +107,7 @@ double hif_vhdl_log10(const double x)
     return log10(x);
 }
 
-double hif_vhdl_log(const int base, const double x)
+auto hif_vhdl_log(const int base, const double x) -> double
 {
     if ((base <= 0) || (x <= 0.0)) {
         hif_vhdl_standard::hif_vhdl_assert(
@@ -117,10 +121,11 @@ double hif_vhdl_log(const int base, const double x)
 #else
         return log2(x);
 #endif
-    } else if (base == 10)
+    } else if (base == 10) {
         return log10(x);
-    else if (fabsl(base - math_e) < 0.000000001L)
+    } else if (fabsl(base - math_e) < 0.000000001L) {
         return log(x);
+    }
 
     return (log(x) / log(double(base)));
 }

@@ -38,7 +38,7 @@ void manageIdentifierTP(hif::Identifier &o);
 /// parameter of string type.
 /// @param o An object related to the tree.
 ///
-hif::Enum *addAndGetStringEnum(hif::Object *o);
+auto addAndGetStringEnum(hif::Object *o) -> hif::Enum *;
 
 /// @brief Add a value to global string enum.
 /// @param o An object related to the tree.
@@ -54,4 +54,4 @@ void addStringEnumEntry(hif::Object *o, const std::string &enum_name);
 /// @param msg The message to print.
 /// @param obj The optional object that causes the error.
 /// @param type The optional type that causes the error.
-void _error(const char *msg, hif::Object *obj = nullptr, hif::Type *type = nullptr);
+void error(const char *msg, hif::Object *obj = nullptr, hif::Type *type = nullptr);

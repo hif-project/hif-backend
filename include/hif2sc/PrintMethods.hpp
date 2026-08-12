@@ -36,10 +36,10 @@ void printImplementations(hif::System *sys, hif2scParseLine &cLine, PrintSystemC
 /// @{
 
 /// @brief Check if the implementation language is the one desired.
-bool checkLanguage(hif::Object *obj, hif::LanguageID lang);
+auto checkLanguage(hif::Object *obj, hif::LanguageID lang) -> bool;
 
 /// @brief Get the string correspondent to the implementation language.
-std::string getLanguage(hif::LanguageID lang);
+auto getLanguage(hif::LanguageID lang) -> std::string;
 
 /// @}
 
@@ -50,12 +50,12 @@ std::string getLanguage(hif::LanguageID lang);
 /// contain template parameters.
 /// @param obj The object to check.
 /// @param subTreeOnly Indicates whether check subtree too.
-bool ownTemplate(hif::Object *obj, const bool subTreeOnly);
+auto ownTemplate(hif::Object *obj, bool subTreeOnly) -> bool;
 
 /// @brief: Check if the passed object owns only template parameters or its
 /// contents contain only template parameters.
 /// @param obj The object to check.
 /// @param subTreeOnly Indicates whether check subtree too.
-bool ownTemplateOnly(hif::Object *obj, const bool subTreeOnly);
+auto ownTemplateOnly(hif::Object *obj, bool subTreeOnly) -> bool;
 
 /// @}

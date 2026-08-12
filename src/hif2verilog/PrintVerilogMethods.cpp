@@ -8,7 +8,7 @@
 #include <hif/backends/printFileMethods.hpp>
 
 #include "hif2verilog/PrintVerilogMethods.hpp"
-#include "hif2verilog/PrintVerilogVisitor.hpp"
+#include "hif2verilog/VerilogPrinter.hpp"
 
 using namespace hif;
 
@@ -20,53 +20,48 @@ public:
     VerilogVisitor(hif2verilogParseLine &cLine);
 
     /// @brief Destructor.
-    virtual ~VerilogVisitor();
+    ~VerilogVisitor() override;
+
+    VerilogVisitor(const VerilogVisitor &) = delete;
+
+    auto operator=(const VerilogVisitor &) -> VerilogVisitor & = delete;
 
     /// @name Refinement methods.
     //@{
 
-    virtual int visitDesignUnit(hif::DesignUnit &o);
+    auto visitDesignUnit(hif::DesignUnit &o) -> int override;
 
-    virtual int visitLibraryDef(hif::LibraryDef &o);
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
 
-    virtual int visitSystem(hif::System &o);
+    auto visitSystem(hif::System &o) -> int override;
 
     //@}
 
 private:
-    VerilogVisitor(const VerilogVisitor &);
-
-    VerilogVisitor &operator=(const VerilogVisitor &);
-
     /// @brief Print implementation.
     /// @param o The object to print.
     /// @param fileName The name of the file to write on (differenced basing
     /// on the kind of object).
     /// @param headerImplementation Used to distinguish between print of
     /// templated and non-templated components.
-    void _printImplementation(hif::Object &o, std::string fileName);
+    void _printImplementation(hif::Object &o, const std::string& fileName);
 
     /// @brief The output stream to write on.
-    hif::backends::IndentedStream *_outstream;
+    hif::backends::IndentedStream *_outstream{nullptr};
 
     /// @brief The main output directory, used to create the directory hierarchy
     /// related to this HIF tree.
     std::string _outdirName;
 
-    /// @brief The subdirectory relative to the library definition (if any).
-    hif::LibraryDef *_currentLibraryDef;
-
     /// @brief The semantics
     hif::semantics::VerilogSemantics *_sem;
 
     /// @brief Variable to check if AMS extension is enabled.
-    bool _ams_enabled;
+    bool _ams_enabled{};
 };
 
 VerilogVisitor::VerilogVisitor(hif2verilogParseLine &cLine)
-    : _outstream(nullptr)
-    , _outdirName(cLine.getOutputDirectory())
-    , _currentLibraryDef(nullptr)
+    : _outdirName(cLine.getOutputDirectory())
     , _sem(hif::semantics::VerilogSemantics::getInstance())
 {
 }
@@ -77,19 +72,20 @@ VerilogVisitor::~VerilogVisitor()
     delete _outstream;
 }
 
-int VerilogVisitor::visitDesignUnit(DesignUnit &o)
+auto VerilogVisitor::visitDesignUnit(DesignUnit &o) -> int
 {
     messageAssert(!o.views.empty() && o.views.size() == 1, "Unsupported more than one view", &o, nullptr);
     View *duView = o.views.front();
 
     // skip standard ones
-    if (duView->isStandard())
+    if (duView->isStandard()) {
         return 0;
+    }
 
     if (hif::languageIDToString(o.views.at(0)->getLanguageID()) == "AMS") {
         _ams_enabled = true;
-        System *sys  = dynamic_cast<System *>(o.getParent());
-        if (dynamic_cast<System *>(sys) != nullptr) {
+        auto *sys    = dynamic_cast<System *>(o.getParent());
+        if (sys != nullptr) {
             sys->libraryDefs.push_back(_sem->getStandardLibrary("vams_standard"));
             // The following code is a workaround until the inclusion issue will be fixed in lexer
             sys->libraryDefs.push_back(_sem->getStandardLibrary("vams_constants"));
@@ -117,11 +113,12 @@ int VerilogVisitor::visitDesignUnit(DesignUnit &o)
     return 0;
 }
 
-int VerilogVisitor::visitLibraryDef(LibraryDef &o)
+auto VerilogVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
     // Standard libraries
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     // Recursive call.
     GuideVisitor::visitLibraryDef(o);
@@ -130,7 +127,7 @@ int VerilogVisitor::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int VerilogVisitor::visitSystem(System &o)
+auto VerilogVisitor::visitSystem(System &o) -> int
 {
     // Recursive call.
     GuideVisitor::visitSystem(o);
@@ -138,10 +135,11 @@ int VerilogVisitor::visitSystem(System &o)
     return 0;
 }
 
-void VerilogVisitor::_printImplementation(Object &o, std::string fileName)
+void VerilogVisitor::_printImplementation(Object &o, const std::string& fileName)
 {
-    if (fileName.empty())
+    if (fileName.empty()) {
         return;
+    }
 
     if (_outstream != nullptr) {
         delete _outstream;
@@ -152,10 +150,10 @@ void VerilogVisitor::_printImplementation(Object &o, std::string fileName)
     std::string ext;
     hif::backends::splitFileName(fileName, f, ext);
 
-    LibraryDef *lib = dynamic_cast<LibraryDef *>(&o);
+    auto *lib = dynamic_cast<LibraryDef *>(&o);
     if (lib == nullptr) {
         std::ofstream ofs;
-        if (!hif::backends::openFileStream(fileName.data(), &ofs)) {
+        if (hif::backends::openFileStream(fileName, &ofs) == 0) {
             messageError("Unable to create implementation output stream for " + fileName, nullptr, nullptr);
         }
         ofs.close();
@@ -164,10 +162,10 @@ void VerilogVisitor::_printImplementation(Object &o, std::string fileName)
         _outstream->setComment("// ", "// ", "");
     }
 
-    *(_outstream) << "-- @file " << fileName << "\n";
-    *(_outstream) << "-- @brief This file was generated by hif2verilog.\n";
-    *(_outstream) << "-- @details\n";
-    *(_outstream) << "-- Generate with HIF version " << hif::application_utils::getHIFVersion() << ".\n";
+    *(_outstream) << "// @file " << fileName << "\n";
+    *(_outstream) << "// @brief This file was generated by hif2verilog.\n";
+    *(_outstream) << "// @details\n";
+    *(_outstream) << "// Generate with HIF version " << hif::application_utils::getHIFVersion() << ".\n";
     *(_outstream) << "\n";
     if (_ams_enabled) {
         *(_outstream) << "`include \"constants.vams\"\n";
@@ -175,11 +173,11 @@ void VerilogVisitor::_printImplementation(Object &o, std::string fileName)
         *(_outstream) << "\n";
     }
 
-    PrintVerilogVisitor vis(_outstream, f, ext);
+    VerilogPrinter vis(_outstream);
     o.acceptVisitor(vis);
 
     if (_outstream != nullptr) {
-        *(_outstream) << std::endl;
+        *(_outstream) << '\n';
     }
 }
 

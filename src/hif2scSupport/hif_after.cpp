@@ -15,9 +15,9 @@ namespace hif_systemc_extensions
 namespace /* anon */
 {
 
-typedef std::pair<int, std::string> AfterKey1;
-typedef std::pair<AfterKey1, sc_core::sc_time> AfterKey2;
-typedef std::map<AfterKey2, IHifAfter *> AfterMap;
+using AfterKey1 = std::pair<int, std::string>;
+using AfterKey2 = std::pair<AfterKey1, sc_core::sc_time>;
+using AfterMap  = std::map<AfterKey2, IHifAfter *>;
 
 AfterMap _afterMap;
 
@@ -25,7 +25,7 @@ void _hif_after_register(IHifAfter *after)
 {
     AfterKey1 k1(after->_line, after->_file);
     AfterKey2 k2(k1, after->_time);
-    AfterMap::iterator it(_afterMap.find(k2));
+    auto it(_afterMap.find(k2));
     if (it != _afterMap.end()) {
         IHifAfter *other = it->second;
         other->disable();
@@ -38,11 +38,13 @@ void _hif_after_unregister(IHifAfter *after)
 {
     AfterKey1 k1(after->_line, after->_file);
     AfterKey2 k2(k1, after->_time);
-    AfterMap::iterator it(_afterMap.find(k2));
-    if (it == _afterMap.end())
+    auto it(_afterMap.find(k2));
+    if (it == _afterMap.end()) {
         return;
-    if (it->second != after)
+    }
+    if (it->second != after) {
         return;
+    }
     _afterMap.erase(it);
 }
 
@@ -74,12 +76,12 @@ hif_systemc_extensions::IHifAfter::IHifAfter(const hif_systemc_extensions::IHifA
     , _time(other._time)
 {
     // move semantics
-    IHifAfter *tmp = const_cast<IHifAfter *>(&other);
-    tmp->_event    = nullptr;
+    auto *tmp   = const_cast<IHifAfter *>(&other);
+    tmp->_event = nullptr;
     _hif_after_register(this);
 }
 
-void hif_systemc_extensions::IHifAfter::swap(hif_systemc_extensions::IHifAfter &other)
+void hif_systemc_extensions::IHifAfter::swap(hif_systemc_extensions::IHifAfter &other) noexcept
 {
     std::swap(_event, other._event);
     std::swap(_file, other._file);

@@ -9,7 +9,6 @@
 #include "hif2vhdl/VHDLPrinter.hpp"
 
 using namespace hif;
-using std::ofstream;
 
 void printVHDL(hif::System *sys, const std::string &outDir)
 {
@@ -24,7 +23,7 @@ void splitFileName(const std::string &f, std::string &base, std::string &ext)
     std::string::size_type p = f.find_last_of('.');
     if (p == std::string::npos) {
         base = f;
-        ext  = "";
+        ext  = std::string();
         return;
     }
 
@@ -32,12 +31,13 @@ void splitFileName(const std::string &f, std::string &base, std::string &ext)
     ext  = f.substr(p + 1);
 }
 
-int openFileStream(const std::string &name, ofstream *outstream)
+auto openFileStream(const std::string &name, std::ofstream *outstream) -> int
 {
     outstream->open(name.c_str());
-    if (!outstream->is_open() || !outstream->good())
+    if (!outstream->is_open() || !outstream->good()) {
         return 0;
+    }
     return 1;
 }
 
-void closeFileStream(ofstream *stream) { stream->close(); }
+void closeFileStream(std::ofstream *stream) { stream->close(); }

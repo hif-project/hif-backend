@@ -14,47 +14,36 @@ namespace hif_systemc_extensions
 {
 
 template <typename T>
-std::vector<T>
-hif_vector_slice(const sc_core::sc_vector<sc_core::sc_signal<T>> &array, const int left, const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_signal<T>> &array, int left, int right) -> std::vector<T>;
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_in<T>> &array, const int left, const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_in<T>> &array, int left, int right) -> std::vector<T>;
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_out<T>> &array, const int left, const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_out<T>> &array, int left, int right) -> std::vector<T>;
 
 template <typename T>
-std::vector<T> hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &array, const int left, const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_inout<T>> &array, int left, int right) -> std::vector<T>;
+
+template <typename T> auto hif_vector_slice(const std::vector<T> &array, int left, int right) -> std::vector<T>;
 
 template <typename T>
-std::vector<T> hif_vector_slice(const std::vector<T> &array, const int left, const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_signal<T>>> &array, int left, int right)
+    -> std::vector<std::vector<T>>;
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
-    const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_signal<T>>> &array,
-    const int left,
-    const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_in<T>>> &array, int left, int right)
+    -> std::vector<std::vector<T>>;
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
-    const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_in<T>>> &array,
-    const int left,
-    const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_out<T>>> &array, int left, int right)
+    -> std::vector<std::vector<T>>;
 
 template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
-    const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_out<T>>> &array,
-    const int left,
-    const int right);
+auto hif_vector_slice(const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_inout<T>>> &array, int left, int right)
+    -> std::vector<std::vector<T>>;
 
-template <typename T>
-std::vector<std::vector<T>> hif_vector_slice(
-    const sc_core::sc_vector<sc_core::sc_vector<sc_core::sc_inout<T>>> &array,
-    const int left,
-    const int right);
-
-template <typename T>
-T *hif_vector_slice(T *array, const int left, const int right);
+template <typename T> auto hif_vector_slice(T *array, int left, int right) -> T *;
 
 } // namespace hif_systemc_extensions
 

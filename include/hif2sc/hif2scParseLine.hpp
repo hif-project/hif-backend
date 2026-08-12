@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <hif/hif.hpp>
 
@@ -15,19 +15,22 @@ class hif2scParseLine : public hif::application_utils::CommandLineParser
 {
 public:
     hif2scParseLine(int argc, char *argv[]);
-    virtual ~hif2scParseLine();
+    ~hif2scParseLine() override;
 
-    bool useResolved() const;
-    bool useHDTLib() const;
-    bool useCpp98() const;
-    bool keepBit() const;
-    bool noRealEquals() const;
-    uint64_t getMaxLines() const;
-    uint64_t getMaxWhen() const;
-    std::string getSourcesExtension() const;
-    std::string getHeadersExtension() const;
+    hif2scParseLine(const hif2scParseLine &)                     = delete;
+    auto operator=(const hif2scParseLine &) -> hif2scParseLine & = delete;
 
-protected:
+    auto useResolved() const -> bool;
+    auto useHDTLib() const -> bool;
+    auto useCpp98() const -> bool;
+    auto keepBit() const -> bool;
+    auto noRealEquals() const -> bool;
+    auto getMaxLines() const -> uint64_t;
+    auto getMaxWhen() const -> uint64_t;
+    auto getSourcesExtension() const -> std::string;
+    auto getHeadersExtension() const -> std::string;
+
+private:
     /// @brief Validates and configures the arguments.
     void _validateArguments();
 
@@ -40,8 +43,4 @@ protected:
     uint64_t _maxWhen;
     std::string _sourcesExtension;
     std::string _headersExtension;
-
-private:
-    hif2scParseLine(const hif2scParseLine &);
-    hif2scParseLine &operator=(const hif2scParseLine &);
 };

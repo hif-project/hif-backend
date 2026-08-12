@@ -11,8 +11,6 @@
 #include "hif2sc/PostRefineMethods.hpp"
 #include "hif2sc/globals.hpp"
 
-using namespace hif;
-
 namespace
 {
 
@@ -29,35 +27,35 @@ namespace
 class CppStandardRefineVisitor : public hif::GuideVisitor
 {
 public:
-    typedef std::set<hif::SubProgram *> SubProgramSet;
+    using SubProgramSet = std::set<hif::SubProgram *>;
 
     /// @brief Default constructor.
     CppStandardRefineVisitor(
-        System *system,
+        hif::System *system,
         hif::semantics::ILanguageSemantics *sem,
         hif::semantics::ILanguageSemantics *checkSem);
     /// @brief Destructor.
-    virtual ~CppStandardRefineVisitor();
+    ~CppStandardRefineVisitor() override;
 
     /// @brief Remove template parameters from TypeDef, putting it inside a new
     /// templated DesignUnit.
-    virtual int visitTypeDef(TypeDef &o);
+    auto visitTypeDef(hif::TypeDef &o) -> int override;
 
     /// @brief Inlines functions which are marked as constexpr.
-    virtual int visitFunctionCall(FunctionCall &o);
-    virtual int visitProcedureCall(ProcedureCall &o);
+    auto visitFunctionCall(hif::FunctionCall &o) -> int override;
+    auto visitProcedureCall(hif::ProcedureCall &o) -> int override;
 
     /// @name Collects methods in set to remove constexpr property
     /// and collets in other set to remove default values template parameter.
     /// @{
 
-    virtual int visitFunction(Function &o);
-    virtual int visitProcedure(Procedure &o);
+    auto visitFunction(hif::Function &o) -> int override;
+    auto visitProcedure(hif::Procedure &o) -> int override;
 
     /// @}
 
-    virtual int visitLibraryDef(LibraryDef &o);
-    virtual int visitView(View &o);
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitView(hif::View &o) -> int override;
 
 private:
     hif::HifFactory _factory;
@@ -65,21 +63,22 @@ private:
     hif::semantics::ILanguageSemantics *_checkSem;
     SubProgramSet _fixedSet;
     SubProgramSet _recursionSet;
-    bool _needToReset;
-    System *_system;
+    bool _needToReset{false};
+    hif::System *_system;
     SubProgramSet _methodsWithTPDefaultValue;
 
-    CppStandardRefineVisitor(const CppStandardRefineVisitor &);
-    CppStandardRefineVisitor &operator=(const CppStandardRefineVisitor &);
+    CppStandardRefineVisitor(const CppStandardRefineVisitor &)                     = delete;
+    auto operator=(const CppStandardRefineVisitor &) -> CppStandardRefineVisitor & = delete;
 
     /// @brief Update the references.
-    int _updateReferences(View *newDecl, const std::string &duName, hif::semantics::ReferencesSet &references);
+    auto
+    _updateReferences(hif::View *newDecl, const std::string &duName, hif::semantics::ReferencesSet &references) -> int;
 
-    bool _hasTemplateDefaultValues(BList<Declaration> &templates);
+    static auto _hasTemplateDefaultValues(hif::BList<hif::Declaration> &templates) -> bool;
 };
 
 CppStandardRefineVisitor::CppStandardRefineVisitor(
-    System *system,
+    hif::System *system,
     hif::semantics::ILanguageSemantics *sem,
     hif::semantics::ILanguageSemantics *checkSem)
     : _factory(sem)
@@ -87,7 +86,6 @@ CppStandardRefineVisitor::CppStandardRefineVisitor(
     , _checkSem(checkSem)
     , _fixedSet()
     , _recursionSet()
-    , _needToReset(false)
     , _system(system)
     , _methodsWithTPDefaultValue()
 {
@@ -96,21 +94,18 @@ CppStandardRefineVisitor::CppStandardRefineVisitor(
 
 CppStandardRefineVisitor::~CppStandardRefineVisitor()
 {
-    for (SubProgramSet::iterator i = _fixedSet.begin(); i != _fixedSet.end(); ++i) {
-        SubProgram *s = *i;
-        s->removeProperty(PROPERTY_CONSTEXPR);
+    for (auto s : _fixedSet) {
+        s->removeProperty(hif::PROPERTY_CONSTEXPR);
     }
 
-    for (SubProgramSet::iterator i = _methodsWithTPDefaultValue.begin(); i != _methodsWithTPDefaultValue.end(); ++i) {
-        SubProgram *s = *i;
-        for (BList<Declaration>::iterator j = s->templateParameters.begin(); j != s->templateParameters.end(); ++j) {
-            Declaration *tp = *j;
-            if (dynamic_cast<TypeTP *>(tp) != nullptr) {
-                TypeTP *ttp = static_cast<TypeTP *>(tp);
+    for (auto s : _methodsWithTPDefaultValue) {
+        for (const auto &template_declaration : s->templateParameters) {
+            // Check if the template parameter is a type or a value.
+            auto ttp = dynamic_cast<hif::TypeTP *>(template_declaration);
+            auto vtp = dynamic_cast<hif::ValueTP *>(template_declaration);
+            if (ttp) {
                 delete ttp->setType(nullptr);
-            } else // value TP
-            {
-                ValueTP *vtp = static_cast<ValueTP *>(tp);
+            } else if (vtp) {
                 delete vtp->setValue(nullptr);
             }
         }
@@ -123,11 +118,11 @@ CppStandardRefineVisitor::~CppStandardRefineVisitor()
     }
 }
 
-int CppStandardRefineVisitor::visitFunction(Function &o)
+auto CppStandardRefineVisitor::visitFunction(hif::Function &o) -> int
 {
     GuideVisitor::visitFunction(o);
 
-    if (o.checkProperty(PROPERTY_CONSTEXPR)) {
+    if (o.checkProperty(hif::PROPERTY_CONSTEXPR)) {
         _fixedSet.insert(&o);
     }
 
@@ -138,7 +133,7 @@ int CppStandardRefineVisitor::visitFunction(Function &o)
     return 0;
 }
 
-int CppStandardRefineVisitor::visitProcedure(Procedure &o)
+auto CppStandardRefineVisitor::visitProcedure(hif::Procedure &o) -> int
 {
     GuideVisitor::visitProcedure(o);
 
@@ -149,23 +144,25 @@ int CppStandardRefineVisitor::visitProcedure(Procedure &o)
     return 0;
 }
 
-int CppStandardRefineVisitor::visitLibraryDef(LibraryDef &o)
+auto CppStandardRefineVisitor::visitLibraryDef(hif::LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     GuideVisitor::visitLibraryDef(o);
     return 0;
 }
 
-int CppStandardRefineVisitor::visitView(View &o)
+auto CppStandardRefineVisitor::visitView(hif::View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     GuideVisitor::visitView(o);
     return 0;
 }
 
-int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
+auto CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o) -> int
 {
     // Since before visit, ensure declaration of potential sub-declarations.
     // Ref. design: vhdl/openCores/des56 + hif2vp
@@ -190,9 +187,10 @@ int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
             _sem);
     }
 
-    if (!originalDecl->checkProperty(PROPERTY_CONSTEXPR))
+    if (!originalDecl->checkProperty(hif::PROPERTY_CONSTEXPR)) {
         return 0;
-    LibraryDef *ld = dynamic_cast<LibraryDef *>(originalDecl->getParent());
+    }
+    auto ld = dynamic_cast<hif::LibraryDef *>(originalDecl->getParent());
     if (ld != nullptr && ld->isStandard()) {
         raiseUniqueWarning("Found at least a call to a standard function inside a template "
                            " that cannot be simplified at the moment. The generated code will "
@@ -204,7 +202,7 @@ int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
 
     // A fresh copy is required for safe manipulation.
     hif::FunctionCall::DeclarationType *decl = hif::copy(instDecl);
-    const bool can_replace                   = originalDecl->getParent() != nullptr;
+    bool can_replace                   = originalDecl->getParent() != nullptr;
     if (can_replace) {
         originalDecl->replace(decl);
         hif::semantics::updateDeclarations(decl, _sem);
@@ -212,12 +210,12 @@ int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
     }
     hif::semantics::mapDeclarationsInTree(decl, instDecl, decl, _sem);
 
-    for (BList<ParameterAssign>::iterator i = o.parameterAssigns.begin(); i != o.parameterAssigns.end(); ++i) {
-        for (BList<Parameter>::iterator j = decl->parameters.begin(); j != decl->parameters.end(); ++j) {
-            if ((*i)->getName() != (*j)->getName())
-                continue;
-            delete (*j)->setValue(hif::copy((*i)->getValue()));
-            break;
+    for (const auto &parameter_assign : o.parameterAssigns) {
+        for (auto parameter : decl->parameters) {
+            if (parameter_assign->getName() == parameter->getName()) {
+                delete parameter->setValue(hif::copy(parameter_assign->getValue()));
+                break;
+            }
         }
     }
 
@@ -231,12 +229,13 @@ int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
 
     hif::semantics::mapDeclarationsInTree(decl, decl, instDecl, _sem);
 
-    StateTable *st = decl->getStateTable();
-    Action *a      = st->states.front()->actions.back();
-    Value *v       = nullptr;
-    if (dynamic_cast<Return *>(a) != nullptr) {
-        Return *ret = static_cast<Return *>(a);
-        v           = ret->setValue(nullptr);
+    auto state_table = decl->getStateTable();
+    auto action      = state_table->states.front()->actions.back();
+
+    hif::Value *v = nullptr;
+    if (dynamic_cast<hif::Return *>(action) != nullptr) {
+        auto ret = dynamic_cast<hif::Return *>(action);
+        v        = ret->setValue(nullptr);
         o.replace(v);
         delete &o;
         delete decl;
@@ -254,11 +253,11 @@ int CppStandardRefineVisitor::visitFunctionCall(hif::FunctionCall &o)
     return 0;
 }
 
-int CppStandardRefineVisitor::visitProcedureCall(ProcedureCall &o)
+auto CppStandardRefineVisitor::visitProcedureCall(hif::ProcedureCall &o) -> int
 {
     GuideVisitor::visitProcedureCall(o);
 
-    ProcedureCall::DeclarationType *originalDecl = hif::semantics::getDeclaration(&o, _sem);
+    auto originalDecl = hif::semantics::getDeclaration(&o, _sem);
     if (originalDecl == nullptr) {
         messageDebugAssert(originalDecl != nullptr, "Unable to find declaration", &o, _sem);
         return 0;
@@ -274,26 +273,27 @@ int CppStandardRefineVisitor::visitProcedureCall(ProcedureCall &o)
     return 0;
 }
 
-int CppStandardRefineVisitor::visitTypeDef(TypeDef &o)
+auto CppStandardRefineVisitor::visitTypeDef(hif::TypeDef &o) -> int
 {
-    if (o.templateParameters.empty())
+    if (o.templateParameters.empty()) {
         return 0;
+    }
 
     // Take the reference to this TypeDef.
     hif::semantics::ReferencesSet references;
     hif::semantics::getReferences(&o, references, _sem, _system);
 
     // Insert typedef into a templated View.
-    View *view = new View();
+    auto view = new hif::View();
     view->setName("behav");
-    view->setLanguageID(cpp); // The class must not extend sc_module.
+    view->setLanguageID(hif::cpp); // The class must not extend sc_module.
     view->templateParameters.merge(o.templateParameters);
-    view->setContents(new Contents());
-    view->setEntity(new Entity());
+    view->setContents(new hif::Contents());
+    view->setEntity(new hif::Entity());
 
     // Create a correspondent DesignUnit and replace TypeDef with it.
-    DesignUnit *du = new DesignUnit();
-    du->setName(NameTable::getInstance()->getFreshName("HIF_Typedef"));
+    auto du = new hif::DesignUnit();
+    du->setName(hif::NameTable::getInstance()->getFreshName("HIF_Typedef"));
     du->views.push_back(view);
     du->addProperty(PROPERTY_TYPDEF_DESIGN_UNIT);
 
@@ -302,8 +302,8 @@ int CppStandardRefineVisitor::visitTypeDef(TypeDef &o)
 
     // Add class constructor and destructor.
     hif::HifFactory factory;
-    BList<Parameter> pp;
-    BList<Declaration> tp;
+    hif::BList<hif::Parameter> pp;
+    hif::BList<hif::Declaration> tp;
     view->getContents()->declarations.push_front(factory.classDestructor(du));
     view->getContents()->declarations.push_front(factory.classConstructor(du, pp, tp));
 
@@ -314,16 +314,16 @@ int CppStandardRefineVisitor::visitTypeDef(TypeDef &o)
     return 0;
 }
 
-int CppStandardRefineVisitor::_updateReferences(
-    View *newDecl,
+auto CppStandardRefineVisitor::_updateReferences(
+    hif::View *newDecl,
     const std::string &duName,
-    hif::semantics::ReferencesSet &references)
+    hif::semantics::ReferencesSet &references) -> int
 {
-    for (hif::semantics::ReferencesSet::iterator it(references.begin()); it != references.end(); ++it) {
-        TypeReference *tRef = dynamic_cast<TypeReference *>(*it);
+    for (auto it(references.begin()); it != references.end(); ++it) {
+        auto tRef = dynamic_cast<hif::TypeReference *>(*it);
         messageAssert(tRef != nullptr, "Unexpected case", *it, _sem);
 
-        ViewReference *vr = new ViewReference();
+        auto vr = new hif::ViewReference();
         vr->setDesignUnit(duName);
         vr->setName(newDecl->getName());
         vr->templateParameterAssigns.merge(tRef->templateParameterAssigns);
@@ -334,30 +334,24 @@ int CppStandardRefineVisitor::_updateReferences(
             continue;
         }
 
-        ReferencedType *inst = tRef->getInstance();
+        auto inst = tRef->getInstance();
         tRef->setInstance(vr);
         vr->setInstance(inst);
     }
     return 0;
 }
 
-bool CppStandardRefineVisitor::_hasTemplateDefaultValues(BList<Declaration> &templates)
+auto CppStandardRefineVisitor::_hasTemplateDefaultValues(hif::BList<hif::Declaration> &templates) -> bool
 {
-    for (BList<Declaration>::iterator i = templates.begin(); i != templates.end(); ++i) {
-        if (dynamic_cast<TypeTP *>(*i) != nullptr) {
-            TypeTP *ttp = static_cast<TypeTP *>(*i);
-            if (ttp->getType() == nullptr)
-                continue;
-
-            // found
+    for (const auto &declaration : templates) {
+        // Cast the declaration to type template parameter.
+        auto ttp = dynamic_cast<hif::TypeTP *>(declaration);
+        if (ttp && ttp->getType()) {
             return true;
-        } else // value TP
-        {
-            ValueTP *vtp = static_cast<ValueTP *>(*i);
-            if (vtp->getValue() == nullptr)
-                continue;
-
-            // found
+        }
+        // Cast the declaration to value template parameter.
+        auto vtp = dynamic_cast<hif::ValueTP *>(declaration);
+        if (vtp && vtp->getValue()) {
             return true;
         }
     }

@@ -9,10 +9,6 @@
 
 #include "hif2sc/PrintMethods.hpp"
 
-using std::endl;
-using std::ofstream;
-using std::string;
-using std::vector;
 using namespace hif;
 
 namespace
@@ -31,48 +27,49 @@ public:
     PrintHeaderVisitor(hif2scParseLine &cLine, PrintSystemCVisitor::ConstTemplateMap &ctmList);
 
     /// @brief Destructor.
-    virtual ~PrintHeaderVisitor();
+    ~PrintHeaderVisitor() override;
 
     /// @name Refinement methods.
     //@{
 
-    virtual int visitDesignUnit(hif::DesignUnit &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitSystem(hif::System &o);
+    auto visitDesignUnit(hif::DesignUnit &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitSystem(hif::System &o) -> int override;
 
     //@}
 
 private:
-    PrintHeaderVisitor(const PrintHeaderVisitor &);
-    PrintHeaderVisitor &operator=(const PrintHeaderVisitor &);
+    PrintHeaderVisitor(const PrintHeaderVisitor &)                     = delete;
+    auto operator=(const PrintHeaderVisitor &) -> PrintHeaderVisitor & = delete;
 
     /// @name Functions that print a new header file for the component.
     //@{
 
-    int _printHeader(hif::DesignUnit &o);
-    int _printHeader(hif::LibraryDef &o);
-    int _printHeader(hif::System &o);
-    int _printHeader(hif::Object &o, string fileName);
+    auto _printHeader(hif::DesignUnit &o) -> int;
+    auto _printHeader(hif::LibraryDef &o) -> int;
+    auto _printHeader(hif::System &o) -> int;
+    auto _printHeader(hif::Object &o, const std::string &fileName) -> int;
 
     //@}
 
-    int _createDirectory(const string &dirName);
-    int _createDirectories(
-        const string &outdirName,
+    static auto _createDirectory(const std::string &dirName) -> int;
+    static auto _createDirectories(
+        const std::string &outdirName,
         const std::string &libDefName,
-        PrintSystemCVisitor::ConstTemplateMap &ctmList);
-    std::string _getHeaderExtensionByLanguage(Object *obj);
-    std::string
-    _getFileName(const std::string &outDir, const std::string &libDefName, const std::string &fileName, Object *obj);
+        PrintSystemCVisitor::ConstTemplateMap &ctmList) -> int;
+    auto _getHeaderExtensionByLanguage(Object *obj) -> std::string;
+    auto
+    _getFileName(const std::string &outDir, const std::string &libDefName, const std::string &fileName, Object *obj)
+        -> std::string;
 
     /// @brief The output stream to write on.
     ///
-    hif::backends::IndentedStream *_outstream;
+    hif::backends::IndentedStream *_outstream{nullptr};
 
     /// @brief The main output directory, used to create the directory hierarchy
     /// related to this HIF tree.
     ///
-    string _outdirName;
+    std::string _outdirName;
 
     /// @name The fields related to nested components.
     //@{
@@ -80,14 +77,14 @@ private:
     /// @brief When printing a LibraryDef, all its contents will be included in
     /// a directory with its same name. This fields is set in visit of LibraryDef,
     /// and it is used to recognize nested components (if any).
-    hif::LibraryDef *_currentLibraryDef;
+    hif::LibraryDef *_currentLibraryDef{nullptr};
 
     /// @brief This fields is set in visit of DesignUnit, and it is used to
     /// recognize nested components (if any).
-    std::string _DUName;
+    std::string DUName;
 
     /// @brief Set to true, indicates the presence of global declarations.
-    bool _includeSystemGlobals;
+    bool _includeSystemGlobals{false};
 
     //@}
 
@@ -110,11 +107,8 @@ private:
 };
 
 PrintHeaderVisitor::PrintHeaderVisitor(hif2scParseLine &cLine, PrintSystemCVisitor::ConstTemplateMap &ctmList)
-    : _outstream(nullptr)
-    , _outdirName(cLine.getOutputDirectory())
-    , _currentLibraryDef(nullptr)
-    , _DUName()
-    , _includeSystemGlobals(false)
+    : _outdirName(cLine.getOutputDirectory())
+    , DUName()
     , _useResolved(cLine.useResolved())
     , _useHDTLib(cLine.useHDTLib())
     , _maxLines(cLine.getMaxLines())
@@ -132,22 +126,23 @@ PrintHeaderVisitor::~PrintHeaderVisitor()
     delete _outstream;
 }
 
-int PrintHeaderVisitor::visitDesignUnit(DesignUnit &o)
+auto PrintHeaderVisitor::visitDesignUnit(DesignUnit &o) -> int
 {
     auto restore = o.getName();
-    _DUName      = o.getName();
+    DUName       = o.getName();
 
     _printHeader(o);
 
-    _DUName = restore;
+    DUName = restore;
     return 0;
 }
 
-int PrintHeaderVisitor::visitLibraryDef(LibraryDef &o)
+auto PrintHeaderVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
     // Skip standard libraries (e.g., tlm)
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     // Note: even if LibraryDef contains only DesignUnits or other LibraryDef,
     // the file is still generated to preserve the hierarchical structure.
@@ -164,41 +159,43 @@ int PrintHeaderVisitor::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int PrintHeaderVisitor::visitSystem(System &o)
+auto PrintHeaderVisitor::visitSystem(System &o) -> int
 {
-    if (!_printHeader(o))
+    if (_printHeader(o) == 0) {
         _includeSystemGlobals = true;
+    }
 
     // Recursive call.
     GuideVisitor::visitSystem(o);
     return 0;
 }
 
-int PrintHeaderVisitor::_printHeader(DesignUnit &o)
+auto PrintHeaderVisitor::_printHeader(DesignUnit &o) -> int
 {
     // Normally there's only one View for each DesignUnit.
     messageAssert(!o.views.empty() && o.views.size() == 1, "Unsupported more than one view", &o, nullptr);
     View *duView = o.views.front();
 
     // skip standard ones
-    if (duView->isStandard())
+    if (duView->isStandard()) {
         return 0;
+    }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(duView->getLanguageID()) + " code for unit " + o.getName() + ".");
+    messageInfo(std::string("Generating ") + getLanguage(duView->getLanguageID()) + " code for unit " + o.getName() + ".");
 
     // Note: directories have already been created.
     std::string ldName;
     if (_currentLibraryDef != nullptr) {
         ldName = _currentLibraryDef->getName();
     }
-    string fileName = _getFileName(_outdirName, ldName, _DUName, duView);
+    std::string fileName = _getFileName(_outdirName, ldName, DUName, duView);
     _printHeader(o, fileName);
 
     return 0;
 }
 
-int PrintHeaderVisitor::_printHeader(LibraryDef &o)
+auto PrintHeaderVisitor::_printHeader(LibraryDef &o) -> int
 {
     std::string ldName;
     if (_currentLibraryDef != nullptr) {
@@ -206,43 +203,44 @@ int PrintHeaderVisitor::_printHeader(LibraryDef &o)
     }
 
     // Create the directories associated to this library.
-    if (!_createDirectories(_outdirName, ldName, _ctmList)) {
+    if (_createDirectories(_outdirName, ldName, _ctmList) == 0) {
         messageError("Error creating output directories.", nullptr, nullptr);
     }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(o.getLanguageID()) + " code for library " + o.getName() + ".");
+    messageInfo(std::string("Generating ") + getLanguage(o.getLanguageID()) + " code for library " + o.getName() + ".");
 
-    string fileName = _getFileName(_outdirName, ldName, ldName, &o);
+    std::string fileName = _getFileName(_outdirName, ldName, ldName, &o);
     _printHeader(o, fileName);
 
     return 0;
 }
 
-int PrintHeaderVisitor::_printHeader(System &o)
+auto PrintHeaderVisitor::_printHeader(System &o) -> int
 {
-    if (!_createDirectories(_outdirName, "", _ctmList)) {
+    if (_createDirectories(_outdirName, "", _ctmList) == 0) {
         messageDebugAssert(false, "Unexpected case", nullptr, nullptr);
         messageError("Error creating output directories.", nullptr, nullptr);
     }
 
-    if (o.declarations.empty() && o.actions.empty())
+    if (o.declarations.empty() && o.actions.empty()) {
         return 1;
+    }
 
     // Feedback message
-    messageInfo(string("Generating ") + getLanguage(o.getLanguageID()) + " code for global declarations.");
+    messageInfo(std::string("Generating ") + getLanguage(o.getLanguageID()) + " code for global declarations.");
 
-    string fileName = _getFileName(_outdirName, nullptr, NameTable::getInstance()->hifGlobals(), &o);
+    std::string fileName = _getFileName(_outdirName, nullptr, NameTable::getInstance()->hifGlobals(), &o);
     _printHeader(o, fileName);
 
     return 0;
 }
 
-int PrintHeaderVisitor::_printHeader(Object &o, string fileName)
+auto PrintHeaderVisitor::_printHeader(Object &o, const std::string &fileName) -> int
 {
-    ofstream actualStream;
-    if (!hif::backends::openFileStream(fileName.data(), &actualStream)) {
-        messageError(string("Error writing file ") + fileName, nullptr, nullptr);
+    std::ofstream actualStream;
+    if (hif::backends::openFileStream(fileName, &actualStream) == 0) {
+        messageError(std::string("Error writing file ") + fileName, nullptr, nullptr);
     }
     actualStream.close();
 
@@ -269,19 +267,19 @@ int PrintHeaderVisitor::_printHeader(Object &o, string fileName)
     vis.setCurrentLibraryDef(_currentLibraryDef);
     o.acceptVisitor(vis);
 
-    *(_outstream) << endl; // Flush the stream
+    *(_outstream) << '\n'; // Flush the stream
 
     return 0;
 }
 
-int PrintHeaderVisitor::_createDirectory(const string &dirName)
+auto PrintHeaderVisitor::_createDirectory(const std::string &dirName) -> int
 {
     hif::application_utils::FileStructure dir(dirName);
     // Empty directory if it already exists.
     if (dir.exists()) {
-        vector<string> fileList = dir.list();
-        for (vector<string>::iterator it = fileList.begin(); it != fileList.end(); ++it) {
-            hif::application_utils::FileStructure fileIn(*it);
+        std::vector<std::string> fileList = dir.list();
+        for (auto &it : fileList) {
+            hif::application_utils::FileStructure fileIn(it);
             fileIn.rmfile_weak();
         }
     }
@@ -293,48 +291,51 @@ int PrintHeaderVisitor::_createDirectory(const string &dirName)
     return 1;
 }
 
-int PrintHeaderVisitor::_createDirectories(
+auto PrintHeaderVisitor::_createDirectories(
     const std::string &outdirName,
     const std::string &libDefName,
-    PrintSystemCVisitor::ConstTemplateMap &ctmList)
+    PrintSystemCVisitor::ConstTemplateMap &ctmList) -> int
 {
     PrintSystemCVisitor vis(ctmList);
     // To portability under Windows, directory paths must not end with a trailing '/' character.
     // Thus, we manage the concatenation directly in ld var.
-    string ld = (libDefName.empty()) ? "" : "/" + std::string(libDefName);
+    std::string ld = (libDefName.empty()) ? "" : "/" + std::string(libDefName);
 
-    string dirName = outdirName + "/inc" + ld;
-    if (!_createDirectory(dirName))
+    std::string dirName = outdirName + "/inc" + ld;
+    if (_createDirectory(dirName) == 0) {
         return 0;
+    }
 
     dirName = outdirName + "/src" + ld;
-    if (!_createDirectory(dirName))
+    if (_createDirectory(dirName) == 0) {
         return 0;
+    }
 
     return 1;
 }
 
-std::string PrintHeaderVisitor::_getHeaderExtensionByLanguage(Object *obj)
+auto PrintHeaderVisitor::_getHeaderExtensionByLanguage(Object *obj) -> std::string
 {
     const hif::LanguageID lang = objectGetLanguage(obj);
-    LibraryDef *ld             = dynamic_cast<LibraryDef *>(obj);
+    auto *ld                   = dynamic_cast<LibraryDef *>(obj);
 
-    if (lang == hif::c || (ld != nullptr && ld->getLanguageID() == hif::cpp && ld->hasCLinkage()))
+    if (lang == hif::c || (ld != nullptr && ld->getLanguageID() == hif::cpp && ld->hasCLinkage())) {
         return ".h";
+    }
 
     // rtl, tlm, psl, cpp
     return "." + _headersExtension;
 }
 
-std::string PrintHeaderVisitor::_getFileName(
+auto PrintHeaderVisitor::_getFileName(
     const std::string &outDir,
     const std::string &libDefName,
     const std::string &fileName,
-    Object *obj)
+    Object *obj) -> std::string
 {
-    string ret("");
-    string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
-    string fn = (fileName.empty()) ? "" : fileName;
+    std::string ret;
+    std::string ld = (libDefName.empty()) ? "" : std::string(libDefName) + "/";
+    std::string fn = (fileName.empty()) ? "" : fileName;
 
     ret = outDir + "/inc/" + ld + fn + _getHeaderExtensionByLanguage(obj);
     return ret;

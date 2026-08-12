@@ -6,7 +6,8 @@
 /// See LICENSE.md for details.
 
 #include <algorithm>
-#include <inttypes.h>
+#include <cinttypes>
+#include <utility>
 
 #include "hif2sc/PostRefineMethods.hpp"
 #include "hif2sc/PrintMethods.hpp"
@@ -30,37 +31,35 @@ namespace
 class WhenSplitter : public GuideVisitor
 {
 public:
-    WhenSplitter(const uint64_t maxDepth, hif::semantics::ILanguageSemantics *sem);
-    ~WhenSplitter();
+    WhenSplitter(uint64_t maxDepth, hif::semantics::ILanguageSemantics *sem);
+    ~WhenSplitter() override;
 
-    bool hasSplit() const;
+    auto hasSplit() const -> bool;
 
-    virtual int visitLibraryDef(LibraryDef &o);
-    virtual int visitView(View &o);
+    auto visitLibraryDef(LibraryDef &o) -> int override;
+    auto visitView(View &o) -> int override;
 
-    virtual int visitWhen(When &o);
+    auto visitWhen(When &o) -> int override;
 
 private:
-    bool _isInConstantScope(When *o);
+    static auto _isInConstantScope(When *o) -> bool;
 
-    WhenSplitter(const WhenSplitter &);
-    WhenSplitter &operator=(const WhenSplitter &);
+    WhenSplitter(const WhenSplitter &)                     = delete;
+    auto operator=(const WhenSplitter &) -> WhenSplitter & = delete;
 
     hif::semantics::ILanguageSemantics *_sem;
     hif::HifFactory _factory;
-    uint64_t _depth;
+    uint64_t _depth{0};
     const uint64_t _maxDepth;
-    StateTable *_parentSt;
-    bool _hasSplit;
+    StateTable *_parentSt{nullptr};
+    bool _hasSplit{false};
 };
 
 WhenSplitter::WhenSplitter(const uint64_t maxDepth, hif::semantics::ILanguageSemantics *sem)
     : _sem(sem)
     , _factory(sem)
-    , _depth(0)
     , _maxDepth(maxDepth)
-    , _parentSt(nullptr)
-    , _hasSplit(false)
+
 {
     // ntd
 }
@@ -70,28 +69,31 @@ WhenSplitter::~WhenSplitter()
     // ntd
 }
 
-bool WhenSplitter::hasSplit() const { return _hasSplit; }
+auto WhenSplitter::hasSplit() const -> bool { return _hasSplit; }
 
-int WhenSplitter::visitLibraryDef(LibraryDef &o)
+auto WhenSplitter::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     GuideVisitor::visitLibraryDef(o);
     return 0;
 }
 
-int WhenSplitter::visitView(View &o)
+auto WhenSplitter::visitView(View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     GuideVisitor::visitView(o);
     return 0;
 }
 
-int WhenSplitter::visitWhen(When &o)
+auto WhenSplitter::visitWhen(When &o) -> int
 {
-    if (_isInConstantScope(&o))
+    if (_isInConstantScope(&o)) {
         return 0;
+    }
     if (_depth < _maxDepth) {
         StateTable *restore = _parentSt;
         if (_depth == 0) {
@@ -111,7 +113,7 @@ int WhenSplitter::visitWhen(When &o)
     messageAssert(_parentSt != nullptr, "Unable to split global When.", &o, _sem);
     messageAssert(_parentSt->declarations.empty(), "Unable to split When in scope with local declarations.", &o, _sem);
 
-    SubProgram *parentSub = dynamic_cast<SubProgram *>(_parentSt->getParent());
+    auto *parentSub = dynamic_cast<SubProgram *>(_parentSt->getParent());
     if (parentSub != nullptr && (!parentSub->parameters.empty() || !parentSub->templateParameters.empty())) {
         messageError("Unable to split When in subprogram with paramenters or tempaltes.", &o, _sem);
     }
@@ -136,9 +138,8 @@ int WhenSplitter::visitWhen(When &o)
     o.replace(fCall);
 
     // func
-    SubProgram *func =
-        _factory.subprogram(hif::copy(whenType), fname, _factory.noTemplates(), _factory.noParameters());
-    StateTable *st = _factory.stateTable(fname, _factory.noDeclarations(), _factory.retStmt(&o));
+    SubProgram *func = _factory.subprogram(hif::copy(whenType), fname, _factory.noTemplates(), _factory.noParameters());
+    StateTable *st   = _factory.stateTable(fname, _factory.noDeclarations(), _factory.retStmt(&o));
     func->setStateTable(st);
     BList<Declaration> *decls = hif::objectGetDeclarationList(scope);
     decls->push_front(func);
@@ -152,24 +153,26 @@ int WhenSplitter::visitWhen(When &o)
     return 0;
 }
 
-bool WhenSplitter::_isInConstantScope(When *o)
+auto WhenSplitter::_isInConstantScope(When *o) -> bool
 {
-    Range *r = getNearestParent<Range>(o);
-    if (r != nullptr)
+    auto *r = getNearestParent<Range>(o);
+    if (r != nullptr) {
         return true;
-    ValueTP *vtp = getNearestParent<ValueTP>(o);
-    if (vtp != nullptr)
+    }
+    auto *vtp = getNearestParent<ValueTP>(o);
+    if (vtp != nullptr) {
         return true;
-    TypeTP *ttp = getNearestParent<TypeTP>(o);
-    if (ttp != nullptr)
+    }
+    auto *ttp = getNearestParent<TypeTP>(o);
+    if (ttp != nullptr) {
         return true;
-    TPAssign *tpa = getNearestParent<TPAssign>(o);
-    if (tpa != nullptr)
+    }
+    auto *tpa = getNearestParent<TPAssign>(o);
+    if (tpa != nullptr) {
         return true;
-    Const *cc = getNearestParent<Const>(o);
-    if (cc != nullptr && cc->isDefine())
-        return true;
-    return false;
+    }
+    auto *cc = getNearestParent<Const>(o);
+    return cc != nullptr && cc->isDefine();
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -188,77 +191,76 @@ public:
     FinalRefineVisitor(
         System *root,
         semantics::ILanguageSemantics *sem,
-        const bool useHdtlib,
-        const bool useCpp98,
-        const uint64_t maxWhen,
-        const std::string &sourcesExtension,
-        const std::string &headerExtension);
-    ~FinalRefineVisitor();
+        bool useHdtlib,
+        bool useCpp98,
+        uint64_t maxWhen,
+        std::string sourcesExtension,
+        std::string headerExtension);
+    ~FinalRefineVisitor() override;
 
     /// @name Scope-related visits.
     /// @{
-    int visitDesignUnit(DesignUnit &o);
-    int visitLibraryDef(LibraryDef &o);
-    int visitSystem(System &o);
-    int visitView(View &o);
+    auto visitDesignUnit(DesignUnit &o) -> int override;
+    auto visitLibraryDef(LibraryDef &o) -> int override;
+    auto visitSystem(System &o) -> int override;
+    auto visitView(View &o) -> int override;
     /// @}
 
     /// @name Symbol-related visits.
     /// (1) Collect include of declaration scope.
     /// (2) Prefix the symbol with declaration scope if necessary.
     /// @{
-    int visitInstance(Instance &o);
-    int visitViewReference(ViewReference &o);
+    auto visitInstance(Instance &o) -> int override;
+    auto visitViewReference(ViewReference &o) -> int override;
     /// @}
 
     /// @name Special cases.
     /// @{
-    int visitCast(Cast &o);
-    int visitFile(File &o);
-    int visitIdentifier(Identifier &o);
-    int visitInt(Int &o);
-    int visitLibrary(Library &o);
-    int visitPortAssign(PortAssign &o);
-    int visitString(String &o);
-    int visitTypeReference(TypeReference &o);
-    int visitWhen(When &o);
+    auto visitCast(Cast &o) -> int override;
+    auto visitFile(File &o) -> int override;
+    auto visitIdentifier(Identifier &o) -> int override;
+    auto visitInt(Int &o) -> int override;
+    auto visitLibrary(Library &o) -> int override;
+    auto visitPortAssign(PortAssign &o) -> int override;
+    auto visitString(String &o) -> int override;
+    auto visitTypeReference(TypeReference &o) -> int override;
+    auto visitWhen(When &o) -> int override;
     /// @}
 
     /// @name Printing fixes.
     /// @{
-    int visitExpression(Expression &o);
-    int visitFor(For &o);
-    int visitAggregate(Aggregate &o);
-    int visitAggregateAlt(AggregateAlt &o);
-    int visitFunctionCall(FunctionCall &o);
-    int visitProcedureCall(ProcedureCall &o);
+    auto visitExpression(Expression &o) -> int override;
+    auto visitFor(For &o) -> int override;
+    auto visitAggregate(Aggregate &o) -> int override;
+    auto visitAggregateAlt(AggregateAlt &o) -> int override;
+    auto visitFunctionCall(FunctionCall &o) -> int override;
+    auto visitProcedureCall(ProcedureCall &o) -> int override;
     /// @}
 
     /// @brief Generate all the needed includes.
     void generateIncludes();
 
 protected:
-    template <typename T>
-    bool _fixOverloadedOperatos(T *call);
+    template <typename T> bool _fixOverloadedOperatos(T *call);
 
-    bool _isInsideStandarLibDef(DesignUnit *du);
+    static auto _isInsideStandarLibDef(DesignUnit *du) -> bool;
 
     // Map scope - path-to-system. Same typedefs of findScopeDependencies
-    typedef std::list<Scope *> ScopedParents;
-    typedef std::map<Scope *, ScopedParents> ScopeRelations;
+    using ScopedParents  = std::list<Scope *>;
+    using ScopeRelations = std::map<Scope *, ScopedParents>;
 
     // Scope - required scopes by inner symbols
-    typedef std::set<Scope *> RequiredScopes;
-    typedef std::map<Scope *, RequiredScopes> Includes;
+    using RequiredScopes = std::set<Scope *>;
+    using Includes       = std::map<Scope *, RequiredScopes>;
 
 private:
     // Disabled.
-    FinalRefineVisitor(const FinalRefineVisitor &);
-    FinalRefineVisitor &operator=(const FinalRefineVisitor &);
+    FinalRefineVisitor(const FinalRefineVisitor &)                     = delete;
+    auto operator=(const FinalRefineVisitor &) -> FinalRefineVisitor & = delete;
 
     /// @brief Return the nearest parent scope, skipping the ones contained into
     /// standard libraries.
-    Scope *_getNearestScope(Object *start);
+    auto _getNearestScope(Object *start) -> Scope *;
 
     /// @brief For each symbol, get the scope containing its declaration and add
     /// it to dependencies of container scope, if they are different.
@@ -269,7 +271,7 @@ private:
 
     /// @brief For objects which will be printed in separate files, generate the
     /// string to include the proper header wrt scopes.
-    StringValue *_getImplementationInclude(Scope *scope);
+    auto _getImplementationInclude(Scope *scope) -> StringValue *;
 
     /// @brief Set property implementation includes if needed.
     void _addImplementationInclude(Scope *scope);
@@ -278,7 +280,7 @@ private:
     void _checkSystemLibrariesInclusion(Scope *scope);
 
     /// @brief Checks whether SystemC data types are used inside the scope.
-    bool _usesSystemC(Scope *scope) const;
+    static auto _usesSystemC(Scope *scope) -> bool;
 
     /// @brief Add include of LibraryDef main header inside its View siblings.
     void _includeParentLibraryDefinitions(Object *o);
@@ -288,7 +290,7 @@ private:
 
     void _addGlobalLibraryInclusion(TypeReference *tr);
 
-    bool _fixCombineTernary(When *o);
+    auto _fixCombineTernary(When *o) -> bool;
 
     semantics::ILanguageSemantics *_sem;
     HifFactory _factory;
@@ -297,17 +299,17 @@ private:
     ScopeRelations _scopeRelations;
 
     /// @brief Keep trace of current scope.
-    Scope *_currentScope;
+    Scope *_currentScope{nullptr};
 
     /// @brief The map of include to be filled during visits.
     /// Their generation is managed by public method generateIncludes().
     Includes _includes;
 
     /// @brief Set whether use hdtlib types.
-    const bool _useHdtlib;
+    bool _useHdtlib;
 
     /// @brief Set whether C++98 standard is required.
-    const bool _useCpp98;
+    bool _useCpp98;
 
     /// @brief Set max nested when deep.
     const uint64_t _maxWhen;
@@ -322,37 +324,36 @@ private:
     System *_system;
 
     /// @brief The fake library def.
-    LibraryDef *_fakeSystemLib;
+    LibraryDef *_fakeSystemLib{nullptr};
 };
 
 FinalRefineVisitor::FinalRefineVisitor(
     System *root,
     semantics::ILanguageSemantics *sem,
-    const bool useHdtlib,
-    const bool useCpp98,
+    bool useHdtlib,
+    bool useCpp98,
     const uint64_t maxWhen,
-    const std::string &sourcesExtension,
-    const std::string &headerExtension)
+    std::string sourcesExtension,
+    std::string headerExtension)
     : _sem(sem)
     , _factory(sem)
     , _scopeRelations()
-    , _currentScope(nullptr)
     , _includes()
     , _useHdtlib(useHdtlib)
     , _useCpp98(useCpp98)
     , _maxWhen(maxWhen)
-    , _sourcesExtension(sourcesExtension)
-    , _headerExtension(headerExtension)
+    , _sourcesExtension(std::move(sourcesExtension))
+    , _headerExtension(std::move(headerExtension))
     , _trash()
     , _system(root)
-    , _fakeSystemLib(nullptr)
+
 {
     hif::manipulation::findScopeDependencies(root, _scopeRelations);
 }
 
 FinalRefineVisitor::~FinalRefineVisitor() { _trash.clear(nullptr); }
 
-int FinalRefineVisitor::visitDesignUnit(DesignUnit &o)
+auto FinalRefineVisitor::visitDesignUnit(DesignUnit &o) -> int
 {
     Scope *restore = _currentScope;
     _currentScope  = &o;
@@ -364,10 +365,11 @@ int FinalRefineVisitor::visitDesignUnit(DesignUnit &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitLibraryDef(LibraryDef &o)
+auto FinalRefineVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     _checkSystemLibrariesInclusion(&o);
 
@@ -381,7 +383,7 @@ int FinalRefineVisitor::visitLibraryDef(LibraryDef &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitSystem(System &o)
+auto FinalRefineVisitor::visitSystem(System &o) -> int
 {
     // adding fake library used as library to include design units
     _fakeSystemLib = new LibraryDef();
@@ -402,10 +404,11 @@ int FinalRefineVisitor::visitSystem(System &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitView(View &o)
+auto FinalRefineVisitor::visitView(View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     _checkSystemLibrariesInclusion(&o);
 
@@ -425,7 +428,7 @@ int FinalRefineVisitor::visitView(View &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitInstance(Instance &o)
+auto FinalRefineVisitor::visitInstance(Instance &o) -> int
 {
     GuideVisitor::visitInstance(o);
 
@@ -434,7 +437,7 @@ int FinalRefineVisitor::visitInstance(Instance &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitViewReference(ViewReference &o)
+auto FinalRefineVisitor::visitViewReference(ViewReference &o) -> int
 {
     GuideVisitor::visitViewReference(o);
 
@@ -450,17 +453,19 @@ int FinalRefineVisitor::visitViewReference(ViewReference &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitCast(Cast &o)
+auto FinalRefineVisitor::visitCast(Cast &o) -> int
 {
     GuideVisitor::visitCast(o);
-    if (!hif::objectIsNUllPointer(&o, _sem))
+    if (!hif::objectIsNUllPointer(&o, _sem)) {
         return 0;
+    }
     const hif::LanguageID lang = objectGetLanguage(&o);
-    if (lang != hif::c && lang != hif::cpp)
+    if (lang != hif::c && lang != hif::cpp) {
         return 0;
+    }
     const std::string libName = lang == hif::c ? "stddef.h" : "cstddef";
 
-    Library *libInclude = _factory.library("cstddef", nullptr, libName.c_str(), false, true);
+    Library *libInclude = _factory.library("cstddef", nullptr, libName, false, true);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
@@ -470,18 +475,19 @@ int FinalRefineVisitor::visitCast(Cast &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitFile(File &o)
+auto FinalRefineVisitor::visitFile(File &o) -> int
 {
     GuideVisitor::visitFile(o);
 
     const hif::LanguageID lang = objectGetLanguage(&o);
     std::string libName;
-    if (lang == hif::c)
+    if (lang == hif::c) {
         libName = "stdio.h";
-    else
+    } else {
         libName = "cstdio";
+    }
 
-    Library *libInclude = _factory.library("cstdio", nullptr, libName.c_str(), false, true);
+    Library *libInclude = _factory.library("cstdio", nullptr, libName, false, true);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
@@ -491,7 +497,7 @@ int FinalRefineVisitor::visitFile(File &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitString(String &o)
+auto FinalRefineVisitor::visitString(String &o) -> int
 {
     GuideVisitor::visitString(o);
 
@@ -504,7 +510,7 @@ int FinalRefineVisitor::visitString(String &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitTypeReference(TypeReference &o)
+auto FinalRefineVisitor::visitTypeReference(TypeReference &o) -> int
 {
     GuideVisitor::visitTypeReference(o);
 
@@ -513,26 +519,27 @@ int FinalRefineVisitor::visitTypeReference(TypeReference &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitWhen(When &o)
+auto FinalRefineVisitor::visitWhen(When &o) -> int
 {
     GuideVisitor::visitWhen(o);
     _fixCombineTernary(&o);
     return 0;
 }
 
-int FinalRefineVisitor::visitExpression(Expression &o)
+auto FinalRefineVisitor::visitExpression(Expression &o) -> int
 {
     GuideVisitor::visitExpression(o);
 
     Type *exprType = hif::semantics::getBaseType(hif::semantics::getSemanticType(&o, _sem), false, _sem);
     messageAssert(exprType != nullptr, "Cannot type expression", &o, _sem);
 
-    Event *e = dynamic_cast<Event *>(exprType);
-    if (e == nullptr)
+    auto *e = dynamic_cast<Event *>(exprType);
+    if (e == nullptr) {
         return 0;
+    }
     messageAssert(o.getOperator() == op_deref, "Unexpected operation", &o, _sem);
 
-    ValueStatement *parent = dynamic_cast<ValueStatement *>(o.getParent());
+    auto *parent = dynamic_cast<ValueStatement *>(o.getParent());
     messageAssert(parent != nullptr, "Unsupported event expression location", o.getParent(), _sem);
 
     ProcedureCall *p = _factory.procedureCall(
@@ -544,12 +551,13 @@ int FinalRefineVisitor::visitExpression(Expression &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitFor(For &o)
+auto FinalRefineVisitor::visitFor(For &o) -> int
 {
     GuideVisitor::visitFor(o);
 
-    if (!_useHdtlib)
+    if (!_useHdtlib) {
         return 0;
+    }
 
     Scope *parentScope = hif::getNearestScope(&o, true, false, false);
     messageAssert(parentScope != nullptr, "Cannot find parent scope", &o, _sem);
@@ -590,15 +598,15 @@ int FinalRefineVisitor::visitFor(For &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitAggregate(Aggregate &o)
+auto FinalRefineVisitor::visitAggregate(Aggregate &o) -> int
 {
     // In case of global constants and defines aggregates initial value must
     // be unrolled.
     // Otherwise aggregate is better to be rolled in order to print as for.
-    Const *c                   = dynamic_cast<Const *>(o.getParent());
+    auto *c                    = dynamic_cast<Const *>(o.getParent());
     View *parentView           = hif::getNearestParent<View>(&o);
-    const bool isInGlobalScope = (parentView == nullptr);
-    const bool mustBeExpanded  = (c != nullptr && (c->isDefine() || isInGlobalScope));
+    bool isInGlobalScope = (parentView == nullptr);
+    bool mustBeExpanded  = (c != nullptr && (c->isDefine() || isInGlobalScope));
 
     if (mustBeExpanded) {
         messageAssert(!c->isDefine() || isInGlobalScope, "Unexpected define in view scope", c, _sem);
@@ -612,7 +620,7 @@ int FinalRefineVisitor::visitAggregate(Aggregate &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitAggregateAlt(AggregateAlt &o)
+auto FinalRefineVisitor::visitAggregateAlt(AggregateAlt &o) -> int
 {
     GuideVisitor::visitAggregateAlt(o);
 
@@ -624,36 +632,38 @@ int FinalRefineVisitor::visitAggregateAlt(AggregateAlt &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitFunctionCall(FunctionCall &o)
+auto FinalRefineVisitor::visitFunctionCall(FunctionCall &o) -> int
 {
     GuideVisitor::visitFunctionCall(o);
 
     // Refining calls to standard overloaded operators as plain expressions.
-    if (_fixOverloadedOperatos(&o))
+    if (_fixOverloadedOperatos(&o)) {
         return 0;
+    }
 
     return 0;
 }
 
-int FinalRefineVisitor::visitProcedureCall(ProcedureCall &o)
+auto FinalRefineVisitor::visitProcedureCall(ProcedureCall &o) -> int
 {
     GuideVisitor::visitProcedureCall(o);
 
     // Refining calls to standard overloaded operators as plain expressions.
-    if (_fixOverloadedOperatos(&o))
+    if (_fixOverloadedOperatos(&o)) {
         return 0;
+    }
 
     return 0;
 }
 
-int FinalRefineVisitor::visitIdentifier(Identifier &o)
+auto FinalRefineVisitor::visitIdentifier(Identifier &o) -> int
 {
     GuideVisitor::visitIdentifier(o);
 
     Identifier::DeclarationType *decl = hif::semantics::getDeclaration(&o, _sem);
     messageAssert(decl != nullptr, "Declaration not found", &o, _sem);
 
-    EnumValue *e = dynamic_cast<EnumValue *>(decl);
+    auto *e = dynamic_cast<EnumValue *>(decl);
     if (e != nullptr) {
         _addHifGlobalsLibrary(e->getParent()->getParent());
     } else {
@@ -663,21 +673,23 @@ int FinalRefineVisitor::visitIdentifier(Identifier &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitInt(Int &o)
+auto FinalRefineVisitor::visitInt(Int &o) -> int
 {
     GuideVisitor::visitInt(o);
 
-    if (o.getTypeVariant() != Type::NATIVE_TYPE && o.getTypeVariant() != Type::SYSTEMC_BIT_BITREF)
+    if (o.getTypeVariant() != Type::NATIVE_TYPE && o.getTypeVariant() != Type::SYSTEMC_BIT_BITREF) {
         return 0;
+    }
 
-    Const *parent = getNearestParent<Const>(&o);
-    if (parent != nullptr && parent->isDefine())
+    auto *parent = getNearestParent<Const>(&o);
+    if (parent != nullptr && parent->isDefine()) {
         return 0;
+    }
 
     const hif::LanguageID lang = objectGetLanguage(&o);
     const std::string libName  = ((lang == hif::c) || _useCpp98) ? "stdint.h" : "cstdint";
 
-    Library *intLib = _factory.library("cstdint", nullptr, libName.c_str(), false, true);
+    Library *intLib = _factory.library("cstdint", nullptr, libName, false, true);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
@@ -687,13 +699,14 @@ int FinalRefineVisitor::visitInt(Int &o)
     return 0;
 }
 
-int FinalRefineVisitor::visitLibrary(Library &o)
+auto FinalRefineVisitor::visitLibrary(Library &o) -> int
 {
     GuideVisitor::visitLibrary(o);
 
     // Skipping inclusions
-    if (o.isInBList())
+    if (o.isInBList()) {
         return 0;
+    }
 
     // Set standard flag when library def language is "c"
     LibraryDef *ld = hif::semantics::getDeclaration(&o, _sem);
@@ -701,22 +714,23 @@ int FinalRefineVisitor::visitLibrary(Library &o)
 
     if (ld->getLanguageID() == hif::c) {
         o.setStandard(true);
-        TypedObject *to = hif::getNearestParent<TypedObject>(&o);
-        if (to != nullptr)
+        auto *to = hif::getNearestParent<TypedObject>(&o);
+        if (to != nullptr) {
             hif::semantics::resetTypes(to);
+        }
     }
 
     return 0;
 }
 
-int FinalRefineVisitor::visitPortAssign(PortAssign &o)
+auto FinalRefineVisitor::visitPortAssign(PortAssign &o) -> int
 {
     GuideVisitor::visitPortAssign(o);
 
     if (dynamic_cast<Cast *>(o.getValue()) != nullptr) {
         hif::semantics::getSemanticType(&o, _sem);
 #ifndef NDEBUG
-        Cast *c      = static_cast<Cast *>(o.getValue());
+        Cast *c      = dynamic_cast<Cast *>(o.getValue());
         Type *opType = hif::semantics::getSemanticType(c->getValue(), _sem);
 #endif
         messageDebug("Cast op type:", opType, _sem);
@@ -728,24 +742,26 @@ int FinalRefineVisitor::visitPortAssign(PortAssign &o)
 
 void FinalRefineVisitor::generateIncludes()
 {
-    for (Includes::iterator it(_includes.begin()); it != _includes.end(); ++it) {
+    for (auto it(_includes.begin()); it != _includes.end(); ++it) {
         BList<Library> *libs = objectGetLibraryList(it->first);
         messageAssert(libs != nullptr, "Not found library list", it->first, _sem);
 
-        for (RequiredScopes::iterator jt(it->second.begin()); jt != it->second.end(); ++jt) {
+        for (auto jt(it->second.begin()); jt != it->second.end(); ++jt) {
             _generateInclude(it->first, *libs, *jt);
         }
     }
 }
 
-bool FinalRefineVisitor::_isInsideStandarLibDef(DesignUnit *du)
+auto FinalRefineVisitor::_isInsideStandarLibDef(DesignUnit *du) -> bool
 {
-    if (du == nullptr)
+    if (du == nullptr) {
         return false;
-    LibraryDef *parentLib = getNearestParent<LibraryDef>(du);
+    }
+    auto *parentLib = getNearestParent<LibraryDef>(du);
     while (parentLib != nullptr) {
-        if (parentLib->isStandard())
+        if (parentLib->isStandard()) {
             return true;
+        }
         parentLib = getNearestParent<LibraryDef>(parentLib);
     }
 
@@ -754,14 +770,15 @@ bool FinalRefineVisitor::_isInsideStandarLibDef(DesignUnit *du)
 
 void FinalRefineVisitor::_addHifGlobalsLibrary(Object *declarationScope)
 {
-    System *s = dynamic_cast<System *>(declarationScope);
-    if (s == nullptr)
+    auto *s = dynamic_cast<System *>(declarationScope);
+    if (s == nullptr) {
         return;
-    if (s == _currentScope)
+    }
+    if (s == _currentScope) {
         return;
+    }
 
-    Library *globLib =
-        _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, nullptr, false, false);
+    Library *globLib = _factory.library(NameTable::getInstance()->hifGlobals(), nullptr, "", false, false);
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
     addOpt.deleteIfNotAdded             = true;
@@ -773,16 +790,18 @@ void FinalRefineVisitor::_addGlobalLibraryInclusion(TypeReference *tr)
     TypeReference::DeclarationType *decl = hif::semantics::getDeclaration(tr, _sem);
     messageAssert(decl != nullptr, "Declaration not found", tr, _sem);
 
-    TypeDef *e = dynamic_cast<TypeDef *>(decl);
-    if (e == nullptr)
+    auto *e = dynamic_cast<TypeDef *>(decl);
+    if (e == nullptr) {
         return;
+    }
     _addHifGlobalsLibrary(e->getParent());
 }
 
-bool FinalRefineVisitor::_fixCombineTernary(When *o)
+auto FinalRefineVisitor::_fixCombineTernary(When *o) -> bool
 {
-    if (!o->isLogicTernary())
+    if (!o->isLogicTernary()) {
         return false;
+    }
     o->setLogicTernary(false);
 
     Type *whenType = hif::semantics::getSemanticType(o, _sem);
@@ -790,7 +809,7 @@ bool FinalRefineVisitor::_fixCombineTernary(When *o)
     messageAssert(o->alts.size() == 1UL, "Unexpected native when", o, _sem);
 
     WhenAlt *whenThen = o->alts.front();
-    WhenAlt *whenElse = new WhenAlt();
+    auto *whenElse    = new WhenAlt();
     whenElse->setCondition(hif::copy(whenThen->getCondition()));
     whenElse->setValue(o->setDefault(nullptr));
     o->alts.push_back(whenElse);
@@ -816,20 +835,22 @@ bool FinalRefineVisitor::_fixCombineTernary(When *o)
     hif::typeSetSigned(newt1, false, _sem);
     hif::typeSetSigned(newt2, false, _sem);
 
-    Value *a       = hif::copy(whenThen->getValue());
-    Value *b       = hif::copy(whenElse->getValue());
-    Value *bvx     = nullptr;
-    Bit *bt        = dynamic_cast<Bit *>(whenType);
-    Bitvector *bvt = dynamic_cast<Bitvector *>(whenType);
+    Value *a   = hif::copy(whenThen->getValue());
+    Value *b   = hif::copy(whenElse->getValue());
+    Value *bvx = nullptr;
+    Bit *bt    = dynamic_cast<Bit *>(whenType);
+    auto *bvt  = dynamic_cast<Bitvector *>(whenType);
     if (bt != nullptr) {
         bvx = _factory.bitval(hif::bit_x, hif::copy(bt));
     } else if (bvt != nullptr) {
         std::string::size_type size = std::string::size_type(hif::semantics::spanGetBitwidth(bvt->getSpan(), _sem));
         Bitvector *tmp              = hif::copy(bvt);
-        if (size != 0)
+        if (size != 0) {
             delete tmp->setSpan(new Range(int64_t(size) - 1, 0));
-        if (size == 0)
+        }
+        if (size == 0) {
             size = 1;
+        }
         bvx = _factory.bitvectorval(std::string(size, 'X'), tmp);
     } else {
         messageError("Unexpected type of when", whenType, _sem);
@@ -846,9 +867,9 @@ bool FinalRefineVisitor::_fixCombineTernary(When *o)
 
     o->setDefault(expr);
 
-    ConstValue *constA = dynamic_cast<ConstValue *>(hif::getChildSkippingCasts(a));
+    auto *constA = dynamic_cast<ConstValue *>(hif::getChildSkippingCasts(a));
     if (constA != nullptr) {
-        ConstValue *constB = dynamic_cast<ConstValue *>(hif::getChildSkippingCasts(b));
+        auto *constB = dynamic_cast<ConstValue *>(hif::getChildSkippingCasts(b));
         if (constB != nullptr) {
             hif::manipulation::simplify(expr, _sem);
         }
@@ -862,13 +883,14 @@ void FinalRefineVisitor::_includeParentLibraryDefinitions(Object *o)
     View *v = dynamic_cast<View *>(o);
     messageAssert(v != nullptr, "Unsupported case", o, _sem);
 
-    Object *p      = o->getParent()->getParent();
-    LibraryDef *ld = dynamic_cast<LibraryDef *>(p);
+    Object *p = o->getParent()->getParent();
+    auto *ld  = dynamic_cast<LibraryDef *>(p);
 
-    if (ld == nullptr)
+    if (ld == nullptr) {
         return;
+    }
 
-    Library *intLib = _factory.library(ld->getName(), nullptr, nullptr, false, false);
+    Library *intLib = _factory.library(ld->getName(), nullptr, "", false, false);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;
@@ -876,10 +898,11 @@ void FinalRefineVisitor::_includeParentLibraryDefinitions(Object *o)
     hif::manipulation::addUniqueObject(intLib, v->libraries, addOpt);
 }
 
-Scope *FinalRefineVisitor::_getNearestScope(Object *start)
+auto FinalRefineVisitor::_getNearestScope(Object *start) -> Scope *
 {
-    if (dynamic_cast<System *>(start) != nullptr)
+    if (dynamic_cast<System *>(start) != nullptr) {
         return nullptr;
+    }
 
     Scope *ret = nullptr;
 
@@ -887,25 +910,29 @@ Scope *FinalRefineVisitor::_getNearestScope(Object *start)
     ret = hif::getNearestParent<DesignUnit>(start);
     if (ret != nullptr) {
         while (ret != nullptr) {
-            DesignUnit *du = getNearestParent<DesignUnit>(ret);
-            if (du == nullptr)
+            auto *du = getNearestParent<DesignUnit>(ret);
+            if (du == nullptr) {
                 break;
+            }
             messageAssert(!du->views.empty() && du->views.size() == 1, "Unexpected view list size", du, _sem);
-            if (du->views.front()->isStandard())
+            if (du->views.front()->isStandard()) {
                 return nullptr;
+            }
             ret = du;
         }
-        LibraryDef *l = hif::getNearestParent<LibraryDef>(ret);
-        if (l != nullptr && l->isStandard() && _sem->isNativeLibrary(l->getName()))
+        auto *l = hif::getNearestParent<LibraryDef>(ret);
+        if (l != nullptr && l->isStandard() && _sem->isNativeLibrary(l->getName())) {
             return nullptr;
+        }
         return ret;
     }
 
     // Outside DesignUnit
     ret = hif::getNearestParent<LibraryDef>(start);
     if (ret != nullptr) {
-        if (static_cast<LibraryDef *>(ret)->isStandard())
+        if (dynamic_cast<LibraryDef *>(ret)->isStandard()) {
             return nullptr;
+        }
         return ret;
     }
 
@@ -916,27 +943,31 @@ Scope *FinalRefineVisitor::_getNearestScope(Object *start)
 void FinalRefineVisitor::_addRequiredScopes(Object &o)
 {
     Declaration *decl = hif::semantics::getDeclaration(&o, _sem);
-    if (decl == nullptr)
+    if (decl == nullptr) {
         return;
+    }
 
     Scope *scope = _getNearestScope(static_cast<Object *>(decl));
-    if (scope == nullptr)
+    if (scope == nullptr) {
         return;
+    }
 
-    if (scope == _currentScope)
+    if (scope == _currentScope) {
         return;
+    }
 
     // Actually defined in a different scope.
 
     _includes[_currentScope].insert(scope);
 }
 
-StringValue *FinalRefineVisitor::_getImplementationInclude(Scope *scope)
+auto FinalRefineVisitor::_getImplementationInclude(Scope *scope) -> StringValue *
 {
     // Calculate paths to reach root (System) scope
     std::string dots = hif::backends::calculateIncludePath(scope, _system, _headerExtension, _sem);
-    if (dots.empty())
+    if (dots.empty()) {
         return nullptr;
+    }
 
     // Removes hifGlobals
     std::string::size_type pos = dots.find(NameTable::getInstance()->hifGlobals());
@@ -946,14 +977,15 @@ StringValue *FinalRefineVisitor::_getImplementationInclude(Scope *scope)
 
     std::string ret = dots + "../inc/" + dirs;
 
-    return new StringValue(ret.c_str());
+    return new StringValue(ret);
 }
 
 void FinalRefineVisitor::_addImplementationInclude(Scope *scope)
 {
     StringValue *inc = _getImplementationInclude(scope);
-    if (inc == nullptr)
+    if (inc == nullptr) {
         return;
+    }
     scope->addProperty(PROPERTY_IMPLEMENTATION_INCLUDE, inc);
 }
 
@@ -1065,7 +1097,7 @@ void FinalRefineVisitor::_checkSystemLibrariesInclusion(Scope *scope)
     }
 }
 
-bool FinalRefineVisitor::_usesSystemC(Scope *scope) const
+auto FinalRefineVisitor::_usesSystemC(Scope *scope) -> bool
 {
     HifTypedQuery<Bitvector> query0;
     HifTypedQuery<Bit> query1;
@@ -1116,13 +1148,14 @@ bool FinalRefineVisitor::_usesSystemC(Scope *scope) const
 void FinalRefineVisitor::_generateInclude(Scope *destination, BList<Library> &destLibraries, Scope *scopeToInclude)
 {
     std::string include = hif::backends::calculateIncludePath(destination, scopeToInclude, _headerExtension, _sem);
-    if (include.empty())
+    if (include.empty()) {
         return;
+    }
 
     auto libName = objectGetName(scopeToInclude);
 
     if (dynamic_cast<DesignUnit *>(scopeToInclude) != nullptr) {
-        DesignUnit *du = static_cast<DesignUnit *>(scopeToInclude);
+        auto *du = dynamic_cast<DesignUnit *>(scopeToInclude);
         if (du->checkProperty(PROPERTY_TYPDEF_DESIGN_UNIT)) {
             // for typedefs design unit do not adding of include.
             return;
@@ -1133,10 +1166,11 @@ void FinalRefineVisitor::_generateInclude(Scope *destination, BList<Library> &de
     }
 
     Scope *tmpScope = scopeToInclude;
-    DesignUnit *du  = dynamic_cast<DesignUnit *>(scopeToInclude);
-    if (du != nullptr && !du->views.empty())
+    auto *du        = dynamic_cast<DesignUnit *>(scopeToInclude);
+    if (du != nullptr && !du->views.empty()) {
         tmpScope = du->views.front();
-    const bool isSystem = (hif::declarationIsPartOfStandard(tmpScope));
+    }
+    bool isSystem = (hif::declarationIsPartOfStandard(tmpScope));
 
     if (_isInsideStandarLibDef(du)) {
         // avoid including of views belonging to standard library defs.
@@ -1144,30 +1178,32 @@ void FinalRefineVisitor::_generateInclude(Scope *destination, BList<Library> &de
     }
 
     // Add correspondent library.
-    Library *lib = _factory.library(libName, nullptr, include.c_str(), false, isSystem);
-    messageDebugAssert(include != "", "Unexpected case", destination, _sem);
+    Library *lib = _factory.library(libName, nullptr, include, false, isSystem);
+    messageDebugAssert(!include.empty(), "Unexpected case", destination, _sem);
 
     destLibraries.push_back(lib);
 }
 
-template <typename T>
-bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
+template <typename T> bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
 {
-    if (call->getInstance() == nullptr)
+    if (call->getInstance() == nullptr) {
         return false;
+    }
     SubProgram *decl = hif::semantics::getDeclaration(call, _sem);
-    if (decl == nullptr)
+    if (decl == nullptr) {
         return false;
+    }
     const Operator op = operatorFromPlainString(call->getName(), "__systemc_");
 
-    const BList<ParameterAssign>::size_t paramNumber = call->parameterAssigns.size();
-    if (op == hif::op_none)
+    auto paramNumber = call->parameterAssigns.size();
+    if (op == hif::op_none) {
         return false;
+    }
     messageAssert(paramNumber < 2, "Unexpected call", call, _sem);
     messageAssert(paramNumber != 0 || hif::operatorIsUnary(op), "Unexpected unary operator call", call, _sem);
     messageAssert(paramNumber != 1 || hif::operatorIsBinary(op), "Unexpected binary operator call", call, _sem);
 
-    Expression *expr = new Expression();
+    auto *expr = new Expression();
     expr->setOperator(op);
     expr->setValue1(call->setInstance(nullptr));
     if (paramNumber == 1) {
@@ -1178,7 +1214,7 @@ bool FinalRefineVisitor::_fixOverloadedOperatos(T *call)
         call->replace(expr);
     } else {
         // pcall
-        ValueStatement *vs = new ValueStatement();
+        auto *vs = new ValueStatement();
         vs->setValue(expr);
         call->replace(vs);
     }

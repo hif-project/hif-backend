@@ -82,14 +82,13 @@ extern const long double math_rad_to_deg;
 
 //function SIGN (X: real ) return real;
 HIF2SCSUPPORT_EXPORT
-double hif_vhdl_sign(double x);
+auto hif_vhdl_sign(double x) -> double;
 
 //procedure UNIFORM (variable Seed1,Seed2:inout integer; variable X:out real)
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_uniform(int &seed1, int &seed2, double &x);
 
-template <typename T1, typename T2>
-void hif_vhdl_uniform(T1 &seed1, T2 &seed2, double &x)
+template <typename T1, typename T2> void hif_vhdl_uniform(T1 &seed1, T2 &seed2, double &x)
 {
     int s1 = seed1.to_int();
     int s2 = seed2.to_int();
@@ -100,22 +99,22 @@ void hif_vhdl_uniform(T1 &seed1, T2 &seed2, double &x)
 
 //function GET_RAND_MAX  return integer
 HIF2SCSUPPORT_EXPORT
-long long int hif_vhdl_get_rand_max();
+auto hif_vhdl_get_rand_max() -> long long int;
 
 //function LOG (real) return real;
 HIF2SCSUPPORT_EXPORT
-double hif_vhdl_log(const double x);
+auto hif_vhdl_log(double x) -> double;
 
 //function LOG2 (real) return real;
 HIF2SCSUPPORT_EXPORT
-double hif_vhdl_log2(const double x);
+auto hif_vhdl_log2(double x) -> double;
 
 //function LOG10 (real) return real;
 HIF2SCSUPPORT_EXPORT
-double hif_vhdl_log10(const double x);
+auto hif_vhdl_log10(double x) -> double;
 
 //function LOG (BASE: positive; X : real) return real;
 HIF2SCSUPPORT_EXPORT
-double hif_vhdl_log(const int base, const double x);
+auto hif_vhdl_log(int base, double x) -> double;
 
 } // namespace hif_vhdl_ieee_math_real

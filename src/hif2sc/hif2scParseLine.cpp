@@ -42,9 +42,9 @@ hif2scParseLine::hif2scParseLine(int argc, char *argv[])
     addOptimization();
 
 #ifdef NDEBUG
-    const bool isInternalRelease = false;
+    bool isInternalRelease = false;
 #else
-    const bool isInternalRelease = true;
+    bool isInternalRelease = true;
 #endif
 
     addOption('b', "bit", false, true, "Keep deprecated sc_bit type. Default is mapping to bool.");
@@ -108,10 +108,12 @@ hif2scParseLine::~hif2scParseLine()
 
 void hif2scParseLine::_validateArguments()
 {
-    if (!_options['h'].value.empty())
+    if (!_options['h'].value.empty()) {
         printHelp();
-    if (!_options['v'].value.empty())
+    }
+    if (!_options['v'].value.empty()) {
         printVersion();
+    }
 
     if (_files.empty()) {
         messageError(
@@ -143,7 +145,7 @@ void hif2scParseLine::_validateArguments()
 
     // Establish output file name
     std::string out = _options['D'].value;
-    if (out == "") {
+    if (out.empty()) {
         out = "hif2sc_out";
     }
     _options['D'].value = out;
@@ -175,20 +177,20 @@ void hif2scParseLine::_validateArguments()
     }
 }
 
-bool hif2scParseLine::useResolved() const { return isOptionFlagSet('R'); }
+auto hif2scParseLine::useResolved() const -> bool { return isOptionFlagSet('R'); }
 
-bool hif2scParseLine::useHDTLib() const { return isOptionFlagSet('H'); }
+auto hif2scParseLine::useHDTLib() const -> bool { return isOptionFlagSet('H'); }
 
-bool hif2scParseLine::useCpp98() const { return !isOptionFlagSet('S'); }
+auto hif2scParseLine::useCpp98() const -> bool { return !isOptionFlagSet('S'); }
 
-bool hif2scParseLine::keepBit() const { return isOptionFlagSet('b'); }
+auto hif2scParseLine::keepBit() const -> bool { return isOptionFlagSet('b'); }
 
-bool hif2scParseLine::noRealEquals() const { return isOptionFlagSet('c'); }
+auto hif2scParseLine::noRealEquals() const -> bool { return isOptionFlagSet('c'); }
 
-uint64_t hif2scParseLine::getMaxLines() const { return _maxLines; }
+auto hif2scParseLine::getMaxLines() const -> uint64_t { return _maxLines; }
 
-uint64_t hif2scParseLine::getMaxWhen() const { return _maxWhen; }
+auto hif2scParseLine::getMaxWhen() const -> uint64_t { return _maxWhen; }
 
-std::string hif2scParseLine::getSourcesExtension() const { return _sourcesExtension; }
+auto hif2scParseLine::getSourcesExtension() const -> std::string { return _sourcesExtension; }
 
-std::string hif2scParseLine::getHeadersExtension() const { return _headersExtension; }
+auto hif2scParseLine::getHeadersExtension() const -> std::string { return _headersExtension; }

@@ -13,11 +13,9 @@ namespace hif_vhdl_ieee_std_logic_unsigned
 /// @name Shift operators
 /// @{
 
-template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count);
+template <int size1, int size2> auto hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>;
 
-template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shr(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count);
+template <int size1, int size2> auto hif_vhdl_shr(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
@@ -34,27 +32,22 @@ hdtlib::hl_lv_t<size1> hif_vhdl_shr(hdtlib::hl_lv_t<size1> arg, hdtlib::hl_lv_t<
 /// @name Conversion operators
 /// @{
 
-template <int size>
-long long int hif_vhdl_conv_integer(sc_dt::sc_lv<size> arg);
+template <int size> auto hif_vhdl_conv_integer(sc_dt::sc_lv<size> arg) -> long long int;
 
 /// @}
 
 /// @name Relational operators
 /// @{
 
-template <int size>
-bool hif_vhdl__op_eq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_eq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
-template <int size>
-bool hif_vhdl__op_neq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_neq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int size>
-bool hif_vhdl__op_eq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2);
+template <int size> bool hif_vhdl__op_eq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2);
 
-template <int size>
-bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2);
+template <int size> bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2);
 
 #endif // HIF2SCSUPPORT_USE_HDTLIB
 
@@ -63,14 +56,12 @@ bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<siz
 /// @name Arithmetic operators
 /// @{
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl__op_plus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_plus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> sc_dt::sc_lv<size>;
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl__op_minus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2);
+template <int size> auto hif_vhdl__op_minus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> sc_dt::sc_lv<size>;
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1 + size2> hif_vhdl__op_mult(const sc_dt::sc_lv<size1> &v1, const sc_dt::sc_lv<size2> &v2);
+auto hif_vhdl__op_mult(const sc_dt::sc_lv<size1> &v1, const sc_dt::sc_lv<size2> &v2) -> sc_dt::sc_lv<size1 + size2>;
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 

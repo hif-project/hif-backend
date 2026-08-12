@@ -12,39 +12,37 @@
 namespace hif_vhdl_ieee_std_logic_1164
 {
 
-template <int size>
-sc_dt::sc_bv<size> hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, const bool xmap)
+template <int size> auto hif_vhdl_to_bitvector(const sc_dt::sc_lv<size> &s, bool xmap) -> sc_dt::sc_bv<size>
 {
     std::string sVal = s.to_string();
     for (std::string::size_type i = 0; i < sVal.length(); ++i) {
-        if (sVal[i] == '1' || sVal[i] == '0')
+        if (sVal[i] == '1' || sVal[i] == '0') {
             continue;
+        }
         sVal[i] = xmap ? '1' : '0';
     }
     return sc_dt::sc_bv<size>(sVal.c_str());
 }
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl_to_x01(const sc_dt::sc_lv<size> &s)
+template <int size> auto hif_vhdl_to_x01(const sc_dt::sc_lv<size> &s) -> sc_dt::sc_lv<size>
 {
     std::string sVal = s.to_string();
     for (std::string::size_type i = 0; i < sVal.length(); ++i) {
-        if (sVal[i] == '1' || sVal[i] == '0')
+        if (sVal[i] == '1' || sVal[i] == '0') {
             continue;
+        }
         sVal[i] = 'X';
     }
     return sc_dt::sc_lv<size>(sVal.c_str());
 }
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl_to_ux01(const sc_dt::sc_lv<size> &s)
+template <int size> auto hif_vhdl_to_ux01(const sc_dt::sc_lv<size> &s) -> sc_dt::sc_lv<size>
 {
     return hif_vhdl_to_x01(s);
 }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int size>
-hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s)
+template <int size> hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s)
 {
     sc_dt::sc_lv<size> tmp = s.to_string().c_str();
     sc_dt::sc_logic tmpRes = hif_vhdl_resolved(tmp);
@@ -52,8 +50,7 @@ hdtlib::hl_logic_t hif_vhdl_resolved(const hdtlib::hl_lv_t<size> &s)
     return res;
 }
 
-template <int size>
-hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, const bool /*xmap*/)
+template <int size> hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, bool /*xmap*/)
 {
     sc_dt::sc_lv<size> tmp    = s.to_string().c_str();
     sc_dt::sc_bv<size> tmpRes = hif_vhdl_to_bitvector(tmp);
@@ -61,8 +58,7 @@ hdtlib::hl_bv_t<size> hif_vhdl_to_bitvector(const hdtlib::hl_lv_t<size> &s, cons
     return res;
 }
 
-template <int size>
-hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s)
+template <int size> hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s)
 {
     sc_dt::sc_lv<size> tmp    = s.to_string().c_str();
     sc_dt::sc_lv<size> tmpRes = hif_vhdl_to_x01(tmp);
@@ -70,8 +66,7 @@ hdtlib::hl_lv_t<size> hif_vhdl_to_x01(const hdtlib::hl_lv_t<size> &s)
     return res;
 }
 
-template <int size>
-hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s)
+template <int size> hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s)
 {
     sc_dt::sc_lv<size> tmp    = s.to_string().c_str();
     sc_dt::sc_lv<size> tmpRes = hif_vhdl_to_ux01(tmp);
@@ -79,11 +74,7 @@ hdtlib::hl_lv_t<size> hif_vhdl_to_ux01(const hdtlib::hl_lv_t<size> &s)
     return res;
 }
 
-template <int size>
-bool hif_vhdl_is_x(const hdtlib::hl_lv_t<size> s)
-{
-    return !s.is_01();
-}
+template <int size> bool hif_vhdl_is_x(const hdtlib::hl_lv_t<size> s) { return !s.is_01(); }
 
 #endif
 

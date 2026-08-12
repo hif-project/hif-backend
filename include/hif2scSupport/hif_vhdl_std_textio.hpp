@@ -9,23 +9,23 @@
 
 #include "hif2scSupport/hif2scSupport/config.hpp"
 #include "hif_vhdl_standard.hpp"
-#include <stdint.h>
+#include <cstdint>
 #include <systemc>
 
 namespace hif_vhdl_std_textio
 {
 
 // type LINE is access STRING;-- a line is a pointer to a STRING value
-typedef std::string *hif_vhdl_line;
+using hif_vhdl_line = std::string *;
 
 //  type TEXT is file of STRING;-- a file of variable-length ASCII records
-typedef FILE *hif_vhdl_text;
+using hif_vhdl_text = FILE *;
 
 //  type SIDE is (RIGHT, LEFT);-- for justifying output data within fields
 enum hif_vhdl_side { hif_vhdl_right, hif_vhdl_left };
 
 //  subtype WIDTH is NATURAL;-- for specifying widths of output fields
-typedef uint32_t hif_vhdl_width;
+using hif_vhdl_width = uint32_t;
 
 //  file INPUT: TEXT open READ_MODE is "STD_INPUT";
 HIF2SCSUPPORT_EXPORT
@@ -38,9 +38,9 @@ extern hif_vhdl_text hif_vhdl_output;
 // Routines to support standard statements.
 
 HIF2SCSUPPORT_EXPORT
-hif_vhdl_text hif_vhdl_file_open(
+auto hif_vhdl_file_open(
     std::string external_name,
-    hif_vhdl_standard::hif_vhdl_file_open_kind open_kind = hif_vhdl_standard::hif_vhdl_read_mode);
+    hif_vhdl_standard::hif_vhdl_file_open_kind open_kind = hif_vhdl_standard::hif_vhdl_read_mode) -> hif_vhdl_text;
 
 //  -- Input Routines for Standard Types
 
@@ -49,7 +49,7 @@ hif_vhdl_text hif_vhdl_file_open(
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_file_open(
     hif_vhdl_text &f,
-    std::string external_name,
+    const std::string& external_name,
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind = hif_vhdl_standard::hif_vhdl_read_mode);
 
 // procedure FILE_OPEN (Status: out FILE_OPEN_STATUS; file F: TEXT;
@@ -58,7 +58,7 @@ HIF2SCSUPPORT_EXPORT
 void hif_vhdl_file_open(
     hif_vhdl_standard::hif_vhdl_file_open_status &status,
     hif_vhdl_text &f,
-    std::string external_name,
+    const std::string &external_name,
     hif_vhdl_standard::hif_vhdl_file_open_kind open_kind = hif_vhdl_standard::hif_vhdl_read_mode);
 
 // procedure FILE_CLOSE (file F: TEXT);
@@ -71,7 +71,7 @@ void hif_vhdl_read(hif_vhdl_text &f, std::string &value);
 
 // procedure WRITE (file F: TEXT; VALUE: in STRING);
 HIF2SCSUPPORT_EXPORT
-void hif_vhdl_write(hif_vhdl_text &f, std::string value);
+void hif_vhdl_write(hif_vhdl_text &f, const std::string &value);
 
 //  procedure READLINE (file F: TEXT; L: inout LINE);
 HIF2SCSUPPORT_EXPORT
@@ -144,12 +144,10 @@ void hif_vhdl_read(hif_vhdl_line &l, sc_core::sc_time &value);
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
 //  procedure READ (L: inout LINE; VALUE: out BIT_VECTOR; GOOD: out BOOLEAN);
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good);
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value, bool &good);
 
 //  procedure READ (L: inout LINE; VALUE: out BIT_VECTOR);
-template <int W>
-void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value);
+template <int W> void hif_vhdl_read(hif_vhdl_line &l, hdtlib::hl_bv_t<W> &value);
 
 #endif
 
@@ -164,7 +162,7 @@ void hif_vhdl_writeline(hif_vhdl_text &f, hif_vhdl_line &l);
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    sc_dt::sc_bit value,
+    const sc_dt::sc_bit &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 
@@ -173,7 +171,7 @@ void hif_vhdl_write(
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    sc_dt::sc_bv_base value,
+    const sc_dt::sc_bv_base &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 
@@ -212,7 +210,7 @@ void hif_vhdl_write(
 HIF2SCSUPPORT_EXPORT
 void hif_vhdl_write(
     hif_vhdl_line &l,
-    std::string value,
+    const std::string &value,
     hif_vhdl_side justified = hif_vhdl_right,
     hif_vhdl_width field    = 0);
 
@@ -241,7 +239,7 @@ void hif_vhdl_write(
 
 // function ENDFILE (F: in TEXT) return BOOLEAN;
 HIF2SCSUPPORT_EXPORT
-bool hif_vhdl_endfile(hif_vhdl_text f);
+auto hif_vhdl_endfile(hif_vhdl_text f) -> bool;
 
 } // namespace hif_vhdl_std_textio
 

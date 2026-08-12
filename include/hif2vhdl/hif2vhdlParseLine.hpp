@@ -13,9 +13,9 @@ class hif2vhdlParseLine : public hif::application_utils::CommandLineParser
 {
 public:
     hif2vhdlParseLine(int argc, char *argv[]);
-    ~hif2vhdlParseLine();
+    ~hif2vhdlParseLine() override;
 
-    int &getStep();
+    auto getStep() -> int &;
 
 protected:
     void _validateArguments();
@@ -24,5 +24,5 @@ protected:
 
 private:
     hif2vhdlParseLine(const hif2vhdlParseLine &);
-    hif2vhdlParseLine &operator=(const hif2vhdlParseLine &);
+    auto operator=(const hif2vhdlParseLine &) -> hif2vhdlParseLine &;
 };

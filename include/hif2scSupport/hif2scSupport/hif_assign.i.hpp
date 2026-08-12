@@ -14,263 +14,223 @@
 namespace hif_systemc_extensions
 {
 
-template <class T>
-struct TemporaryType {
-    typedef T type;
+template <class T> struct TemporaryType {
+    using type = T;
 };
 
-template <int S>
-struct TemporaryType<sc_dt::sc_bv<S>> {
-    typedef sc_dt::sc_logic type;
+template <int S> struct TemporaryType<sc_dt::sc_bv<S>> {
+    using type = sc_dt::sc_logic;
 };
 
-template <int S>
-struct TemporaryType<sc_dt::sc_lv<S>> {
-    typedef sc_dt::sc_logic type;
+template <int S> struct TemporaryType<sc_dt::sc_lv<S>> {
+    using type = sc_dt::sc_logic;
 };
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
-template <int S>
-struct TemporaryType<hdtlib::hl_bv_t<S>> {
+template <int S> struct TemporaryType<hdtlib::hl_bv_t<S>> {
     typedef bool type;
 };
 
-template <int S>
-struct TemporaryType<hdtlib::hl_lv_t<S>> {
+template <int S> struct TemporaryType<hdtlib::hl_lv_t<S>> {
     typedef hdtlib::hl_logic_t type;
 };
 
 #endif //HIF2SCSUPPORT_USE_HDTLIB
 
-template <>
-struct TemporaryType<uint8_t> {
-    typedef bool type;
+template <> struct TemporaryType<uint8_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<uint16_t> {
-    typedef bool type;
+template <> struct TemporaryType<uint16_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<uint32_t> {
-    typedef bool type;
+template <> struct TemporaryType<uint32_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<uint64_t> {
-    typedef bool type;
+template <> struct TemporaryType<uint64_t> {
+    using type = bool;
 };
-template <>
-struct TemporaryType<int8_t> {
-    typedef bool type;
+template <> struct TemporaryType<int8_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<int16_t> {
-    typedef bool type;
+template <> struct TemporaryType<int16_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<int32_t> {
-    typedef bool type;
+template <> struct TemporaryType<int32_t> {
+    using type = bool;
 };
 
-template <>
-struct TemporaryType<int64_t> {
-    typedef bool type;
+template <> struct TemporaryType<int64_t> {
+    using type = bool;
 };
 
 // ------------------------------------------------------------
 
-template <typename T>
-const T &_hif_assign_getValue(const T &ret)
-{
-    return ret;
-}
+template <typename T> auto _hif_assign_getValue(const T &ret) -> const T & { return ret; }
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<8> _hif_assign_getValue(const uint8_t &ret);
+auto _hif_assign_getValue(const uint8_t &ret) -> const sc_dt::sc_bv<8>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<16> _hif_assign_getValue(const uint16_t &ret);
+auto _hif_assign_getValue(const uint16_t &ret) -> const sc_dt::sc_bv<16>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<32> _hif_assign_getValue(const uint32_t &ret);
+auto _hif_assign_getValue(const uint32_t &ret) -> const sc_dt::sc_bv<32>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<64> _hif_assign_getValue(const uint64_t &ret);
+auto _hif_assign_getValue(const uint64_t &ret) -> const sc_dt::sc_bv<64>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<8> _hif_assign_getValue(const int8_t &ret);
+auto _hif_assign_getValue(const int8_t &ret) -> const sc_dt::sc_bv<8>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<16> _hif_assign_getValue(const int16_t &ret);
+auto _hif_assign_getValue(const int16_t &ret) -> const sc_dt::sc_bv<16>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<32> _hif_assign_getValue(const int32_t &ret);
+auto _hif_assign_getValue(const int32_t &ret) -> const sc_dt::sc_bv<32>;
 
 HIF2SCSUPPORT_EXPORT
-const sc_dt::sc_bv<64> _hif_assign_getValue(const int64_t &ret);
+auto _hif_assign_getValue(const int64_t &ret) -> const sc_dt::sc_bv<64>;
 
-template <typename T>
-const T &_hif_assign_getValue(const sc_core::sc_signal<T> &ret)
+template <typename T> auto _hif_assign_getValue(const sc_core::sc_signal<T> &ret) -> const T &
 {
     return _hif_assign_getValue(ret.read());
 }
 
-template <typename T>
-const T &_hif_assign_getValue(const sc_core::sc_inout<T> &ret)
+template <typename T> auto _hif_assign_getValue(const sc_core::sc_inout<T> &ret) -> const T &
 {
     return _hif_assign_getValue(ret.read());
 }
 
-template <typename T>
-const T &_hif_assign_getValue(const sc_core::sc_in<T> &ret)
+template <typename T> auto _hif_assign_getValue(const sc_core::sc_in<T> &ret) -> const T &
 {
     return _hif_assign_getValue(ret.read());
 }
 
-template <typename T>
-const T &_hif_assign_getValue(const sc_core::sc_out<T> &ret)
+template <typename T> auto _hif_assign_getValue(const sc_core::sc_out<T> &ret) -> const T &
 {
     return _hif_assign_getValue(ret.read());
 }
 
 // ------------------------------------------------------------
 
-template <typename T>
-int _hif_assign_getMemberLength(const T & /*array*/)
-{
-    return 1;
-}
+template <typename T> auto _hif_assign_getMemberLength(const T & /*array*/) -> int { return 1; }
 
-template <template <int> class T, int i>
-int _hif_assign_getMemberLength(const T<i> & /*array*/)
-{
-    return i;
-}
+template <template <int> class T, int i> auto _hif_assign_getMemberLength(const T<i> & /*array*/) -> int { return i; }
 
-template <typename T>
-int _hif_assign_getMemberLength(const sc_core::sc_signal<T> &array)
+template <typename T> auto _hif_assign_getMemberLength(const sc_core::sc_signal<T> &array) -> int
 {
     return _hif_assign_getMemberLength(array.read());
 }
 
-template <typename T>
-int _hif_assign_getMemberLength(const sc_core::sc_inout<T> &array)
+template <typename T> auto _hif_assign_getMemberLength(const sc_core::sc_inout<T> &array) -> int
 {
     return _hif_assign_getMemberLength(array.read());
 }
 
-template <typename T>
-int _hif_assign_getMemberLength(const sc_core::sc_in<T> &array)
+template <typename T> auto _hif_assign_getMemberLength(const sc_core::sc_in<T> &array) -> int
 {
     return _hif_assign_getMemberLength(array.read());
 }
 
-template <typename T>
-int _hif_assign_getMemberLength(const sc_core::sc_out<T> &array)
+template <typename T> auto _hif_assign_getMemberLength(const sc_core::sc_out<T> &array) -> int
 {
     return _hif_assign_getMemberLength(array.read());
 }
 
-template <typename T>
-int _hif_assign_getMemberLength(const sc_core::sc_vector<T> &array)
+template <typename T> auto _hif_assign_getMemberLength(const sc_core::sc_vector<T> &array) -> int
 {
     return array.size();
 }
 
-template <typename T>
-int _hif_assign_getMemberLength(const std::vector<T> &array)
-{
-    return array.size();
-}
+template <typename T> auto _hif_assign_getMemberLength(const std::vector<T> &array) -> int { return array.size(); }
 
-template <typename T, size_t size>
-int _hif_assign_getMemberLength(const T (& /*array*/)[size])
+template <typename T, size_t size> auto _hif_assign_getMemberLength(const T (& /*array*/)[size]) -> int
 {
     return int(size);
 }
 
 // ------------------------------------------------------------
 
-template <typename T, typename S>
-void _hif_set_bit(T &target, const uint64_t index, S source)
+template <typename T, typename S> void _hif_set_bit(T &target, const uint64_t index, S source)
 {
     target.set_bit(index, source);
 }
 
-template <typename S>
-void _hif_set_bit(uint8_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(uint8_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= uint8_t(1) << index;
-    else
+    } else {
         target &= ~(uint8_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(uint16_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(uint16_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= uint16_t(1) << index;
-    else
+    } else {
         target &= ~(uint16_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(uint32_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(uint32_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= uint32_t(1) << index;
-    else
+    } else {
         target &= ~(uint32_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(uint64_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(uint64_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= uint64_t(1) << index;
-    else
+    } else {
         target &= ~(uint64_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(int8_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(int8_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= int8_t(1) << index;
-    else
+    } else {
         target &= ~(int8_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(int16_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(int16_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= int16_t(1) << index;
-    else
+    } else {
         target &= ~(int16_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(int32_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(int32_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= int32_t(1) << index;
-    else
+    } else {
         target &= ~(int32_t(1) << index);
+    }
 }
 
-template <typename S>
-void _hif_set_bit(int64_t &target, const uint64_t index, S source)
+template <typename S> void _hif_set_bit(int64_t &target, const uint64_t index, S source)
 {
-    if (source)
+    if (source) {
         target |= int64_t(1) << index;
-    else
+    } else {
         target &= ~(int64_t(1) << index);
+    }
 }
 
 // ------------------------------------------------------------
@@ -364,8 +324,9 @@ void _hif_assign_setValue(
     unsigned int left2,
     unsigned int right2)
 {
-    if (left1 == static_cast<unsigned int>(-1))
+    if (left1 == static_cast<unsigned int>(-1)) {
         left1 = 0;
+    }
     const unsigned int min = left1 < right1 ? left1 : right1;
 
     // Workaround to avoid needing of const references.
@@ -387,8 +348,9 @@ void _hif_assign_setValue(
     unsigned int left2,
     unsigned int right2)
 {
-    if (left1 == static_cast<unsigned int>(-1))
+    if (left1 == static_cast<unsigned int>(-1)) {
         left1 = 0;
+    }
     const unsigned int min = left1 < right1 ? left1 : right1;
 
     // Workaround to avoid needing of const references.
@@ -410,8 +372,9 @@ void _hif_assign_setValue(
     unsigned int left2,
     unsigned int right2)
 {
-    if (left1 == static_cast<unsigned int>(-1))
+    if (left1 == static_cast<unsigned int>(-1)) {
         left1 = 0;
+    }
     const unsigned int min = left1 < right1 ? left1 : right1;
 
     // Workaround to avoid needing of const references.
@@ -493,8 +456,9 @@ void hif_assign(
     unsigned int left2,
     unsigned int right2)
 {
-    if (left1 == static_cast<unsigned int>(-1))
+    if (left1 == static_cast<unsigned int>(-1)) {
         left1 = 0;
+    }
     const unsigned int min1 = left1 < right1 ? left1 : right1;
 
     // Cycling on the rows (1st dimension).
@@ -509,8 +473,9 @@ void hif_assign(
 template <typename T, typename S, size_t as>
 void hif_assign(T (&target)[as], const S &source, size_t size, size_t left1, size_t right1, size_t left2, size_t right2)
 {
-    if (left1 == static_cast<size_t>(-1))
+    if (left1 == static_cast<size_t>(-1)) {
         left1 = 0;
+    }
     const size_t min1 = left1 < right1 ? left1 : right1;
 
     // Cycling on the rows (1st dimension).
@@ -532,8 +497,9 @@ void hif_assign(
     size_t left2,
     size_t right2)
 {
-    if (left1 == static_cast<size_t>(-1))
+    if (left1 == static_cast<size_t>(-1)) {
         left1 = 0;
+    }
     const size_t min1 = left1 < right1 ? left1 : right1;
 
     // Cycling on the rows (1st dimension).

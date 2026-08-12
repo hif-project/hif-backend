@@ -17,18 +17,18 @@ class PrintRefinementsVisitor : public hif::GuideVisitor
 
 public:
     PrintRefinementsVisitor(hif::semantics::ILanguageSemantics *sem);
-    ~PrintRefinementsVisitor();
+    ~PrintRefinementsVisitor() override;
 
-    virtual int visitView(hif::View &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitTypeReference(hif::TypeReference &o);
+    auto visitView(hif::View &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitTypeReference(hif::TypeReference &o) -> int override;
 
 private:
     hif::HifFactory _factory;
     hif::semantics::ILanguageSemantics *_sem;
 
-    PrintRefinementsVisitor(const PrintRefinementsVisitor &);
-    PrintRefinementsVisitor &operator=(const PrintRefinementsVisitor &);
+    PrintRefinementsVisitor(const PrintRefinementsVisitor &)                     = delete;
+    auto operator=(const PrintRefinementsVisitor &) -> PrintRefinementsVisitor & = delete;
 
     void _fixTypeRefPrinting(hif::TypeReference *tr);
 };
@@ -46,21 +46,23 @@ PrintRefinementsVisitor::~PrintRefinementsVisitor()
     // ntd
 }
 
-int PrintRefinementsVisitor::visitView(View &o)
+auto PrintRefinementsVisitor::visitView(View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     return GuideVisitor::visitView(o);
 }
 
-int PrintRefinementsVisitor::visitLibraryDef(LibraryDef &o)
+auto PrintRefinementsVisitor::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
     return GuideVisitor::visitLibraryDef(o);
 }
 
-int PrintRefinementsVisitor::visitTypeReference(TypeReference &o)
+auto PrintRefinementsVisitor::visitTypeReference(TypeReference &o) -> int
 {
     GuideVisitor::visitTypeReference(o);
     _fixTypeRefPrinting(&o);
@@ -69,22 +71,27 @@ int PrintRefinementsVisitor::visitTypeReference(TypeReference &o)
 
 void PrintRefinementsVisitor::_fixTypeRefPrinting(TypeReference *tr)
 {
-    if (dynamic_cast<Function *>(tr->getParent()) == nullptr)
+    if (dynamic_cast<Function *>(tr->getParent()) == nullptr) {
         return;
+    }
     View *view = hif::getNearestParent<View>(tr);
-    if (view == nullptr)
+    if (view == nullptr) {
         return;
+    }
     TypeReference::DeclarationType *decl = hif::semantics::getDeclaration(tr, _sem);
     messageAssert(decl != nullptr, "Declaration not found", tr, _sem);
-    TypeDef *td = dynamic_cast<TypeDef *>(decl);
-    if (td == nullptr)
+    auto *td = dynamic_cast<TypeDef *>(decl);
+    if (td == nullptr) {
         return;
+    }
 
     View *view2 = hif::getNearestParent<View>(td);
-    if (view2 == nullptr)
+    if (view2 == nullptr) {
         return;
-    if (view != view2)
+    }
+    if (view != view2) {
         return;
+    }
 
     hif::manipulation::PrefixTreeOptions opts;
     opts.skipPrefixingIfSameScope = false;

@@ -18,13 +18,13 @@ namespace hif_vhdl_ieee_std_logic_signed
 // /////////////////////////////////////////////////////////////////////////////
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count)
+auto hif_vhdl_shl(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl_shl(arg, count);
 }
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1> hif_vhdl_shr(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count)
+auto hif_vhdl_shr(sc_dt::sc_lv<size1> arg, sc_dt::sc_lv<size2> count) -> sc_dt::sc_lv<size1>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl_shr_signed(arg, count);
 }
@@ -49,16 +49,14 @@ hdtlib::hl_lv_t<size1> hif_vhdl_shr(hdtlib::hl_lv_t<size1> arg, hdtlib::hl_lv_t<
 // Conversion operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size>
-long long int hif_vhdl_conv_integer(sc_dt::sc_lv<size> arg)
+template <int size> auto hif_vhdl_conv_integer(sc_dt::sc_lv<size> arg) -> long long int
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl_conv_integer_signed(arg);
 }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int size>
-long long int hif_vhdl_conv_integer(hdtlib::hl_lv_t<size> arg)
+template <int size> long long int hif_vhdl_conv_integer(hdtlib::hl_lv_t<size> arg)
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl_conv_integer_signed(arg);
 }
@@ -69,28 +67,24 @@ long long int hif_vhdl_conv_integer(hdtlib::hl_lv_t<size> arg)
 // Relational operators
 // /////////////////////////////////////////////////////////////////////////////
 
-template <int size>
-bool hif_vhdl__op_eq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_eq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_eq_signed(v1, v2);
 }
 
-template <int size>
-bool hif_vhdl__op_neq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+template <int size> auto hif_vhdl__op_neq(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> bool
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_neq_signed(v1, v2);
 }
 
 #ifdef HIF2SCSUPPORT_USE_HDTLIB
 
-template <int size>
-bool hif_vhdl__op_eq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2)
+template <int size> bool hif_vhdl__op_eq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2)
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_eq_signed(v1, v2);
 }
 
-template <int size>
-bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2)
+template <int size> bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<size> &v2)
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_neq_signed(v1, v2);
 }
@@ -102,25 +96,24 @@ bool hif_vhdl__op_neq(const hdtlib::hl_lv_t<size> &v1, const hdtlib::hl_lv_t<siz
 // /////////////////////////////////////////////////////////////////////////////
 
 template <int size>
-sc_dt::sc_lv<size> hif_vhdl__op_plus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+auto hif_vhdl__op_plus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> sc_dt::sc_lv<size>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_plus_signed(v1, v2);
 }
 
 template <int size>
-sc_dt::sc_lv<size> hif_vhdl__op_minus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2)
+auto hif_vhdl__op_minus(const sc_dt::sc_lv<size> &v1, const sc_dt::sc_lv<size> &v2) -> sc_dt::sc_lv<size>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_minus_signed(v1, v2);
 }
 
 template <int size1, int size2>
-sc_dt::sc_lv<size1 + size2> hif_vhdl__op_mult(const sc_dt::sc_lv<size1> &v1, const sc_dt::sc_lv<size2> &v2)
+auto hif_vhdl__op_mult(const sc_dt::sc_lv<size1> &v1, const sc_dt::sc_lv<size2> &v2) -> sc_dt::sc_lv<size1 + size2>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_mult_signed(v1, v2);
 }
 
-template <int size>
-sc_dt::sc_lv<size> hif_vhdl__op_abs(sc_dt::sc_lv<size> arg)
+template <int size> auto hif_vhdl__op_abs(sc_dt::sc_lv<size> arg) -> sc_dt::sc_lv<size>
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_abs(arg);
 }
@@ -145,8 +138,7 @@ hdtlib::hl_lv_t<size1 + size2> hif_vhdl__op_mult(const hdtlib::hl_lv_t<size1> &v
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_mult_signed(v1, v2);
 }
 
-template <int size>
-hdtlib::hl_lv_t<size> hif_vhdl__op_abs(hdtlib::hl_lv_t<size> arg)
+template <int size> hdtlib::hl_lv_t<size> hif_vhdl__op_abs(hdtlib::hl_lv_t<size> arg)
 {
     return hif_vhdl_ieee_std_logic_arith::hif_vhdl__op_abs(arg);
 }

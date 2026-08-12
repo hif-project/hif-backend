@@ -14,32 +14,38 @@
 #include "hif2sc/globals.hpp"
 
 using namespace hif;
-using std::stringstream;
 
 namespace
 {
 
-bool _isInstanceOfStandardMethod(Value *o)
+auto _isInstanceOfStandardMethod(Value *o) -> bool
 {
-    FunctionCall *fc = dynamic_cast<FunctionCall *>(o->getParent());
+    auto *fc = dynamic_cast<FunctionCall *>(o->getParent());
     if (fc != nullptr && fc->getInstance() == o) {
-        if (fc->getName() == "hif_vhdl_event")
+        if (fc->getName() == "hif_vhdl_event") {
             return true;
-        if (fc->getName() == "hif_systemc_event")
+        }
+        if (fc->getName() == "hif_systemc_event") {
             return true;
-        if (fc->getName() == "hif_vhdl_last_value")
+        }
+        if (fc->getName() == "hif_vhdl_last_value") {
             return true;
-        if (fc->getName() == "hif_systemc_read")
+        }
+        if (fc->getName() == "hif_systemc_read") {
             return true;
-        if (fc->getName() == "hif_systemc_value_changed_event")
+        }
+        if (fc->getName() == "hif_systemc_value_changed_event") {
             return true;
-        if (fc->getName() == "hif_systemc_posedge_event")
+        }
+        if (fc->getName() == "hif_systemc_posedge_event") {
             return true;
-        if (fc->getName() == "hif_systemc_negedge_event")
+        }
+        if (fc->getName() == "hif_systemc_negedge_event") {
             return true;
+        }
     }
 
-    ProcedureCall *pc = dynamic_cast<ProcedureCall *>(o->getParent());
+    auto *pc = dynamic_cast<ProcedureCall *>(o->getParent());
     if (pc != nullptr && pc->getInstance() == o) {
         // ...
     }
@@ -55,83 +61,83 @@ class PreRefine_utilityLibraries : public hif::GuideVisitor
 {
 
 public:
-    typedef std::map<Declaration *, std::string> FunctionMap;
+    using FunctionMap = std::map<Declaration *, std::string>;
 
     /// @brief Default constructor and destructor.
     PreRefine_utilityLibraries(System *root, hif::semantics::ILanguageSemantics *sem, const hif2scParseLine &cLine);
-    virtual ~PreRefine_utilityLibraries();
+    ~PreRefine_utilityLibraries() override;
 
     // TODO array assign, etc --> hif2sc_assign()
 
-    virtual int visitAggregate(hif::Aggregate &o);
-    virtual int visitAssign(hif::Assign &o);
-    virtual int visitExpression(hif::Expression &o);
-    virtual int visitFunctionCall(FunctionCall &o);
-    virtual int visitIdentifier(hif::Identifier &o);
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitMember(hif::Member &o);
-    virtual int visitProcedureCall(hif::ProcedureCall &o);
-    virtual int visitSlice(hif::Slice &o);
-    virtual int visitSystem(hif::System &o);
-    virtual int visitView(hif::View &o);
+    auto visitAggregate(hif::Aggregate &o) -> int override;
+    auto visitAssign(hif::Assign &o) -> int override;
+    auto visitExpression(hif::Expression &o) -> int override;
+    auto visitFunctionCall(FunctionCall &o) -> int override;
+    auto visitIdentifier(hif::Identifier &o) -> int override;
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitMember(hif::Member &o) -> int override;
+    auto visitProcedureCall(hif::ProcedureCall &o) -> int override;
+    auto visitSlice(hif::Slice &o) -> int override;
+    auto visitSystem(hif::System &o) -> int override;
+    auto visitView(hif::View &o) -> int override;
 
     /// @brief Tells whether support libraries have been introduced.
-    bool hasIntroducedLibraries();
+    auto hasIntroducedLibraries() const -> bool;
 
 private:
     // Disabled.
-    PreRefine_utilityLibraries(const PreRefine_utilityLibraries &);
-    PreRefine_utilityLibraries &operator=(const PreRefine_utilityLibraries &);
+    PreRefine_utilityLibraries(const PreRefine_utilityLibraries &)                     = delete;
+    auto operator=(const PreRefine_utilityLibraries &) -> PreRefine_utilityLibraries & = delete;
 
     /// @name Fixes.
     //@{
 
-    bool _fixRealEquality(Expression *o);
+    auto _fixRealEquality(Expression *o) -> bool;
 
     /// @brief Manages VHDL mod operator.
-    bool _fixModOperator(Expression *o);
+    auto _fixModOperator(Expression *o) -> bool;
 
-    bool _fixReverseOperator(Expression *o);
+    auto _fixReverseOperator(Expression *o) -> bool;
 
     /// @brief Manages size operator on string that are the map for cass to string.size().
-    bool _fixSizeOperator(Expression *o);
+    auto _fixSizeOperator(Expression *o) -> bool;
 
     /// @brief Manages pow operator.
-    bool _fixPowOperator(Expression *o);
+    auto _fixPowOperator(Expression *o) -> bool;
 
     /// @brief Manages VHDL abs operator.
-    bool _fixAbsOperator(Expression *o);
+    auto _fixAbsOperator(Expression *o) -> bool;
 
     /// @brief Manages overload of operator (e.g., for SIGNED type in VHDL std_logic_arith).
-    bool _fixOverloadedOperator(Expression *o);
+    auto _fixOverloadedOperator(Expression *o) -> bool;
 
     /// @brief Manages reduce operators introducing the corresponding function call.
-    bool _fixReduceOperator(Expression *o);
+    auto _fixReduceOperator(Expression *o) -> bool;
 
     /// @brief Manages relational operator between arrays, by introducing
     /// hif_arrayEquals()/hif_arrayNotEquals() methods.
-    bool _fixArrayEquals(Expression *o);
+    auto _fixArrayEquals(Expression *o) -> bool;
 
     /// @brief Fix op_eq and op_neq for logic values
-    bool _fixLogicEquality(Expression *o);
+    auto _fixLogicEquality(Expression *o) -> bool;
 
     /// @brief Manages shift operations between logic vectors.
-    bool _fixShiftOperator(Expression *o);
+    auto _fixShiftOperator(Expression *o) -> bool;
 
     /// @brief Support method for fix array concat.
-    Value *_checkArrayOfSizeOneCase(Value *op, Array *opType, Array *otherOpType);
+    auto _checkArrayOfSizeOneCase(Value *op, Array *opType, Array *otherOpType) -> Value *;
 
     /// @brief Manages concat between arrays.
-    bool _fixArrayConcat(Expression *o);
+    auto _fixArrayConcat(Expression *o) -> bool;
 
     /// @brief Adds required SystemC read() calls.
     void _manageReadCall(Value *o);
 
     /// @brief Fix slice hdtlib type with adding a call to range() method.
-    bool _fixSlice(Slice *o);
+    auto _fixSlice(Slice *o) -> bool;
 
     /// @brief Fix slice on arrays.
-    bool _fixArraySlice(Slice *o);
+    auto _fixArraySlice(Slice *o) -> bool;
 
     /// @name Assign fixes
     /// @{
@@ -139,26 +145,26 @@ private:
     /// @brief manage assignment between two arrays not packed.
     /// @return The created ProcedureCall, or nullptr if nothing is done.
     ///
-    bool _manageAssignBetweenArrays(Assign &o);
+    auto _manageAssignBetweenArrays(Assign &o) -> bool;
 
-    bool _manageAssignToStringSlice(Assign *o);
+    auto _manageAssignToStringSlice(Assign *o) -> bool;
 
-    void _setAssignBounds(Value *target, ProcedureCall *ret, const char recursion);
-
-    /// @brief Support method to get the correct source for hif_assign method.
-    ProcedureCall *_makeStandardAssignProcedure(Value *target, Value *sourceValue);
+    void _setAssignBounds(Value *target, ProcedureCall *ret, char recursion);
 
     /// @brief Support method to get the correct source for hif_assign method.
-    Value *_getHifAssignSource(Value *source);
+    auto _makeStandardAssignProcedure(Value *target, Value *sourceValue) -> ProcedureCall *;
+
+    /// @brief Support method to get the correct source for hif_assign method.
+    auto _getHifAssignSource(Value *source) -> Value *;
 
     /// @brief: manage assignment to a slice, assuming that source and destination
     /// types are compatible.
-    bool _manageAssignToSlice(Assign &o);
+    auto _manageAssignToSlice(Assign &o) -> bool;
 
     /// @brief: manage assignment to a slice, assuming that source and destination
     /// types are compatible.
-    bool _manageHdtlibSliceAssign(Assign *o);
-    bool _manageHdtlibMemberAssign(Assign *o);
+    auto _manageHdtlibSliceAssign(Assign *o) -> bool;
+    auto _manageHdtlibMemberAssign(Assign *o) -> bool;
 
     /// @}
 
@@ -208,21 +214,21 @@ private:
     ///
     /// @{
 
-    bool _manageAggregateArray(Aggregate *o);
-    DataDeclaration *_getAggregateParent(Aggregate *o);
+    auto _manageAggregateArray(Aggregate *o) -> bool;
+    static auto _getAggregateParent(Aggregate *o) -> DataDeclaration *;
 
     /// Create call for HifAggregateArray, HifAggregateBitVector, HifAggregateLogicVector
     /// @param callName set the desired class
     /// @param t used to distinguish between case Array and Vector
     /// @param agg The aggregate
-    FunctionCall *_createAggregateCall(const std::string &callName, Type *t, Aggregate *agg);
+    auto _createAggregateCall(const std::string &callName, Type *t, Aggregate *agg) -> FunctionCall *;
 
     /// @}
 
     /// @name Other fixes.
     //@{
 
-    bool _fixAfter(Assign *o);
+    auto _fixAfter(Assign *o) -> bool;
 
     //@}
 
@@ -230,7 +236,7 @@ private:
     //@{
 
     /// Adds the "hif_" + s library.
-    void _addHifLibrary(const std::string &s, const bool standard = false);
+    void _addHifLibrary(const std::string &s, bool standard = false);
 
     //@}
 
@@ -239,18 +245,15 @@ private:
 
     template <typename T> bool _fixFunctionWithPedix(T *o);
     template <typename T> bool _fixResolvedMethods(T *o);
-    bool _isResolvedConflicting(
+    auto _isResolvedConflicting(
         const std::string &lib,
         SubProgram *decl,
         SubProgram *&resolvedSub,
-        SubProgram *&unresolvedSub);
-    SubProgram *_getResolvedUnresolvedSubprogram(
-        LibraryDef *ld,
-        const std::string &subName,
-        const BListHost::size_t pos,
-        const bool resolved);
-    bool _inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func);
-    bool _inHDTLibRelatedLibrary(const std::string &lib, const std::string &func);
+        SubProgram *&unresolvedSub) -> bool;
+    auto _getResolvedUnresolvedSubprogram(LibraryDef *ld, const std::string &subName, std::size_t pos, bool resolved)
+        -> SubProgram *;
+    static auto _inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
+    static auto _inHDTLibRelatedLibrary(const std::string &lib, const std::string &func) -> bool;
 
     //@}
 
@@ -259,10 +262,10 @@ private:
 
     /// @brief The current scope (Contents, View, LibraryDef, System) where library
     /// references will be added.
-    Object *_scope;
+    Object *_scope{nullptr};
 
     /// @brief Tells whether at least a library reference has been added.
-    bool _introducedLibraries;
+    bool _introducedLibraries{false};
 
     const hif2scParseLine &_cLine;
 
@@ -276,8 +279,6 @@ PreRefine_utilityLibraries::PreRefine_utilityLibraries(
     hif::semantics::ILanguageSemantics *sem,
     const hif2scParseLine &cLine)
     : _root(root)
-    , _scope(nullptr)
-    , _introducedLibraries(false)
     , _cLine(cLine)
     , _sem(sem)
     , _factory(sem)
@@ -288,102 +289,125 @@ PreRefine_utilityLibraries::PreRefine_utilityLibraries(
 
 PreRefine_utilityLibraries::~PreRefine_utilityLibraries() { _trash.clear(); }
 
-bool PreRefine_utilityLibraries::hasIntroducedLibraries() { return _introducedLibraries; }
+auto PreRefine_utilityLibraries::hasIntroducedLibraries() const -> bool { return _introducedLibraries; }
 
-int PreRefine_utilityLibraries::visitAggregate(hif::Aggregate &o)
+auto PreRefine_utilityLibraries::visitAggregate(hif::Aggregate &o) -> int
 {
     GuideVisitor::visitAggregate(o);
-    if (_manageAggregateArray(&o))
+    if (_manageAggregateArray(&o)) {
         return 0;
+    }
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitAssign(hif::Assign &o)
+auto PreRefine_utilityLibraries::visitAssign(hif::Assign &o) -> int
 {
     GuideVisitor::visitAssign(o);
 
-    if (_fixAfter(&o))
+    if (_fixAfter(&o)) {
         return 0; // must be first fix!
-    if (_manageAssignToSlice(o))
+    }
+    if (_manageAssignToSlice(o)) {
         return 0;
-    if (_manageAssignBetweenArrays(o))
+    }
+    if (_manageAssignBetweenArrays(o)) {
         return 0;
-    if (_manageAssignToStringSlice(&o))
+    }
+    if (_manageAssignToStringSlice(&o)) {
         return 0;
+    }
 
-    if (_manageHdtlibSliceAssign(&o))
+    if (_manageHdtlibSliceAssign(&o)) {
         return 0;
-    if (_manageHdtlibMemberAssign(&o))
+    }
+    if (_manageHdtlibMemberAssign(&o)) {
         return 0;
+    }
 
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitExpression(hif::Expression &o)
+auto PreRefine_utilityLibraries::visitExpression(hif::Expression &o) -> int
 {
     GuideVisitor::visitExpression(o);
-    if (_fixReverseOperator(&o))
+    if (_fixReverseOperator(&o)) {
         return 0;
-    if (_fixSizeOperator(&o))
+    }
+    if (_fixSizeOperator(&o)) {
         return 0;
-    if (_fixModOperator(&o))
+    }
+    if (_fixModOperator(&o)) {
         return 0;
-    if (_fixPowOperator(&o))
+    }
+    if (_fixPowOperator(&o)) {
         return 0;
-    if (_fixAbsOperator(&o))
+    }
+    if (_fixAbsOperator(&o)) {
         return 0;
-    if (_fixReduceOperator(&o))
+    }
+    if (_fixReduceOperator(&o)) {
         return 0;
-    if (_fixArrayEquals(&o))
+    }
+    if (_fixArrayEquals(&o)) {
         return 0; // TODO: check
-    if (_fixLogicEquality(&o))
+    }
+    if (_fixLogicEquality(&o)) {
         return 0;
-    if (_fixOverloadedOperator(&o))
+    }
+    if (_fixOverloadedOperator(&o)) {
         return 0;
-    if (_fixShiftOperator(&o))
+    }
+    if (_fixShiftOperator(&o)) {
         return 0;
-    if (_fixArrayConcat(&o))
+    }
+    if (_fixArrayConcat(&o)) {
         return 0;
-    if (_fixRealEquality(&o))
+    }
+    if (_fixRealEquality(&o)) {
         return 0;
+    }
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitFunctionCall(FunctionCall &o)
+auto PreRefine_utilityLibraries::visitFunctionCall(FunctionCall &o) -> int
 {
     GuideVisitor::visitFunctionCall(o);
-    if (_fixFunctionWithPedix(&o))
+    if (_fixFunctionWithPedix(&o)) {
         return 0;
-    if (_fixResolvedMethods(&o))
+    }
+    if (_fixResolvedMethods(&o)) {
         return 0;
+    }
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitMember(Member &o)
+auto PreRefine_utilityLibraries::visitMember(Member &o) -> int
 {
     GuideVisitor::visitMember(o);
     _manageReadCall(&o);
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitSlice(hif::Slice &o)
+auto PreRefine_utilityLibraries::visitSlice(hif::Slice &o) -> int
 {
     GuideVisitor::visitSlice(o);
-    if (_fixSlice(&o))
+    if (_fixSlice(&o)) {
         return 0;
-    if (_fixArraySlice(&o))
+    }
+    if (_fixArraySlice(&o)) {
         return 0;
+    }
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitIdentifier(Identifier &o)
+auto PreRefine_utilityLibraries::visitIdentifier(Identifier &o) -> int
 {
     GuideVisitor::visitIdentifier(o);
     _manageReadCall(&o);
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o)
+auto PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -392,18 +416,20 @@ int PreRefine_utilityLibraries::visitLibraryDef(hif::LibraryDef &o)
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitProcedureCall(hif::ProcedureCall &o)
+auto PreRefine_utilityLibraries::visitProcedureCall(hif::ProcedureCall &o) -> int
 {
     GuideVisitor::visitProcedureCall(o);
-    if (_fixFunctionWithPedix(&o))
+    if (_fixFunctionWithPedix(&o)) {
         return 0;
-    if (_fixResolvedMethods(&o))
+    }
+    if (_fixResolvedMethods(&o)) {
         return 0;
+    }
 
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitSystem(hif::System &o)
+auto PreRefine_utilityLibraries::visitSystem(hif::System &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -412,7 +438,7 @@ int PreRefine_utilityLibraries::visitSystem(hif::System &o)
     return 0;
 }
 
-int PreRefine_utilityLibraries::visitView(hif::View &o)
+auto PreRefine_utilityLibraries::visitView(hif::View &o) -> int
 {
     Object *restore = _scope;
     _scope          = &o;
@@ -421,25 +447,29 @@ int PreRefine_utilityLibraries::visitView(hif::View &o)
     return 0;
 }
 
-bool PreRefine_utilityLibraries::_fixRealEquality(Expression *o)
+auto PreRefine_utilityLibraries::_fixRealEquality(Expression *o) -> bool
 {
-    if (_cLine.noRealEquals())
+    if (_cLine.noRealEquals()) {
         return false;
-    if (!hif::operatorIsEquality(o->getOperator()))
+    }
+    if (!hif::operatorIsEquality(o->getOperator())) {
         return false;
-    auto r1 = dynamic_cast<Real *>(hif::semantics::getBaseType(o->getValue1(), false, _sem));
-    auto r2 = dynamic_cast<Real *>(hif::semantics::getBaseType(o->getValue2(), false, _sem));
-    if (r1 == nullptr || r2 == nullptr)
+    }
+    auto *r1 = dynamic_cast<Real *>(hif::semantics::getBaseType(o->getValue1(), false, _sem));
+    auto *r2 = dynamic_cast<Real *>(hif::semantics::getBaseType(o->getValue2(), false, _sem));
+    if (r1 == nullptr || r2 == nullptr) {
         return false;
+    }
 
-    auto fCall = _factory.functionCall(
+    auto *fCall = _factory.functionCall(
         "hif_systemc_hif_equals", _factory.libraryInstance("hif_systemc_hif_systemc_extensions", false, true),
         _factory.noTemplateArguments(),
         (_factory.parameterArgument("param1", o->getValue1()), _factory.parameterArgument("param2", o->getValue2())));
 
     Value *v = fCall;
-    if (o->getOperator() == hif::op_case_neq || o->getOperator() == hif::op_neq)
+    if (o->getOperator() == hif::op_case_neq || o->getOperator() == hif::op_neq) {
         v = _factory.expression(hif::op_not, v);
+    }
 
     o->replace(v);
     _addHifLibrary("systemc_hif_systemc_extensions");
@@ -447,12 +477,13 @@ bool PreRefine_utilityLibraries::_fixRealEquality(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixModOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixModOperator(Expression *o) -> bool
 {
     // Fine also for hdtlib.
 
-    if (o->getOperator() != op_mod)
+    if (o->getOperator() != op_mod) {
         return false;
+    }
 
     Type *retT = hif::semantics::getSemanticType(o->getValue1(), _sem);
 
@@ -463,12 +494,13 @@ bool PreRefine_utilityLibraries::_fixModOperator(Expression *o)
     Value *div = o->setValue2(nullptr);
 
     // introduce casts
-    Real *r1            = dynamic_cast<Real *>(numT);
-    Real *r2            = dynamic_cast<Real *>(divT);
-    const bool realCast = r1 != nullptr || r2 != nullptr;
-    if (realCast)
+    Real *r1      = dynamic_cast<Real *>(numT);
+    Real *r2      = dynamic_cast<Real *>(divT);
+    bool realCast = r1 != nullptr || r2 != nullptr;
+    if (realCast) {
         raiseUniqueWarning("Found at least one mod operation between real numbers. "
                            "Casting the operands to integers.");
+    }
 
     Type *tcast = _factory.integer(_factory.range(63, 0));
 
@@ -487,22 +519,24 @@ bool PreRefine_utilityLibraries::_fixModOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixReverseOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixReverseOperator(Expression *o) -> bool
 {
-    if (o->getOperator() != op_reverse)
+    if (o->getOperator() != op_reverse) {
         return false;
+    }
 
     Type *exprType    = hif::semantics::getSemanticType(o, _sem);
     Type *valType     = hif::semantics::getSemanticType(o->getValue1(), _sem);
     Type *valBaseType = hif::semantics::getBaseType(valType, false, _sem);
     messageAssert(valBaseType != nullptr, "Cannot type value1", o->getValue1(), _sem);
 
-    String *str         = dynamic_cast<String *>(valBaseType);
-    const bool isString = str != nullptr;
-    const bool isVector = hif::semantics::isVectorType(valBaseType, _sem);
+    auto *str     = dynamic_cast<String *>(valBaseType);
+    bool isString = str != nullptr;
+    bool isVector = hif::semantics::isVectorType(valBaseType, _sem);
 
-    if (!isString && !isVector)
+    if (!isString && !isVector) {
         return false;
+    }
 
     FunctionCall *fCall = _factory.functionCall(
         "hif_systemc_hif_reverse", _factory.libraryInstance("hif_systemc_hif_systemc_extensions", false, true),
@@ -521,19 +555,21 @@ bool PreRefine_utilityLibraries::_fixReverseOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixSizeOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixSizeOperator(Expression *o) -> bool
 {
-    if (o->getOperator() != op_size)
+    if (o->getOperator() != op_size) {
         return false;
+    }
 
     Type *exprType    = hif::semantics::getSemanticType(o, _sem);
     Type *valType     = hif::semantics::getSemanticType(o->getValue1(), _sem);
     Type *valBaseType = hif::semantics::getBaseType(valType, false, _sem);
     messageAssert(valBaseType != nullptr, "Cannot type value1", o->getValue1(), _sem);
 
-    String *str = dynamic_cast<String *>(valBaseType);
-    if (str == nullptr)
+    auto *str = dynamic_cast<String *>(valBaseType);
+    if (str == nullptr) {
         return false;
+    }
 
     FunctionCall *fCall = _factory.functionCall(
         "hif_systemc_size", o->setValue1(nullptr), _factory.noTemplateArguments(), _factory.noParameterArguments());
@@ -551,22 +587,26 @@ bool PreRefine_utilityLibraries::_fixSizeOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixPowOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixPowOperator(Expression *o) -> bool
 {
     // Fine also for hdtlib.
 
-    if (o->getOperator() != op_pow)
+    if (o->getOperator() != op_pow) {
         return false;
+    }
 
     Type *retT = hif::semantics::getSemanticType(o->getValue1(), _sem);
     messageAssert(retT != nullptr, "Cannot type expression.", o, _sem);
 
     if (dynamic_cast<RealValue *>(o->getValue1()) != nullptr &&
-        fabs(static_cast<RealValue *>(o->getValue1())->getValue() - 2.0) < 0.0000001)
+        fabs(dynamic_cast<RealValue *>(o->getValue1())->getValue() - 2.0) < 0.0000001) {
         return false;
+    }
 
-    if (dynamic_cast<IntValue *>(o->getValue1()) != nullptr && static_cast<IntValue *>(o->getValue1())->getValue() == 2)
+    if (dynamic_cast<IntValue *>(o->getValue1()) != nullptr &&
+        dynamic_cast<IntValue *>(o->getValue1())->getValue() == 2) {
         return false;
+    }
 
     Value *num = o->setValue1(nullptr);
     Value *exp = o->setValue2(nullptr);
@@ -585,12 +625,13 @@ bool PreRefine_utilityLibraries::_fixPowOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixAbsOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixAbsOperator(Expression *o) -> bool
 {
     // Fine also for hdtlib
 
-    if (o->getOperator() != op_abs)
+    if (o->getOperator() != op_abs) {
         return false;
+    }
     Type *exprType = hif::semantics::getSemanticType(o, _sem);
 
     Type *t  = hif::semantics::getSemanticType(o->getValue1(), _sem);
@@ -619,8 +660,9 @@ bool PreRefine_utilityLibraries::_fixAbsOperator(Expression *o)
             "hif_systemc_abs", _factory.libraryInstance("hif_systemc_cmath", false, true),
             _factory.noTemplateArguments(), _factory.parameterArgument("param1", o->setValue1(nullptr)));
         _addHifLibrary("systemc_cmath");
-    } else
+    } else {
         messageError("Unexpected case", o, _sem);
+    }
 
     o->replace(abs);
     hif::backends::makeParametersAssignable(abs, _sem, true);
@@ -630,19 +672,21 @@ bool PreRefine_utilityLibraries::_fixAbsOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o) -> bool
 {
     // Fine also for hdtlib
 
-    if (o->getValue2() == nullptr)
+    if (o->getValue2() == nullptr) {
         return false;
+    }
 
-    const bool isSupportedRelational = (hif::operatorIsRelational(o->getOperator()));
-    const bool isSupportedArith =
+    bool isSupportedRelational = (hif::operatorIsRelational(o->getOperator()));
+    bool isSupportedArith =
         (o->getOperator() == op_plus || o->getOperator() == op_minus || o->getOperator() == op_mult);
 
-    if (!isSupportedRelational && !isSupportedArith)
+    if (!isSupportedRelational && !isSupportedArith) {
         return false;
+    }
 
     Type *t1 = hif::semantics::getBaseType(hif::semantics::getSemanticType(o->getValue1(), _sem), false, _sem);
     Type *t2 = hif::semantics::getBaseType(hif::semantics::getSemanticType(o->getValue2(), _sem), false, _sem);
@@ -650,94 +694,102 @@ bool PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o)
     Type *in1 = hif::typeGetNestedType(t1, _sem);
     Type *in2 = hif::typeGetNestedType(t2, _sem);
 
-    const bool t1IsArith = (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr);
-    const bool t2IsArith = (dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
+    bool t1IsArith = (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr);
+    bool t2IsArith = (dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
 
-    const bool t1IsBv = (dynamic_cast<Bitvector *>(in1) != nullptr);
-    const bool t2IsBv = (dynamic_cast<Bitvector *>(in2) != nullptr);
+    bool t1IsBv = (dynamic_cast<Bitvector *>(in1) != nullptr);
+    bool t2IsBv = (dynamic_cast<Bitvector *>(in2) != nullptr);
 
-    const bool t1IsBit = (dynamic_cast<Bit *>(in1) != nullptr) && (static_cast<Bit *>(in1)->isLogic());
-    const bool t2IsBit = (dynamic_cast<Bit *>(in2) != nullptr) && (static_cast<Bit *>(in2)->isLogic());
+    bool t1IsBit = (dynamic_cast<Bit *>(in1) != nullptr) && (dynamic_cast<Bit *>(in1)->isLogic());
+    bool t2IsBit = (dynamic_cast<Bit *>(in2) != nullptr) && (dynamic_cast<Bit *>(in2)->isLogic());
 
-    if ((!t1IsArith && !t1IsBv && !t1IsBit) || (!t2IsArith && !t2IsBv && !t2IsBit))
+    if ((!t1IsArith && !t1IsBv && !t1IsBit) || (!t2IsArith && !t2IsBv && !t2IsBit)) {
         return false;
+    }
 
     // On bv/lv case equality is truly case equality. Fine, no fix to do.
-    if (t1IsBv && t2IsBv && (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq))
+    if (t1IsBv && t2IsBv && (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq)) {
         return false;
+    }
 
-    const bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le ||
-                                      o->getOperator() == op_ge || o->getOperator() == op_gt;
+    bool isComparisonOperator = o->getOperator() == op_lt || o->getOperator() == op_le || o->getOperator() == op_ge ||
+                                o->getOperator() == op_gt;
 
     // For logic bits, only relationals have problems
-    if ((t1IsBit || t2IsBit) && !isComparisonOperator)
+    if ((t1IsBit || t2IsBit) && !isComparisonOperator) {
         return false;
+    }
 
     std::string fName("hif_vhdl_");
-    if (isComparisonOperator)
+    if (isComparisonOperator) {
         fName = "hif_";
+    }
     std::string libName;
 
-    if (o->getOperator() == op_lt)
+    if (o->getOperator() == op_lt) {
         fName += "_op_lt";
-    else if (o->getOperator() == op_gt)
+    } else if (o->getOperator() == op_gt) {
         fName += "_op_gt";
-    else if (o->getOperator() == op_le)
+    } else if (o->getOperator() == op_le) {
         fName += "_op_le";
-    else if (o->getOperator() == op_ge)
+    } else if (o->getOperator() == op_ge) {
         fName += "_op_ge";
-    else if (o->getOperator() == op_plus)
+    } else if (o->getOperator() == op_plus) {
         fName += "_op_plus";
-    else if (o->getOperator() == op_minus)
+    } else if (o->getOperator() == op_minus) {
         fName += "_op_minus";
-    else if (o->getOperator() == op_mult)
+    } else if (o->getOperator() == op_mult) {
         fName += "_op_mult";
-    else if (o->getOperator() == op_eq)
+    } else if (o->getOperator() == op_eq) {
         fName += "_op_eq";
-    else if (o->getOperator() == op_neq)
+    } else if (o->getOperator() == op_neq) {
         fName += "_op_neq";
-    else if (o->getOperator() == op_case_eq)
+    } else if (o->getOperator() == op_case_eq) {
         fName += "_op_eq";
-    else if (o->getOperator() == op_case_neq)
+    } else if (o->getOperator() == op_case_neq) {
         fName += "_op_neq";
-    else
+    } else {
         messageError("Unexpected case", o, _sem);
+    }
 
     if (isComparisonOperator) {
         // all relationals!
         fName = "hif_systemc_" + fName;
         if (!t1IsBit || !t2IsBit) {
-            hif::semantics::ILanguageSemantics::ExpressionTypeInfo info =
-                _sem->getExprType(in1, in2, o->getOperator(), o);
+            auto info = _sem->getExprType(in1, in2, o->getOperator(), o);
 
-            if (hif::typeIsSigned(info.operationPrecision, _sem))
+            if (hif::typeIsSigned(info.operationPrecision, _sem)) {
                 fName = fName + "_signed";
-            else
+            } else {
                 fName = fName + "_unsigned";
+            }
         }
         libName = "systemc_hif_systemc_extensions";
     } else if (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Signed *>(in2) != nullptr) {
         fName += "_signed";
-        if (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq)
+        if (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq) {
             libName = "vhdl_ieee_numeric_std";
-        else
+        } else {
             libName = "vhdl_ieee_std_logic_arith";
+        }
     } else if (dynamic_cast<Unsigned *>(in1) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr) {
         fName += "_unsigned";
-        if (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq)
+        if (o->getOperator() == op_case_eq || o->getOperator() == op_case_neq) {
             libName = "vhdl_ieee_numeric_std";
-        else
+        } else {
             libName = "vhdl_ieee_std_logic_arith";
+        }
     } else if (dynamic_cast<Bitvector *>(in1) != nullptr || dynamic_cast<Bitvector *>(in2) != nullptr) {
-        Bitvector *bv1 = static_cast<Bitvector *>(in1);
-        Bitvector *bv2 = static_cast<Bitvector *>(in2);
+        auto *bv1 = dynamic_cast<Bitvector *>(in1);
+        auto *bv2 = dynamic_cast<Bitvector *>(in2);
 
         hif::semantics::ILanguageSemantics::ExpressionTypeInfo info = _sem->getExprType(bv1, bv2, o->getOperator(), o);
 
-        if (hif::typeIsSigned(info.operationPrecision, _sem))
+        if (hif::typeIsSigned(info.operationPrecision, _sem)) {
             libName = "vhdl_ieee_std_logic_signed";
-        else
+        } else {
             libName = "vhdl_ieee_std_logic_unsigned";
+        }
     } else {
         messageError("Unexpected case.", o, _sem);
     }
@@ -775,7 +827,7 @@ bool PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o)
 
     Type *baseType = hif::semantics::getBaseType(t, false, _sem);
     hif::backends::makeParametersAssignable(call, _sem, true);
-    const bool added = hif::backends::addEventualCast(call, hif::semantics::getSemanticType(call, _sem), t);
+    bool added = hif::backends::addEventualCast(call, hif::semantics::getSemanticType(call, _sem), t);
     if (added && dynamic_cast<Bool *>(baseType) != nullptr) {
         // In case of relationals, the custom call returns a bit,
         // whilst the original code returned a bool.
@@ -790,13 +842,14 @@ bool PreRefine_utilityLibraries::_fixOverloadedOperator(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixReduceOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixReduceOperator(Expression *o) -> bool
 {
     // Fine also for hdtlib.
 
     const hif::Operator op = o->getOperator();
-    if (!hif::operatorIsReduce(op))
+    if (!hif::operatorIsReduce(op)) {
         return false;
+    }
 
     // TODO manage nand, nor, xnor (from parent visit)
 
@@ -839,12 +892,13 @@ bool PreRefine_utilityLibraries::_fixReduceOperator(Expression *o)
 
     // Other cases (bv, lv, etc)
     std::string fName("hif_systemc_");
-    if (op == op_orrd)
+    if (op == op_orrd) {
         fName += "or_reduce";
-    else if (op == op_andrd)
+    } else if (op == op_andrd) {
         fName += "and_reduce";
-    else if (op == op_xorrd)
+    } else if (op == op_xorrd) {
         fName += "xor_reduce";
+    }
 
     FunctionCall *call = _factory.functionCall(
         fName, _factory.libraryInstance("hif_systemc_sc_core", false, true), _factory.noTemplateArguments(),
@@ -856,20 +910,22 @@ bool PreRefine_utilityLibraries::_fixReduceOperator(Expression *o)
     call->setInstance(o->setValue1(nullptr));
     delete o;
 
-    if (_cLine.useHDTLib())
+    if (_cLine.useHDTLib()) {
         _addHifLibrary("systemc_hdtlib");
-    else
+    } else {
         _addHifLibrary("systemc_sc_core");
+    }
 
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixArrayEquals(Expression *o)
+auto PreRefine_utilityLibraries::_fixArrayEquals(Expression *o) -> bool
 {
     // Fine also for hdtlib.
 
-    if (o->getOperator() != op_case_eq && o->getOperator() != op_case_neq)
+    if (o->getOperator() != op_case_eq && o->getOperator() != op_case_neq) {
         return false;
+    }
     messageAssert(o->getValue2() != nullptr, "Expected 2nd operand", o, _sem);
 
     Type *exprType = hif::semantics::getSemanticType(o, _sem);
@@ -879,13 +935,14 @@ bool PreRefine_utilityLibraries::_fixArrayEquals(Expression *o)
     t2             = hif::semantics::getBaseType(t2, false, _sem);
 
     messageAssert(t1 != nullptr && t2 != nullptr, "Expected types", o, _sem);
-    const bool negCond       = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
+    bool negCond             = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
     const hif::Operator opEq = negCond ? hif::operatorGetInverse(o->getOperator()) : o->getOperator();
 
-    Array *arr1 = dynamic_cast<Array *>(t1);
-    Array *arr2 = dynamic_cast<Array *>(t2);
-    if (arr1 == nullptr || arr2 == nullptr)
+    auto *arr1 = dynamic_cast<Array *>(t1);
+    auto *arr2 = dynamic_cast<Array *>(t2);
+    if (arr1 == nullptr || arr2 == nullptr) {
         return false;
+    }
 
     const long long bw1 = static_cast<long long>(hif::semantics::spanGetBitwidth(arr1->getSpan(), _sem));
     const long long bw2 = static_cast<long long>(hif::semantics::spanGetBitwidth(arr2->getSpan(), _sem));
@@ -904,7 +961,7 @@ bool PreRefine_utilityLibraries::_fixArrayEquals(Expression *o)
         hif::backends::makeParametersAssignable(fc, _sem, true);
 
         if (negCond) {
-            Expression *e = new Expression();
+            auto *e = new Expression();
             fc->replace(e);
             e->setOperator(op_not);
             e->setValue1(fc);
@@ -926,7 +983,7 @@ bool PreRefine_utilityLibraries::_fixArrayEquals(Expression *o)
         }
         o->replace(ret);
         if (negCond) {
-            Expression *e = new Expression();
+            auto *e = new Expression();
             ret->replace(e);
             e->setOperator(op_not);
             e->setValue1(ret);
@@ -939,12 +996,13 @@ bool PreRefine_utilityLibraries::_fixArrayEquals(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixLogicEquality(Expression *o)
+auto PreRefine_utilityLibraries::_fixLogicEquality(Expression *o) -> bool
 {
     // Fine also for hdtlib
 
-    if (o->getOperator() != op_eq && o->getOperator() != op_neq) // for verilog/bitvector/hif
+    if (o->getOperator() != op_eq && o->getOperator() != op_neq) { // for verilog/bitvector/hif
         return false;
+    }
     Type *exprType = hif::semantics::getSemanticType(o, _sem);
     messageAssert(exprType != nullptr, "Cannot type expression.", o, _sem);
 
@@ -957,26 +1015,29 @@ bool PreRefine_utilityLibraries::_fixLogicEquality(Expression *o)
     Type *in1 = hif::typeGetNestedType(top1, _sem);
     Type *in2 = hif::typeGetNestedType(top2, _sem);
 
-    const bool t1IsLogic = hif::typeIsLogic(in1, _sem);
-    const bool t2IsLogic = hif::typeIsLogic(in2, _sem);
+    bool t1IsLogic = hif::typeIsLogic(in1, _sem);
+    bool t2IsLogic = hif::typeIsLogic(in2, _sem);
 
-    if (!t1IsLogic && !t2IsLogic)
+    if (!t1IsLogic && !t2IsLogic) {
         return false;
+    }
 
-    const bool isLogicArith =
+    bool isLogicArith =
         (dynamic_cast<Signed *>(in1) != nullptr || dynamic_cast<Unsigned *>(in1) != nullptr ||
          dynamic_cast<Signed *>(in2) != nullptr || dynamic_cast<Unsigned *>(in2) != nullptr);
 
-    if (isLogicArith)
+    if (isLogicArith) {
         return false; // falling into vhdl: logic arith or numeric_std
+    }
 
-    const bool isSigned = hif::typeIsSigned(in1, _sem) && hif::typeIsSigned(in2, _sem);
+    bool isSigned = hif::typeIsSigned(in1, _sem) && hif::typeIsSigned(in2, _sem);
 
-    const bool isBitType = dynamic_cast<Bit *>(top1) != nullptr && dynamic_cast<Bit *>(top2);
+    bool isBitType = dynamic_cast<Bit *>(top1) != nullptr && (dynamic_cast<Bit *>(top2) != nullptr);
 
     std::string fName("hif_systemc_hif_logicEquals");
-    if (_cLine.useHDTLib())
+    if (_cLine.useHDTLib()) {
         fName += "_hdtlib";
+    }
 
     FunctionCall *fc = nullptr;
     if (!isBitType) {
@@ -995,7 +1056,7 @@ bool PreRefine_utilityLibraries::_fixLogicEquality(Expression *o)
     }
 
     o->replace(fc);
-    const bool negCond = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
+    bool negCond = (o->getOperator() == op_neq || o->getOperator() == op_case_neq);
 
     _addHifLibrary("systemc_hif_systemc_extensions");
     hif::backends::makeParametersAssignable(fc, _sem, true);
@@ -1003,7 +1064,7 @@ bool PreRefine_utilityLibraries::_fixLogicEquality(Expression *o)
     hif::backends::addEventualCast(fc, hif::semantics::getSemanticType(fc, _sem), exprType);
 
     if (negCond) {
-        Expression *e = new Expression();
+        auto *e = new Expression();
         fc->replace(e);
         e->setOperator(op_bnot);
         e->setValue1(fc);
@@ -1014,29 +1075,32 @@ bool PreRefine_utilityLibraries::_fixLogicEquality(Expression *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixShiftOperator(Expression *o)
+auto PreRefine_utilityLibraries::_fixShiftOperator(Expression *o) -> bool
 {
-    if (!hif::operatorIsShift(o->getOperator()))
+    if (!hif::operatorIsShift(o->getOperator())) {
         return false;
+    }
     Type *t1 = hif::semantics::getSemanticType(o->getValue1(), _sem);
     messageAssert(t1 != nullptr, "Cannot type operand 1", o, _sem);
     Type *t2 = hif::semantics::getSemanticType(o->getValue2(), _sem);
     messageAssert(t2 != nullptr, "Cannot type operand 2", o, _sem);
 
-    if (!hif::typeIsLogic(t2, _sem) || !hif::semantics::isVectorType(t1, _sem))
+    if (!hif::typeIsLogic(t2, _sem) || !hif::semantics::isVectorType(t1, _sem)) {
         return false;
+    }
     messageAssert(
         hif::typeIsLogic(t2, _sem) && hif::semantics::isVectorType(t2, _sem), "Required two logic vectors.", o, _sem);
 
     std::string funcName;
-    if (o->getOperator() == op_sla || o->getOperator() == op_sll)
+    if (o->getOperator() == op_sla || o->getOperator() == op_sll) {
         funcName = "hif_systemc_hif_op_shift_left";
-    else if (o->getOperator() == op_sra)
+    } else if (o->getOperator() == op_sra) {
         funcName = "hif_systemc_hif_op_shift_right_arith";
-    else if (o->getOperator() == op_srl)
+    } else if (o->getOperator() == op_srl) {
         funcName = "hif_systemc_hif_op_shift_right_logic";
-    else
+    } else {
         messageError("Unexpected case.", o, _sem);
+    }
 
     FunctionCall *fc = _factory.functionCall(
         funcName, _factory.libraryInstance("hif_systemc_hif_systemc_extensions", false, true),
@@ -1052,33 +1116,38 @@ bool PreRefine_utilityLibraries::_fixShiftOperator(Expression *o)
     return true;
 }
 
-Value *PreRefine_utilityLibraries::_checkArrayOfSizeOneCase(Value *op, Array *opType, Array *otherOpType)
+auto PreRefine_utilityLibraries::_checkArrayOfSizeOneCase(Value *op, Array *opType, Array *otherOpType) -> Value *
 {
-    if (opType == nullptr || otherOpType == nullptr)
+    if (opType == nullptr || otherOpType == nullptr) {
         return nullptr;
+    }
     Cast *c = dynamic_cast<Cast *>(op);
-    if (c == nullptr)
+    if (c == nullptr) {
         return nullptr;
+    }
     Type *vt = hif::semantics::getSemanticType(c->getValue(), _sem);
     messageAssert(vt != nullptr, "Cannot type description", c->getValue(), _sem);
     Type *vtb = hif::semantics::getBaseType(vt, false, _sem, true);
     hif::EqualsOptions eqOpt;
     eqOpt.checkConstexprFlag = false;
-    if (!hif::equals(vtb, otherOpType->getType(), eqOpt))
+    if (!hif::equals(vtb, otherOpType->getType(), eqOpt)) {
         return nullptr;
+    }
     Range *simplified                       = hif::manipulation::getAggressiveSimplified(opType->getSpan(), _sem);
     const unsigned long long int opSpanSize = hif::semantics::spanGetBitwidth(simplified, _sem);
     delete simplified;
-    if (opSpanSize != 1ULL)
+    if (opSpanSize != 1ULL) {
         return nullptr;
+    }
 
     return c->setValue(nullptr);
 }
 
-bool PreRefine_utilityLibraries::_fixArrayConcat(Expression *o)
+auto PreRefine_utilityLibraries::_fixArrayConcat(Expression *o) -> bool
 {
-    if (o->getOperator() != op_concat)
+    if (o->getOperator() != op_concat) {
         return false;
+    }
 
     Type *t = hif::semantics::getSemanticType(o, _sem);
     messageAssert(t != nullptr, "Cannot type expression", o, _sem);
@@ -1093,12 +1162,13 @@ bool PreRefine_utilityLibraries::_fixArrayConcat(Expression *o)
     Type *base2 = hif::semantics::getBaseType(t2, false, _sem, true);
     messageAssert(base2 != nullptr, "Cannot find base type 2", o, _sem);
 
-    Array *ae = dynamic_cast<Array *>(baseT);
-    Array *a1 = dynamic_cast<Array *>(base1);
-    Array *a2 = dynamic_cast<Array *>(base2);
+    auto *ae = dynamic_cast<Array *>(baseT);
+    auto *a1 = dynamic_cast<Array *>(base1);
+    auto *a2 = dynamic_cast<Array *>(base2);
 
-    if (a1 == nullptr && a2 == nullptr)
+    if (a1 == nullptr && a2 == nullptr) {
         return false;
+    }
     messageAssert(ae != nullptr, "Unexpected result type", baseT, _sem);
 
     // constructor call
@@ -1106,7 +1176,7 @@ bool PreRefine_utilityLibraries::_fixArrayConcat(Expression *o)
         "instance",
         _factory.viewRef(
             "hif_systemc_ArrayConcat", "cpp",
-            _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+            _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
             (_factory.templateTypeArgument("T", hif::copy(ae->getType())))),
         _factory.noParameterArguments(), _factory.noTemplateArguments());
 
@@ -1115,21 +1185,23 @@ bool PreRefine_utilityLibraries::_fixArrayConcat(Expression *o)
     Value *p1 = _checkArrayOfSizeOneCase(o->getValue1(), a1, a2);
     Value *p2 = _checkArrayOfSizeOneCase(o->getValue2(), a2, a1);
 
-    const bool isArray1 = a1 != nullptr && p1 == nullptr;
-    const bool isArray2 = a2 != nullptr && p2 == nullptr;
+    bool isArray1 = a1 != nullptr && p1 == nullptr;
+    bool isArray2 = a2 != nullptr && p2 == nullptr;
 
-    if (isArray1 && isArray2)
+    if (isArray1 && isArray2) {
         concatName = "concatArrays";
-    else if (isArray1)
+    } else if (isArray1) {
         concatName = "concatArrayWithValue";
-    else /*(isArray2)*/
+    } else { /*(isArray2)*/
         concatName = "concatValueWithArray";
+    }
 
     FunctionCall *concatCall =
         _factory.functionCall(concatName, constrCall, _factory.noTemplateArguments(), _factory.noParameterArguments());
 
-    if (p1 == nullptr)
+    if (p1 == nullptr) {
         p1 = o->setValue1(nullptr);
+    }
     concatCall->parameterAssigns.push_back(_factory.parameterArgument("param1", p1));
 
     if (isArray1) {
@@ -1138,8 +1210,9 @@ bool PreRefine_utilityLibraries::_fixArrayConcat(Expression *o)
         concatCall->templateParameterAssigns.push_back(_factory.templateValueArgument("s1", s1));
     }
 
-    if (p2 == nullptr)
+    if (p2 == nullptr) {
         p2 = o->setValue2(nullptr);
+    }
     concatCall->parameterAssigns.push_back(_factory.parameterArgument("param2", p2));
 
     if (isArray2) {
@@ -1165,63 +1238,75 @@ void PreRefine_utilityLibraries::_manageReadCall(Value *o)
     // Fine also for hdtlib.
 
     Identifier *prefix = dynamic_cast<Identifier *>(hif::getTerminalPrefix(o));
-    if (prefix == nullptr)
+    if (prefix == nullptr) {
         return;
+    }
 
-    FunctionCall *suspicioua = dynamic_cast<FunctionCall *>(prefix->getParent());
-    if (suspicioua != nullptr && suspicioua->getInstance() == prefix && objectMatchName(suspicioua, "hif_systemc_read"))
+    auto *suspicioua = dynamic_cast<FunctionCall *>(prefix->getParent());
+    if (suspicioua != nullptr && suspicioua->getInstance() == prefix &&
+        objectMatchName(suspicioua, "hif_systemc_read")) {
         return;
+    }
 
     DataDeclaration *deco = hif::semantics::getDeclaration(prefix, _sem);
     messageAssert(deco != nullptr, "Declaration not found.", prefix, _sem);
 
     // Add .read() function if the source of assignment is a Port or a Signal.
-    if (dynamic_cast<Port *>(deco) == nullptr && dynamic_cast<Signal *>(deco) == nullptr)
+    if (dynamic_cast<Port *>(deco) == nullptr && dynamic_cast<Signal *>(deco) == nullptr) {
         return;
+    }
 
     // Skip use of port variables in sensitivity list.
     ObjectSensitivityOptions opts;
     opts.directParent = true;
-    if (hif::objectIsInSensitivityList(o, opts))
+    if (hif::objectIsInSensitivityList(o, opts)) {
         return;
+    }
 
     // Skip use of port variables in port assign
-    if (dynamic_cast<PortAssign *>(hif::getParentSkippingCasts(o)) != nullptr)
+    if (dynamic_cast<PortAssign *>(hif::getParentSkippingCasts(o)) != nullptr) {
         return;
+    }
 
     // Skip use of port variables in wait sensitivity list
     if (dynamic_cast<Wait *>(o->getParent()) != nullptr) {
-        Wait *w = static_cast<Wait *>(o->getParent());
-        if (o->getBList() == reinterpret_cast<BList<Object> *>(&w->sensitivity))
+        Wait *w = dynamic_cast<Wait *>(o->getParent());
+        if (o->getBList() == reinterpret_cast<BList<Object> *>(&w->sensitivity)) {
             return;
+        }
     }
 
     // Check if this is the target of assignment.
-    if (hif::manipulation::isInLeftHandSide(o))
+    if (hif::manipulation::isInLeftHandSide(o)) {
         return;
+    }
 
     // Skip when is used in a special standard call
     {
         // 1- parameter
-        ParameterAssign *pa = dynamic_cast<ParameterAssign *>(o->getParent());
-        FunctionCall *fc    = (pa != nullptr) ? dynamic_cast<FunctionCall *>(pa->getParent()) : nullptr;
-        ProcedureCall *pc   = (pa != nullptr) ? dynamic_cast<ProcedureCall *>(pa->getParent()) : nullptr;
+        auto *pa          = dynamic_cast<ParameterAssign *>(o->getParent());
+        FunctionCall *fc  = (pa != nullptr) ? dynamic_cast<FunctionCall *>(pa->getParent()) : nullptr;
+        ProcedureCall *pc = (pa != nullptr) ? dynamic_cast<ProcedureCall *>(pa->getParent()) : nullptr;
 
         if (fc != nullptr) {
-            if (fc->getName() == "hif_systemc_hif_lastValue")
+            if (fc->getName() == "hif_systemc_hif_lastValue") {
                 return;
+            }
         }
 
         if (pc != nullptr) {
-            if (pc->getName() == "hif_systemc_hif_assign")
+            if (pc->getName() == "hif_systemc_hif_assign") {
                 return;
-            if (pc->getName() == "hif_systemc_hif_lastValue")
+            }
+            if (pc->getName() == "hif_systemc_hif_lastValue") {
                 return;
+            }
         }
     }
 
-    if (_isInstanceOfStandardMethod(o))
+    if (_isInstanceOfStandardMethod(o)) {
         return;
+    }
 
     // In case that the value is still an array, it means a multi-dimensional
     // array of signals: we cannot add .read().
@@ -1230,9 +1315,10 @@ void PreRefine_utilityLibraries::_manageReadCall(Value *o)
     {
         Type *valueType = hif::semantics::getSemanticType(o, _sem);
         messageAssert(valueType != nullptr, "Cannot type value", o, _sem);
-        Array *arr = dynamic_cast<Array *>(hif::semantics::getBaseType(valueType, false, _sem));
-        if (arr != nullptr)
+        auto *arr = dynamic_cast<Array *>(hif::semantics::getBaseType(valueType, false, _sem));
+        if (arr != nullptr) {
             return;
+        }
     }
 
     // In case of an Identifier which is prefix of a Member, two possibilities:
@@ -1240,13 +1326,13 @@ void PreRefine_utilityLibraries::_manageReadCall(Value *o)
     // can be replaced here.
     // - we are interested on the i-th element read: "var[i].read()", the entire
     // Member must be replaced.
-    Array *arr = dynamic_cast<Array *>(hif::semantics::getBaseType(deco->getType(), false, _sem));
+    auto *arr = dynamic_cast<Array *>(hif::semantics::getBaseType(deco->getType(), false, _sem));
     if (arr != nullptr && prefix == o) {
         return;
     }
 
     // Else, replace the identifier only.
-    FunctionCall *fCall = new FunctionCall();
+    auto *fCall = new FunctionCall();
     fCall->setName("hif_systemc_read");
     o->replace(fCall);
     fCall->setInstance(o);
@@ -1254,26 +1340,30 @@ void PreRefine_utilityLibraries::_manageReadCall(Value *o)
     _addHifLibrary("systemc_sc_core");
 }
 
-bool PreRefine_utilityLibraries::_fixSlice(Slice *o)
+auto PreRefine_utilityLibraries::_fixSlice(Slice *o) -> bool
 {
     // fine for both hdtlib and sysc.
     Type *t     = hif::semantics::getSemanticType(o, _sem);
     Type *baseT = hif::semantics::getBaseType(t, false, _sem);
     messageAssert(t != nullptr, "Cannot type slice", o, _sem);
 
-    if (hif::manipulation::isInLeftHandSide(o))
+    if (hif::manipulation::isInLeftHandSide(o)) {
         return false;
+    }
     ObjectSensitivityOptions opts;
     opts.directParent = true;
-    if (hif::objectIsInSensitivityList(o, opts))
+    if (hif::objectIsInSensitivityList(o, opts)) {
         return false;
-    if (_isInstanceOfStandardMethod(o))
+    }
+    if (_isInstanceOfStandardMethod(o)) {
         return false;
-    if (dynamic_cast<Array *>(baseT) != nullptr)
+    }
+    if (dynamic_cast<Array *>(baseT) != nullptr) {
         return false; // range on Array is managed through hif_range()
+    }
 
-    FunctionCall *fCall      = nullptr;
-    const bool isStringSlice = (dynamic_cast<String *>(baseT) != nullptr);
+    FunctionCall *fCall = nullptr;
+    bool isStringSlice  = (dynamic_cast<String *>(baseT) != nullptr);
     if (isStringSlice) {
         Value *v = hif::semantics::spanGetSize(o->getSpan(), _sem);
         fCall    = _factory.functionCall(
@@ -1315,24 +1405,28 @@ bool PreRefine_utilityLibraries::_fixSlice(Slice *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_fixArraySlice(Slice *o)
+auto PreRefine_utilityLibraries::_fixArraySlice(Slice *o) -> bool
 {
     // fine for both hdtlib and sysc.
     Type *t     = hif::semantics::getSemanticType(o, _sem);
     Type *baseT = hif::semantics::getBaseType(t, false, _sem);
     messageAssert(t != nullptr, "Cannot type slice", o, _sem);
 
-    if (hif::manipulation::isInLeftHandSide(o))
+    if (hif::manipulation::isInLeftHandSide(o)) {
         return false;
+    }
     ObjectSensitivityOptions opts;
     opts.directParent = true;
-    if (hif::objectIsInSensitivityList(o, opts))
+    if (hif::objectIsInSensitivityList(o, opts)) {
         return false;
-    if (_isInstanceOfStandardMethod(o))
+    }
+    if (_isInstanceOfStandardMethod(o)) {
         return false;
-    Array *arr = dynamic_cast<Array *>(baseT);
-    if (arr == nullptr)
+    }
+    auto *arr = dynamic_cast<Array *>(baseT);
+    if (arr == nullptr) {
         return false;
+    }
 
     Value *param2 = hif::copy(hif::rangeGetMaxBound(arr->getSpan()));
     hif::manipulation::assureSyntacticType(param2, _sem);
@@ -1383,16 +1477,16 @@ void PreRefine_utilityLibraries::_setAssignBounds(Value *target, ProcedureCall *
         //        ret->parameterAssigns.push_back(left);
         //        ret->parameterAssigns.push_back(right);
     } else if (dynamic_cast<Slice *>(target) != nullptr) {
-        Slice *ss = static_cast<Slice *>(target);
+        auto *ss = dynamic_cast<Slice *>(target);
 
-        ParameterAssign *left = new ParameterAssign();
-        std::string leftName  = std::string("left") + recursion;
+        auto *left           = new ParameterAssign();
+        std::string leftName = std::string("left") + recursion;
         left->setName(leftName);
         left->setValue(hif::copy(ss->getSpan()->getLeftBound()));
         hif::manipulation::assureSyntacticType(left->getValue(), _sem);
 
-        ParameterAssign *right = new ParameterAssign();
-        std::string rightName  = std::string("right") + recursion;
+        auto *right           = new ParameterAssign();
+        std::string rightName = std::string("right") + recursion;
         right->setName(rightName);
         right->setValue(hif::copy(ss->getSpan()->getRightBound()));
         hif::manipulation::assureSyntacticType(right->getValue(), _sem);
@@ -1404,7 +1498,7 @@ void PreRefine_utilityLibraries::_setAssignBounds(Value *target, ProcedureCall *
     }
 }
 
-ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *target, Value *sourceValue)
+auto PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *target, Value *sourceValue) -> ProcedureCall *
 {
     Type *srcType = hif::semantics::getBaseType(hif::semantics::getSemanticType(sourceValue, _sem), false, _sem);
 
@@ -1414,7 +1508,7 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
 
     Value *tgtNarrow = hif::manipulation::narrowToCardinality(target, srcCard, _sem, false);
     if (tgtNarrow == nullptr) {
-        stringstream ss;
+        std::stringstream ss;
         ss << "Cannot calculate narrowToCardinality with cardinality=" << srcCard;
         messageDebug("Source value:", sourceValue, _sem);
         messageError(ss.str(), target, _sem);
@@ -1422,9 +1516,9 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
 
     Value *var = tgtNarrow;
     while (dynamic_cast<Slice *>(var) != nullptr) {
-        Slice *tmp                   = static_cast<Slice *>(var);
+        auto *tmp                    = dynamic_cast<Slice *>(var);
         unsigned long long sliceSize = hif::semantics::spanGetBitwidth(tmp->getSpan(), _sem);
-        if (sliceSize != 1ull) {
+        if (sliceSize != 1ULL) {
             var = tmp->getPrefix();
         } else {
             break;
@@ -1432,12 +1526,12 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
     }
 
     // creating target param
-    ParameterAssign *p1 = new ParameterAssign();
+    auto *p1 = new ParameterAssign();
     p1->setName("target");
     p1->setValue(hif::copy(var));
 
     // creating source param
-    ParameterAssign *p2 = new ParameterAssign();
+    auto *p2 = new ParameterAssign();
     p2->setName("source");
     p2->setValue(hif::copy(sourceValue));
 
@@ -1445,7 +1539,7 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
     Type *tgtType   = hif::semantics::getBaseType(hif::semantics::getSemanticType(target, _sem), false, _sem);
     Range *tgtTspan = hif::typeGetSpan(tgtType, _sem);
 
-    ParameterAssign *size = new ParameterAssign();
+    auto *size = new ParameterAssign();
     size->setName("size");
     size->setValue(hif::semantics::spanGetSize(tgtTspan, _sem));
 
@@ -1454,7 +1548,7 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
     c->setType(_factory.integer(nullptr, false, true));
     size->setValue(c);
 
-    ProcedureCall *pc = new ProcedureCall();
+    auto *pc = new ProcedureCall();
     pc->setName("hif_systemc_hif_assign");
     pc->setInstance(_factory.libraryInstance("hif_systemc_hif_systemc_extensions", false, true));
     pc->parameterAssigns.push_back(p1);
@@ -1464,41 +1558,43 @@ ProcedureCall *PreRefine_utilityLibraries::_makeStandardAssignProcedure(Value *t
     return pc;
 }
 
-Value *PreRefine_utilityLibraries::_getHifAssignSource(Value *source)
+auto PreRefine_utilityLibraries::_getHifAssignSource(Value *source) -> Value *
 {
     while (dynamic_cast<Cast *>(source) != nullptr) {
-        Cast *co = static_cast<Cast *>(source);
+        Cast *co = dynamic_cast<Cast *>(source);
 
         Type *coT = hif::semantics::getBaseType(co->getType(), false, _sem);
         Type *opT = hif::semantics::getBaseType(hif::semantics::getSemanticType(co->getValue(), _sem), false, _sem);
 
-        Array *coTa = dynamic_cast<Array *>(coT);
-        Array *opTa = dynamic_cast<Array *>(opT);
+        auto *coTa = dynamic_cast<Array *>(coT);
+        auto *opTa = dynamic_cast<Array *>(opT);
 
-        Bitvector *coTbv = dynamic_cast<Bitvector *>(coT);
-        Bitvector *opTbv = dynamic_cast<Bitvector *>(opT);
+        auto *coTbv = dynamic_cast<Bitvector *>(coT);
+        auto *opTbv = dynamic_cast<Bitvector *>(opT);
 
-        Signed *coTs = dynamic_cast<Signed *>(coT);
-        Signed *opTs = dynamic_cast<Signed *>(opT);
+        auto *coTs = dynamic_cast<Signed *>(coT);
+        auto *opTs = dynamic_cast<Signed *>(opT);
 
-        Unsigned *coTus = dynamic_cast<Unsigned *>(coT);
-        Unsigned *opTus = dynamic_cast<Unsigned *>(opT);
+        auto *coTus = dynamic_cast<Unsigned *>(coT);
+        auto *opTus = dynamic_cast<Unsigned *>(opT);
 
         Int *coTi = dynamic_cast<Int *>(coT);
         Int *opTi = dynamic_cast<Int *>(opT);
 
         if ((coTa == nullptr && coTbv == nullptr && coTs == nullptr && coTus == nullptr && coTi == nullptr) ||
-            (opTa == nullptr && opTbv == nullptr && opTs == nullptr && opTus == nullptr && opTi == nullptr))
+            (opTa == nullptr && opTbv == nullptr && opTs == nullptr && opTus == nullptr && opTi == nullptr)) {
             break;
+        }
 
-        Value *spanT           = hif::semantics::spanGetSize(hif::typeGetSpan(coT, _sem), _sem);
-        Value *spanOp          = hif::semantics::spanGetSize(hif::typeGetSpan(opT, _sem), _sem);
-        const bool cmp         = hif::equals(spanT, spanOp);
-        const bool castToArray = coTa && !opTa;
+        Value *spanT     = hif::semantics::spanGetSize(hif::typeGetSpan(coT, _sem), _sem);
+        Value *spanOp    = hif::semantics::spanGetSize(hif::typeGetSpan(opT, _sem), _sem);
+        bool cmp         = hif::equals(spanT, spanOp);
+        bool castToArray = (coTa != nullptr) && (opTa == nullptr);
         delete spanT;
         delete spanOp;
-        if (!cmp && !castToArray)
+        if (!cmp && !castToArray) {
             break;
+        }
 
         source = co->getValue();
     }
@@ -1506,23 +1602,26 @@ Value *PreRefine_utilityLibraries::_getHifAssignSource(Value *source)
     // Checking if the cast op is an integer casted to array.
     // In this case, it means that the op was an array/bitvector moved to template.
     Cast *c = dynamic_cast<Cast *>(source);
-    if (c == nullptr)
+    if (c == nullptr) {
         return source;
+    }
 
     Type *coT = hif::semantics::getBaseType(c->getType(), false, _sem);
     Type *opT = hif::semantics::getBaseType(hif::semantics::getSemanticType(c->getValue(), _sem), false, _sem);
 
-    Array *coTa = dynamic_cast<Array *>(coT);
-    Int *opTi   = dynamic_cast<Int *>(opT);
+    auto *coTa = dynamic_cast<Array *>(coT);
+    Int *opTi  = dynamic_cast<Int *>(opT);
 
-    if (coTa == nullptr || opTi == nullptr)
+    if (coTa == nullptr || opTi == nullptr) {
         return source;
+    }
 
     Bit *b = dynamic_cast<Bit *>(coTa->getType());
-    if (b == nullptr)
+    if (b == nullptr) {
         return source;
+    }
 
-    Bitvector *bv = new Bitvector();
+    auto *bv = new Bitvector();
     bv->setLogic(b->isLogic());
     bv->setResolved(b->isResolved());
     bv->setSigned(coTa->isSigned());
@@ -1535,23 +1634,27 @@ Value *PreRefine_utilityLibraries::_getHifAssignSource(Value *source)
     return source;
 }
 
-bool PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o)
+auto PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o) -> bool
 {
-    if (_cLine.useHDTLib())
+    if (_cLine.useHDTLib()) {
         return false;
+    }
 
-    if (dynamic_cast<Slice *>(o.getLeftHandSide()) == nullptr)
+    if (dynamic_cast<Slice *>(o.getLeftHandSide()) == nullptr) {
         return false;
-    Slice *tgt = static_cast<Slice *>(o.getLeftHandSide());
+    }
+    auto *tgt = dynamic_cast<Slice *>(o.getLeftHandSide());
 
     Identifier *id = dynamic_cast<Identifier *>(hif::getTerminalPrefix(tgt));
-    if (id == nullptr)
+    if (id == nullptr) {
         return false;
+    }
 
     Declaration *idDec = hif::semantics::getDeclaration(id, hif::semantics::SystemCSemantics::getInstance());
 
-    if (dynamic_cast<Signal *>(idDec) == nullptr && dynamic_cast<Port *>(idDec) == nullptr)
+    if (dynamic_cast<Signal *>(idDec) == nullptr && dynamic_cast<Port *>(idDec) == nullptr) {
         return false;
+    }
 
     // A sort of getChildSkippingCast, but preserving eventual casts added
     // for sign manipulation. Thus, remove them if dimension is the same.
@@ -1559,11 +1662,11 @@ bool PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o)
 
     Type *t2 = hif::semantics::getBaseType(hif::semantics::getSemanticType(source, _sem), false, _sem);
 
-    Array *t2a      = dynamic_cast<Array *>(t2);
-    Bitvector *t2bv = dynamic_cast<Bitvector *>(t2);
-    Signed *t2s     = dynamic_cast<Signed *>(t2);
-    Unsigned *t2us  = dynamic_cast<Unsigned *>(t2);
-    Int *t2i        = dynamic_cast<Int *>(t2);
+    auto *t2a  = dynamic_cast<Array *>(t2);
+    auto *t2bv = dynamic_cast<Bitvector *>(t2);
+    auto *t2s  = dynamic_cast<Signed *>(t2);
+    auto *t2us = dynamic_cast<Unsigned *>(t2);
+    Int *t2i   = dynamic_cast<Int *>(t2);
 
     if (t2a == nullptr && t2bv == nullptr && t2s == nullptr && t2us == nullptr && t2i == nullptr) {
         messageDebug("Source of assign is ", source, _sem);
@@ -1572,12 +1675,12 @@ bool PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o)
 
     ProcedureCall *pc = _makeStandardAssignProcedure(tgt, source);
 
-    ParameterAssign *left = new ParameterAssign();
+    auto *left = new ParameterAssign();
     left->setName("left1");
     left->setValue(hif::copy(tgt->getSpan()->getLeftBound()));
     hif::manipulation::assureSyntacticType(left->getValue(), _sem);
 
-    ParameterAssign *right = new ParameterAssign();
+    auto *right = new ParameterAssign();
     right->setName("right1");
     right->setValue(hif::copy(tgt->getSpan()->getRightBound()));
     hif::manipulation::assureSyntacticType(right->getValue(), _sem);
@@ -1594,7 +1697,7 @@ bool PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o)
     messageAssert(p2 != nullptr, "Expected param at pos 2", pc, _sem);
     Type *sourceT = hif::semantics::getSemanticType(p2->getValue(), _sem);
     if (sourceT == nullptr) {
-        Bitvector *arr = new Bitvector();
+        auto *arr = new Bitvector();
         arr->setSpan(hif::copy(hif::typeGetSpan(t2, _sem)));
         arr->setConstexpr(hif::typeIsConstexpr(t2, _sem));
         arr->setSigned(hif::typeIsSigned(t2, _sem));
@@ -1616,19 +1719,22 @@ bool PreRefine_utilityLibraries::_manageAssignToSlice(Assign &o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_manageHdtlibSliceAssign(Assign *o)
+auto PreRefine_utilityLibraries::_manageHdtlibSliceAssign(Assign *o) -> bool
 {
-    if (!_cLine.useHDTLib())
+    if (!_cLine.useHDTLib()) {
         return false;
+    }
 
-    Slice *s = dynamic_cast<Slice *>(o->getLeftHandSide());
-    if (s == nullptr)
+    auto *s = dynamic_cast<Slice *>(o->getLeftHandSide());
+    if (s == nullptr) {
         return false;
+    }
 
     Value *prefix = s->getPrefix();
     Type *t       = hif::semantics::getBaseType(hif::semantics::getSemanticType(prefix, _sem), false, _sem);
-    if (dynamic_cast<Array *>(t) != nullptr)
+    if (dynamic_cast<Array *>(t) != nullptr) {
         return false;
+    }
 
     Value *l = s->getSpan()->setLeftBound(nullptr);
     hif::manipulation::assureSyntacticType(l, _sem);
@@ -1653,19 +1759,22 @@ bool PreRefine_utilityLibraries::_manageHdtlibSliceAssign(Assign *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_manageHdtlibMemberAssign(Assign *o)
+auto PreRefine_utilityLibraries::_manageHdtlibMemberAssign(Assign *o) -> bool
 {
-    if (!_cLine.useHDTLib())
+    if (!_cLine.useHDTLib()) {
         return false;
+    }
 
-    Member *m = dynamic_cast<Member *>(o->getLeftHandSide());
-    if (m == nullptr)
+    auto *m = dynamic_cast<Member *>(o->getLeftHandSide());
+    if (m == nullptr) {
         return false;
+    }
 
     Value *prefix = m->getPrefix();
     Type *t       = hif::semantics::getBaseType(hif::semantics::getSemanticType(prefix, _sem), false, _sem);
-    if (!hif::semantics::isVectorType(t, _sem))
+    if (!hif::semantics::isVectorType(t, _sem)) {
         return false;
+    }
 
     Value *i = m->getIndex();
     i->replace(nullptr);
@@ -1687,7 +1796,7 @@ bool PreRefine_utilityLibraries::_manageHdtlibMemberAssign(Assign *o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_manageAssignBetweenArrays(Assign &o)
+auto PreRefine_utilityLibraries::_manageAssignBetweenArrays(Assign &o) -> bool
 {
     // Fine also for hdtlib. TODO check
 
@@ -1699,28 +1808,30 @@ bool PreRefine_utilityLibraries::_manageAssignBetweenArrays(Assign &o)
 
     Type *t2 = hif::semantics::getBaseType(hif::semantics::getSemanticType(source, _sem), false, _sem);
 
-    Array *t1a = dynamic_cast<Array *>(t1);
-    Array *t2a = dynamic_cast<Array *>(t2);
+    auto *t1a = dynamic_cast<Array *>(t1);
+    auto *t2a = dynamic_cast<Array *>(t2);
 
-    Bitvector *t1bv = dynamic_cast<Bitvector *>(t1);
-    Bitvector *t2bv = dynamic_cast<Bitvector *>(t2);
+    auto *t1bv = dynamic_cast<Bitvector *>(t1);
+    auto *t2bv = dynamic_cast<Bitvector *>(t2);
 
-    Signed *t1s = dynamic_cast<Signed *>(t1);
-    Signed *t2s = dynamic_cast<Signed *>(t2);
+    auto *t1s = dynamic_cast<Signed *>(t1);
+    auto *t2s = dynamic_cast<Signed *>(t2);
 
-    Unsigned *t1us = dynamic_cast<Unsigned *>(t1);
-    Unsigned *t2us = dynamic_cast<Unsigned *>(t2);
+    auto *t1us = dynamic_cast<Unsigned *>(t1);
+    auto *t2us = dynamic_cast<Unsigned *>(t2);
 
     Int *t1i = dynamic_cast<Int *>(t1);
     Int *t2i = dynamic_cast<Int *>(t2);
 
     if ((t1a == nullptr && t1bv == nullptr && t1s == nullptr && t1us == nullptr && t1i == nullptr) ||
-        (t2a == nullptr && t2bv == nullptr && t2s == nullptr && t2us == nullptr && t2i == nullptr))
+        (t2a == nullptr && t2bv == nullptr && t2s == nullptr && t2us == nullptr && t2i == nullptr)) {
         return false;
+    }
 
     // if both are bit vector, signed, unsigned not need to call hif2sc_assign
-    if (t1a == nullptr && t2a == nullptr)
+    if (t1a == nullptr && t2a == nullptr) {
         return false;
+    }
 
     ProcedureCall *pc = _makeStandardAssignProcedure(o.getLeftHandSide(), source);
 
@@ -1735,7 +1846,7 @@ bool PreRefine_utilityLibraries::_manageAssignBetweenArrays(Assign &o)
     messageAssert(p2 != nullptr, "Expected param at pos 2", pc, _sem);
     Type *sourceT = hif::semantics::getSemanticType(p2->getValue(), _sem);
     if (sourceT == nullptr) {
-        Bitvector *arr = new Bitvector();
+        auto *arr = new Bitvector();
         arr->setSpan(hif::copy(hif::typeGetSpan(t2, _sem)));
         arr->setConstexpr(hif::typeIsConstexpr(t2, _sem));
         arr->setSigned(hif::typeIsSigned(t2, _sem));
@@ -1757,19 +1868,21 @@ bool PreRefine_utilityLibraries::_manageAssignBetweenArrays(Assign &o)
     return true;
 }
 
-bool PreRefine_utilityLibraries::_manageAssignToStringSlice(Assign *o)
+auto PreRefine_utilityLibraries::_manageAssignToStringSlice(Assign *o) -> bool
 {
-    Slice *leftSlice = dynamic_cast<Slice *>(o->getLeftHandSide());
-    if (leftSlice == nullptr)
+    auto *leftSlice = dynamic_cast<Slice *>(o->getLeftHandSide());
+    if (leftSlice == nullptr) {
         return false;
+    }
 
     Type *leftType = hif::semantics::getSemanticType(leftSlice, _sem);
     messageAssert(leftType != nullptr, "Cannot type slice", leftSlice, _sem);
 
     Type *leftBaseType = hif::semantics::getBaseType(leftType, false, _sem, false);
-    String *leftString = dynamic_cast<String *>(leftBaseType);
-    if (leftString == nullptr)
+    auto *leftString   = dynamic_cast<String *>(leftBaseType);
+    if (leftString == nullptr) {
         return false;
+    }
 
     Value *size = hif::semantics::spanGetSize(leftSlice->getSpan(), _sem);
 
@@ -1790,7 +1903,7 @@ bool PreRefine_utilityLibraries::_manageAssignToStringSlice(Assign *o)
     return true;
 }
 
-DataDeclaration *PreRefine_utilityLibraries::_getAggregateParent(Aggregate *o)
+auto PreRefine_utilityLibraries::_getAggregateParent(Aggregate *o) -> DataDeclaration *
 {
     Object *parent = o->getParent();
     while (dynamic_cast<Aggregate *>(parent) != nullptr || dynamic_cast<AggregateAlt *>(parent) != nullptr ||
@@ -1801,36 +1914,40 @@ DataDeclaration *PreRefine_utilityLibraries::_getAggregateParent(Aggregate *o)
     return dynamic_cast<DataDeclaration *>(parent);
 }
 
-bool PreRefine_utilityLibraries::_manageAggregateArray(Aggregate *o)
+auto PreRefine_utilityLibraries::_manageAggregateArray(Aggregate *o) -> bool
 {
     // Fine also for hdtlib.
 
-    Type *oType    = hif::semantics::getSemanticType(o, _sem);
-    Type *bt       = hif::semantics::getBaseType(oType, false, _sem, false);
-    Array *arr     = dynamic_cast<Array *>(bt);
-    Bitvector *bv  = dynamic_cast<Bitvector *>(bt);
-    Signed *sig    = dynamic_cast<Signed *>(bt);
-    Unsigned *usig = dynamic_cast<Unsigned *>(bt);
-    if (arr == nullptr && bv == nullptr && sig == nullptr && usig == nullptr)
+    Type *oType = hif::semantics::getSemanticType(o, _sem);
+    Type *bt    = hif::semantics::getBaseType(oType, false, _sem, false);
+    auto *arr   = dynamic_cast<Array *>(bt);
+    auto *bv    = dynamic_cast<Bitvector *>(bt);
+    auto *sig   = dynamic_cast<Signed *>(bt);
+    auto *usig  = dynamic_cast<Unsigned *>(bt);
+    if (arr == nullptr && bv == nullptr && sig == nullptr && usig == nullptr) {
         return false;
+    }
 
     std::string callName;
     if (arr != nullptr) {
         DataDeclaration *ddecl = _getAggregateParent(o);
-        if (ddecl != nullptr && hif::isSubNode(o, ddecl->getValue()))
+        if (ddecl != nullptr && hif::isSubNode(o, ddecl->getValue())) {
             return false;
+        }
 
         callName = "hif_systemc_HifAggregateArray";
     } else if ((bv != nullptr && bv->isLogic()) || (sig != nullptr) || (usig != nullptr)) {
-        if (_cLine.useHDTLib())
+        if (_cLine.useHDTLib()) {
             callName = "hif_systemc_HifAggregateHlLv";
-        else
+        } else {
             callName = "hif_systemc_HifAggregateLogicVector";
+        }
     } else if (bv != nullptr && !bv->isLogic()) {
-        if (_cLine.useHDTLib())
+        if (_cLine.useHDTLib()) {
             callName = "hif_systemc_HifAggregateHlBv";
-        else
+        } else {
             callName = "hif_systemc_HifAggregateBitVector";
+        }
     }
     FunctionCall *fcall = _createAggregateCall(callName, bt, o);
 
@@ -1849,28 +1966,30 @@ bool PreRefine_utilityLibraries::_manageAggregateArray(Aggregate *o)
     delete o;
 
     _addHifLibrary("systemc_hif_systemc_extensions");
-    if (_cLine.useHDTLib())
+    if (_cLine.useHDTLib()) {
         _addHifLibrary("systemc_hdtlib");
+    }
 
     return true;
 }
 
-FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string &callName, Type *t, Aggregate *agg)
+auto PreRefine_utilityLibraries::_createAggregateCall(const std::string &callName, Type *t, Aggregate *agg)
+    -> FunctionCall *
 {
     FunctionCall *mainCall = nullptr; // pointer to the most extern call
 
     // HifAggregateArray()
     Value *sizeParam = hif::semantics::spanGetSize(hif::typeGetSpan(t, _sem), _sem); // fresh
 
-    const bool isArray = (dynamic_cast<Array *>(t) != nullptr);
+    bool isArray = (dynamic_cast<Array *>(t) != nullptr);
 
     // constructor call
     if (isArray) {
-        Array *tArr = static_cast<Array *>(t);
-        mainCall    = _factory.classConstructorCall(
+        auto *tArr = dynamic_cast<Array *>(t);
+        mainCall   = _factory.classConstructorCall(
             "instance",
             _factory.viewRef(
-                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
                 (_factory.templateTypeArgument("T", hif::copy(tArr->getType())),
                  _factory.templateValueArgument("size", sizeParam))),
             _factory.noParameterArguments(), _factory.noTemplateArguments());
@@ -1878,7 +1997,7 @@ FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string
         mainCall = _factory.classConstructorCall(
             "instance",
             _factory.viewRef(
-                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, nullptr, false, true),
+                callName, "cpp", _factory.library("hif_systemc_hif_systemc_extensions", nullptr, "", false, true),
                 (_factory.templateValueArgument("size", sizeParam))),
             _factory.noParameterArguments(), _factory.noTemplateArguments());
     }
@@ -1886,18 +2005,20 @@ FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string
     // eventually cast parameter assign (to assure assignability)
     Type *castType = nullptr;
     if (!isArray) {
-        Bitvector *bv = dynamic_cast<Bitvector *>(t);
-        if (bv != nullptr && !bv->isLogic())
+        auto *bv = dynamic_cast<Bitvector *>(t);
+        if (bv != nullptr && !bv->isLogic()) {
             castType = _factory.boolean();
-        else
+        } else {
             castType = _factory.bit(true, false);
+        }
     }
 
     // eventual setOthers()
     if (agg->getOthers() != nullptr) {
         Value *val = agg->setOthers(nullptr);
-        if (castType != nullptr)
+        if (castType != nullptr) {
             val = _factory.cast(hif::copy(castType), val);
+        }
 
         mainCall = _factory.functionCall(
             "setOthers", mainCall, _factory.noTemplateArguments(), _factory.parameterArgument("others", val));
@@ -1907,11 +2028,12 @@ FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string
     for (BList<AggregateAlt>::iterator it = agg->alts.begin(); it != agg->alts.end(); ++it) {
         for (BList<Value>::iterator jt = (*it)->indices.begin(); jt != (*it)->indices.end(); ++jt) {
             if (dynamic_cast<Range *>(*jt) != nullptr) {
-                Range *r = static_cast<Range *>(*jt);
+                auto *r = dynamic_cast<Range *>(*jt);
 
                 Value *val = hif::copy((*it)->getValue());
-                if (castType != nullptr)
+                if (castType != nullptr) {
                     val = _factory.cast(hif::copy(castType), val);
+                }
 
                 mainCall = _factory.functionCall(
                     "addPairSet", mainCall, _factory.noTemplateArguments(),
@@ -1922,8 +2044,9 @@ FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string
                      _factory.parameterArgument("value", val)));
             } else {
                 Value *val = hif::copy((*it)->getValue());
-                if (castType != nullptr)
+                if (castType != nullptr) {
                     val = _factory.cast(hif::copy(castType), val);
+                }
 
                 mainCall = _factory.functionCall(
                     "addPair", mainCall, _factory.noTemplateArguments(),
@@ -1941,10 +2064,11 @@ FunctionCall *PreRefine_utilityLibraries::_createAggregateCall(const std::string
     return mainCall;
 }
 
-bool PreRefine_utilityLibraries::_fixAfter(Assign *o)
+auto PreRefine_utilityLibraries::_fixAfter(Assign *o) -> bool
 {
-    if (o->getDelay() == nullptr)
+    if (o->getDelay() == nullptr) {
         return false;
+    }
 
     Type *targetType = hif::semantics::getSemanticType(o->getLeftHandSide(), _sem);
     messageAssert(targetType != nullptr, "Cannot type target", o->getLeftHandSide(), _sem);
@@ -1971,7 +2095,7 @@ bool PreRefine_utilityLibraries::_fixAfter(Assign *o)
     return true;
 }
 
-void PreRefine_utilityLibraries::_addHifLibrary(const std::string &c, const bool standard)
+void PreRefine_utilityLibraries::_addHifLibrary(const std::string &c, bool standard)
 {
     std::string nn("hif_");
     nn += c;
@@ -1984,19 +2108,22 @@ template <typename T> bool PreRefine_utilityLibraries::_fixFunctionWithPedix(T *
     typename T::DeclarationType *decl = hif::semantics::getDeclaration(o, _sem);
     messageAssert(decl != nullptr, "Declaration not found", o, _sem);
 
-    LibraryDef *ld = dynamic_cast<LibraryDef *>(decl->getParent());
-    if (ld == nullptr || !ld->isStandard())
+    auto *ld = dynamic_cast<LibraryDef *>(decl->getParent());
+    if (ld == nullptr || !ld->isStandard()) {
         return false;
+    }
 
     std::string pedix(decl->getName());
     if (_cLine.useHDTLib() && _inHDTLibRelatedLibrary(ld->getName(), decl->getName())) {
         pedix += "_hdtlib";
     } else if (_inSignedUnsignedRelatedLibrary(ld->getName(), decl->getName())) {
-        if (decl->parameters.empty())
+        if (decl->parameters.empty()) {
             return false;
+        }
         Bit *b = dynamic_cast<Bit *>(decl->parameters.front()->getType());
-        if (b != nullptr)
+        if (b != nullptr) {
             return false;
+        }
         if (hif::typeIsSigned(decl->parameters.front()->getType(), _sem)) {
             pedix += "_signed";
         } else {
@@ -2015,9 +2142,10 @@ template <typename T> bool PreRefine_utilityLibraries::_fixResolvedMethods(T *o)
     typename T::DeclarationType *decl = hif::semantics::getDeclaration(o, _sem);
     messageAssert(decl != nullptr, "Declaration not found", o, _sem);
 
-    LibraryDef *ld = dynamic_cast<LibraryDef *>(decl->getParent());
-    if (ld == nullptr || !ld->isStandard())
+    auto *ld = dynamic_cast<LibraryDef *>(decl->getParent());
+    if (ld == nullptr || !ld->isStandard()) {
         return false;
+    }
 
     SubProgram *resolvedSub   = nullptr;
     SubProgram *unresolvedSub = nullptr;
@@ -2034,11 +2162,11 @@ template <typename T> bool PreRefine_utilityLibraries::_fixResolvedMethods(T *o)
     return false;
 }
 
-bool PreRefine_utilityLibraries::_isResolvedConflicting(
+auto PreRefine_utilityLibraries::_isResolvedConflicting(
     const std::string &lib,
     SubProgram *decl,
     SubProgram *&resolvedSub,
-    SubProgram *&unresolvedSub)
+    SubProgram *&unresolvedSub) -> bool
 {
     // Ref designs for all follwing cases:
     // - vhdl/openCores/plasma
@@ -2048,7 +2176,8 @@ bool PreRefine_utilityLibraries::_isResolvedConflicting(
         if (func == "hif_vhdl_is_x") {
             if (dynamic_cast<Bit *>(decl->parameters.front()->getType()) != nullptr) {
                 return false;
-            } else if (hif::typeIsResolved(decl->parameters.front()->getType(), _sem)) {
+            }
+            if (hif::typeIsResolved(decl->parameters.front()->getType(), _sem)) {
                 resolvedSub = decl;
                 unresolvedSub =
                     _getResolvedUnresolvedSubprogram(dynamic_cast<LibraryDef *>(decl->getParent()), func, 0, false);
@@ -2065,7 +2194,8 @@ bool PreRefine_utilityLibraries::_isResolvedConflicting(
         if (func == "hif_vhdl_hread") {
             if (dynamic_cast<Bit *>(decl->parameters.at(1)->getType()) != nullptr) {
                 return false;
-            } else if (hif::typeIsResolved(decl->parameters.at(1)->getType(), _sem)) {
+            }
+            if (hif::typeIsResolved(decl->parameters.at(1)->getType(), _sem)) {
                 resolvedSub = decl;
                 unresolvedSub =
                     _getResolvedUnresolvedSubprogram(dynamic_cast<LibraryDef *>(decl->getParent()), func, 1, false);
@@ -2082,64 +2212,77 @@ bool PreRefine_utilityLibraries::_isResolvedConflicting(
     return false;
 }
 
-SubProgram *PreRefine_utilityLibraries::_getResolvedUnresolvedSubprogram(
+auto PreRefine_utilityLibraries::_getResolvedUnresolvedSubprogram(
     LibraryDef *ld,
     const std::string &subName,
-    const BListHost::size_t pos,
-    const bool resolved)
+    std::size_t pos,
+    bool resolved) -> SubProgram *
 {
-    if (ld == nullptr)
+    if (ld == nullptr) {
         return nullptr;
+    }
     for (BList<Declaration>::iterator i = ld->declarations.begin(); i != ld->declarations.end(); ++i) {
         Declaration *decl = *i;
-        if (decl->getName() != subName)
+        if (decl->getName() != subName) {
             continue;
-        SubProgram *sub = dynamic_cast<SubProgram *>(decl);
-        if (sub == nullptr || sub->parameters.size() <= pos)
+        }
+        auto *sub = dynamic_cast<SubProgram *>(decl);
+        if (sub == nullptr || sub->parameters.size() <= pos) {
             continue;
-        if (hif::typeIsResolved(sub->parameters.at(pos)->getType(), _sem) != resolved)
+        }
+        if (hif::typeIsResolved(sub->parameters.at(pos)->getType(), _sem) != resolved) {
             continue;
+        }
         return sub;
     }
 
     return nullptr;
 }
 
-bool PreRefine_utilityLibraries::_inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func)
+auto PreRefine_utilityLibraries::_inSignedUnsignedRelatedLibrary(const std::string &lib, const std::string &func)
+    -> bool
 {
     if (lib == "hif_vhdl_ieee_std_logic_arith") {
-        if (func == "hif_vhdl_shr")
+        if (func == "hif_vhdl_shr") {
             return true;
-        else if (func == "hif_vhdl_conv_integer")
+        }
+        if (func == "hif_vhdl_conv_integer") {
             return true;
-        else if (func == "hif_vhdl_conv_std_logic_vector")
+        }
+        if (func == "hif_vhdl_conv_std_logic_vector") {
             return true;
-        else if (func == "hif_vhdl_conv_unsigned")
+        }
+        if (func == "hif_vhdl_conv_unsigned")
             return true;
         else if (func == "hif_vhdl_conv_signed")
             return true;
     } else if (lib == "hif_vhdl_ieee_numeric_std") {
-        if (func == "hif_vhdl_to_integer")
+        if (func == "hif_vhdl_to_integer") {
             return true;
+        }
     }
 
     return false;
 }
 
-bool PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib, const std::string &func)
+auto PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib, const std::string &func) -> bool
 {
     if (lib == "hif_verilog_standard") {
-        if (func == "hif_verilog__system_finish")
+        if (func == "hif_verilog__system_finish") {
             return true;
-        else if (func == "hif_verilog__system_stop")
+        }
+        if (func == "hif_verilog__system_stop") {
             return true;
-        else if (func == "hif_verilog__system_stime")
+        }
+        if (func == "hif_verilog__system_stime") {
             return true;
-        else if (func == "hif_verilog__system_time")
+        }
+        if (func == "hif_verilog__system_time")
             return true;
     } else if (lib == "hif_systemc_extensions") {
-        if (func == "hif_logicEquals")
+        if (func == "hif_logicEquals") {
             return true;
+        }
     }
 
     return false;
@@ -2147,13 +2290,13 @@ bool PreRefine_utilityLibraries::_inHDTLibRelatedLibrary(const std::string &lib,
 
 } // namespace
 
-bool fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem, const hif2scParseLine &cLine)
+auto fixUtilityLibraries(hif::System *o, hif::semantics::ILanguageSemantics *sem, const hif2scParseLine &cLine) -> bool
 {
     hif::application_utils::initializeLogHeader("HIF2SC", "fixUtilityLibraries");
 
     // Step 1: last_value
 
-    const bool lastValueFix = hif::manipulation::mapLastValueToSystemC(o);
+    bool lastValueFix = hif::manipulation::mapLastValueToSystemC(o);
 
     hif::manipulation::AddUniqueObjectOptions addOpt;
     addOpt.equalsOptions.checkOnlyNames = true;

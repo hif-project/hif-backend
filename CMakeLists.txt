@@ -47,9 +47,15 @@ mark_as_advanced(FORCE
 # -----------------------------------------------------------------------------
 
 find_package(Doxygen)
-find_package(SystemCLanguage CONFIG REQUIRED)
+find_package(SystemCLanguage CONFIG)
 find_package(HIF REQUIRED)
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+
+if(SystemCLanguage_FOUND)
+    message(STATUS "SystemC found: the hif2sc backend will be enabled.")
+else()
+    message(STATUS "SystemC not found: the hif2sc backend will be disabled.")
+endif()
 
 # -----------------------------------------------------------------------------
 # EXECUTABLEs
@@ -58,6 +64,7 @@ find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 # =====================================
 # EXECUTABLE: hif2sc
 # =====================================
+if(SystemCLanguage_FOUND)
 # Create the executable.
 add_executable(
     hif2sc
@@ -128,6 +135,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Cl
 endif()
 # Install the executable.
 install(TARGETS hif2sc DESTINATION bin)
+endif()
 
 # =====================================
 # EXECUTABLE: hif2verilog
@@ -138,9 +146,7 @@ add_executable(
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/hif2verilog.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/hif2verilogParseLine.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintVerilogMethods.cpp
-    ${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintVerilogVisitor.cpp
-    #${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintMethods.cpp
-    #${CMAKE_SOURCE_DIR}/src/hif2verilog/VerilogPrinter.cpp
+    ${CMAKE_SOURCE_DIR}/src/hif2verilog/VerilogPrinter.cpp
 )
 # Include directories.
 target_include_directories(hif2verilog PRIVATE ${CMAKE_SOURCE_DIR}/include ${HIF_INCLUDE_DIR})
@@ -267,6 +273,7 @@ install(TARGETS hif2vhdl DESTINATION bin)
 # =====================================
 # LIBARY: hif2scSupport
 # =====================================
+if(SystemCLanguage_FOUND)
 # Create the executable.
 add_library(
     hif2scSupport
@@ -342,6 +349,14 @@ install(
     COMPONENT header_files
     FILES_MATCHING PATTERN "*.hpp"
 )
+endif()
+
+# -----------------------------------------------------------------------------
+# TESTS
+# -----------------------------------------------------------------------------
+
+enable_testing()
+add_subdirectory(tests)
 
 # -----------------------------------------------------------------------------
 # CODE ANALYSIS

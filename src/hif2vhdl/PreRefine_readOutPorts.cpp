@@ -22,25 +22,25 @@ namespace
 class PreRefine_readOutPorts : public hif::GuideVisitor
 {
 public:
-    typedef hif::semantics::ReferencesSet ObjectList;
+    using ObjectList = hif::semantics::ReferencesSet;
 
     /// @brief Default constructor and destructor.
     PreRefine_readOutPorts(hif::semantics::ILanguageSemantics *sem);
-    virtual ~PreRefine_readOutPorts();
+    ~PreRefine_readOutPorts() override;
 
     /// @brief Starter method.
     void fixReadOutPorts();
 
-    virtual int visitLibraryDef(hif::LibraryDef &o);
-    virtual int visitView(hif::View &o);
-    virtual int visitPort(hif::Port &o);
+    auto visitLibraryDef(hif::LibraryDef &o) -> int override;
+    auto visitView(hif::View &o) -> int override;
+    auto visitPort(hif::Port &o) -> int override;
 
 private:
     /// @brief Disabled copy constructor.
     PreRefine_readOutPorts(const PreRefine_readOutPorts &);
 
     /// @brief Disabled assignment operator.
-    PreRefine_readOutPorts &operator=(const PreRefine_readOutPorts &);
+    auto operator=(const PreRefine_readOutPorts &) -> PreRefine_readOutPorts &;
 
     /// @brief HifFactory object useful for some static methods.
     hif::HifFactory _factory;
@@ -49,7 +49,7 @@ private:
     semantics::ILanguageSemantics *_sem;
 
     /// @brief Return true if the Port needs the read out port fix.
-    bool _needFix(ObjectList &list);
+    static auto _needFix(ObjectList &list) -> bool;
 
     /// @brief Perform the read out port fix.
     void _doFix(hif::Port *p, hif::View *view, ObjectList &list);
@@ -67,53 +67,60 @@ PreRefine_readOutPorts::~PreRefine_readOutPorts()
     // ntd
 }
 
-int PreRefine_readOutPorts::visitLibraryDef(LibraryDef &o)
+auto PreRefine_readOutPorts::visitLibraryDef(LibraryDef &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     return GuideVisitor::visitLibraryDef(o);
 }
 
-int PreRefine_readOutPorts::visitView(View &o)
+auto PreRefine_readOutPorts::visitView(View &o) -> int
 {
-    if (o.isStandard())
+    if (o.isStandard()) {
         return 0;
+    }
 
     return GuideVisitor::visitView(o);
 }
 
-int PreRefine_readOutPorts::visitPort(Port &o)
+auto PreRefine_readOutPorts::visitPort(Port &o) -> int
 {
-    if (o.getDirection() != dir_out)
+    if (o.getDirection() != dir_out) {
         return 0;
+    }
 
     View *view = getNearestParent<View>(&o);
 
     ObjectList list;
     semantics::getReferences(&o, list, _sem, view);
 
-    if (!_needFix(list))
+    if (!_needFix(list)) {
         return 0;
+    }
 
     _doFix(&o, view, list);
 
     return 0;
 }
 
-bool PreRefine_readOutPorts::_needFix(ObjectList &list)
+auto PreRefine_readOutPorts::_needFix(ObjectList &list) -> bool
 {
-    for (ObjectList::iterator it = list.begin(); it != list.end(); ++it) {
-        if (hif::manipulation::isInLeftHandSide(*it))
+    for (auto *it : list) {
+        if (hif::manipulation::isInLeftHandSide(it)) {
             continue;
+        }
 
-        PortAssign *pa = getNearestParent<PortAssign>(*it);
-        if (pa == nullptr)
+        auto *pa = getNearestParent<PortAssign>(it);
+        if (pa == nullptr) {
             return true;
+        }
 
         Value *val = getTerminalPrefix(pa->getValue());
-        if (val == *it)
+        if (val == it) {
             continue;
+        }
 
         return true;
     }
@@ -129,14 +136,15 @@ void PreRefine_readOutPorts::_doFix(Port *p, View *view, ObjectList &list)
 
     hif::semantics::ResetDeclarationsOptions ropt;
     ropt.onlyCurrent = true;
-    for (ObjectList::iterator it = list.begin(); it != list.end(); ++it) {
-        objectSetName(*it, n);
-        hif::semantics::resetDeclarations(*it, ropt);
+    for (auto *it : list) {
+        objectSetName(it, n);
+        hif::semantics::resetDeclarations(it, ropt);
     }
 
     Assign *ass = _factory.assignment(new Identifier(p->getName()), new Identifier(n));
-    if (co->getGlobalAction() == nullptr)
+    if (co->getGlobalAction() == nullptr) {
         co->setGlobalAction(new GlobalAction());
+    }
     co->getGlobalAction()->actions.push_back(ass);
 }
 

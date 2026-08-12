@@ -23,14 +23,12 @@ HifAggregateVector<C>::HifAggregateVector()
     // ntd
 }
 
-template <class C>
-HifAggregateVector<C>::~HifAggregateVector()
+template <class C> HifAggregateVector<C>::~HifAggregateVector()
 {
     // ntd
 }
 
-template <class C>
-typename HifAggregateVector<C>::VectorTypeReturn HifAggregateVector<C>::getResult()
+template <class C> typename HifAggregateVector<C>::VectorTypeReturn HifAggregateVector<C>::getResult()
 {
     return _result;
 }
@@ -46,7 +44,7 @@ template <class C>
 typename HifAggregateVector<C>::ChildType &
 HifAggregateVector<C>::addPairSet(const int lbound, const int rbound, const ValueType value)
 {
-    const bool gt      = (lbound > rbound);
+    bool gt      = (lbound > rbound);
     const int minbound = gt ? rbound : lbound;
     const int maxbound = gt ? lbound : rbound;
 
@@ -57,8 +55,7 @@ HifAggregateVector<C>::addPairSet(const int lbound, const int rbound, const Valu
     return *static_cast<ChildType *>(this);
 }
 
-template <class C>
-typename HifAggregateVector<C>::ChildType &HifAggregateVector<C>::setOthers(const ValueType others)
+template <class C> typename HifAggregateVector<C>::ChildType &HifAggregateVector<C>::setOthers(const ValueType others)
 {
     for (int i = 0; i < SIZE; ++i) {
         static_cast<ChildType *>(this)->setMember(i, others);
@@ -78,14 +75,12 @@ HifAggregateArray<T, size>::HifAggregateArray()
     // ntd
 }
 
-template <class T, int size>
-HifAggregateArray<T, size>::~HifAggregateArray()
+template <class T, int size> HifAggregateArray<T, size>::~HifAggregateArray()
 {
     // ntd
 }
 
-template <class T, int size>
-void HifAggregateArray<T, size>::setMember(int index, ValueType value)
+template <class T, int size> void HifAggregateArray<T, size>::setMember(int index, ValueType value)
 {
     this->_result[index] = value;
 }
@@ -101,14 +96,12 @@ HifAggregateBitVector<size>::HifAggregateBitVector()
     // ntd
 }
 
-template <int size>
-HifAggregateBitVector<size>::~HifAggregateBitVector()
+template <int size> HifAggregateBitVector<size>::~HifAggregateBitVector()
 {
     // ntd
 }
 
-template <int size>
-void HifAggregateBitVector<size>::setMember(int index, ValueType value)
+template <int size> void HifAggregateBitVector<size>::setMember(int index, ValueType value)
 {
     this->_result[index] = value;
 }
@@ -124,14 +117,12 @@ HifAggregateLogicVector<size>::HifAggregateLogicVector()
     // ntd
 }
 
-template <int size>
-HifAggregateLogicVector<size>::~HifAggregateLogicVector()
+template <int size> HifAggregateLogicVector<size>::~HifAggregateLogicVector()
 {
     // ntd
 }
 
-template <int size>
-void HifAggregateLogicVector<size>::setMember(int index, ValueType value)
+template <int size> void HifAggregateLogicVector<size>::setMember(int index, ValueType value)
 {
     this->_result[index] = value;
 }
@@ -149,14 +140,12 @@ HifAggregateHlBv<size>::HifAggregateHlBv()
     // ntd
 }
 
-template <int size>
-HifAggregateHlBv<size>::~HifAggregateHlBv()
+template <int size> HifAggregateHlBv<size>::~HifAggregateHlBv()
 {
     // ntd
 }
 
-template <int size>
-void HifAggregateHlBv<size>::setMember(int index, ValueType value)
+template <int size> void HifAggregateHlBv<size>::setMember(int index, ValueType value)
 {
     this->_result.set_bit(index, value);
 }
@@ -172,14 +161,12 @@ HifAggregateHlLv<size>::HifAggregateHlLv()
     // ntd
 }
 
-template <int size>
-HifAggregateHlLv<size>::~HifAggregateHlLv()
+template <int size> HifAggregateHlLv<size>::~HifAggregateHlLv()
 {
     // ntd
 }
 
-template <int size>
-void HifAggregateHlLv<size>::setMember(int index, ValueType value)
+template <int size> void HifAggregateHlLv<size>::setMember(int index, ValueType value)
 {
     this->_result.set_bit(index, value);
 }
