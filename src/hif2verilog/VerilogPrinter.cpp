@@ -418,8 +418,19 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "%";
         break;
     case op_andrd:
+        // Reduction AND: same literal token as binary op_band, applied here
+        // in unary (single-operand) position - e.g. ~&a lowers to
+        // op_bnot(op_andrd(a)), printed as "~ &a".
+        (*_stream) << "&";
+        break;
     case op_orrd:
+        // Reduction OR: same token as binary op_bor, unary position.
+        (*_stream) << "|";
+        break;
     case op_xorrd:
+        // Reduction XOR: same token as binary op_bxor, unary position.
+        (*_stream) << "^";
+        break;
     case op_assign:
     case op_conv:
     case op_bind:
