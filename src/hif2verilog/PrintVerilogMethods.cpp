@@ -53,9 +53,6 @@ private:
     /// related to this HIF tree.
     std::string _outdirName;
 
-    /// @brief The subdirectory relative to the library definition (if any).
-    hif::LibraryDef *_currentLibraryDef{nullptr};
-
     /// @brief The semantics
     hif::semantics::VerilogSemantics *_sem;
 
