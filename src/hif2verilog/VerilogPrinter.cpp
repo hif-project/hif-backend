@@ -15,7 +15,7 @@
 using namespace hif;
 
 VerilogPrinter::VerilogPrinter(hif::backends::IndentedStream *stream)
-    : _sem(hif::semantics::VHDLSemantics::getInstance())
+    : _sem(hif::semantics::VerilogSemantics::getInstance())
     , _stream(stream)
 {
     // ntd
