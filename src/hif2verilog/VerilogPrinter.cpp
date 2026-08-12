@@ -135,72 +135,38 @@ auto VerilogPrinter::visitBreak(Break &o) -> int { return GuideVisitor::visitBre
 
 auto VerilogPrinter::visitCast(Cast &o) -> int
 {
-#if 0
-    // Get the value being casted.
-    auto value      = o.getValue();
-    // Cast the value to an identifier.
-    auto identifier = dynamic_cast<Identifier *>(value);
-    // Check if the value is an identifier.
-    if (!identifier) {
-        return GuideVisitor::visitCast(o);
+    // A Cast to a Bitvector/Bit/Signed/Unsigned narrower than the source
+    // value's own type is how verilog2hif represents a slice of the source's
+    // low bits (e.g. `instruction[2:0]` on an 8-bit `instruction` becomes a
+    // Cast to a 3-bit Bitvector, rather than a Slice, when the slice starts
+    // at bit 0). A Cast to a wider such type is a zero-extension. Same width
+    // (or a type whose width cannot be determined) is printed as a plain
+    // pass-through, since Verilog does not need an explicit cast there.
+    Value *castedValue = o.getValue();
+    Type *sourceType   = hif::semantics::getSemanticType(castedValue, _sem);
+    Type *targetType   = o.getType();
+
+    unsigned long long sourceWidth = sourceType ? hif::semantics::typeGetSpanBitwidth(sourceType, _sem) : 0;
+    unsigned long long targetWidth = targetType ? hif::semantics::typeGetSpanBitwidth(targetType, _sem) : 0;
+
+    if (sourceWidth != 0 && targetWidth != 0 && targetWidth < sourceWidth) {
+        castedValue->acceptVisitor(*this);
+        (*_stream) << "[" << (targetWidth - 1) << ":0]";
+        return 0;
     }
-    // Get the declaration of the value being casted.
-    auto declaration = hif::semantics::getDeclaration(value, _sem);
-    if (!declaration) {
-        return GuideVisitor::visitCast(o);
-    }
-    // Check if the declaration is a Bitvector.
-    hif::Bitvector *bitvector = nullptr;
-    // Check if the declaration is a port, and extract the type.
-    if (auto port = dynamic_cast<hif::Port *>(declaration)) {
-        bitvector = dynamic_cast<hif::Bitvector *>(port->getType());
-    } else {
-        bitvector = dynamic_cast<hif::Bitvector *>(declaration);
-    }
-    if (!bitvector) {
-        return GuideVisitor::visitCast(o);
-    }
-    // Get the type the value is begin casted to.
-    auto type           = o.getType();
-    // Check if the type is a Bitvector.
-    auto bitvector_cast = dynamic_cast<hif::Bitvector *>(type);
-    if (!bitvector_cast) {
-        return GuideVisitor::visitCast(o);
-    }
-    // If the length of the destination bitvector is greater than the source bitvector, then we need to pad the
-    // identifier with zeros.
-    bool need_padding   = false;
-    // Now first we need to
-    auto int_to_width   = dynamic_cast<hif::IntValue *>(bitvector_cast->getSpan()->getLeftBound());
-    auto int_from_width = dynamic_cast<hif::IntValue *>(bitvector->getSpan()->getLeftBound());
-    if (int_to_width && int_from_width) {
-        auto to_width   = int_to_width->getValue();
-        auto from_width = int_from_width->getValue();
-        if (to_width > from_width) {
-            // Notify that we need padding.
-            need_padding    = true;
-            // Compute the difference in width.
-            auto difference = to_width - from_width;
-            // Build the padding.
-            (*_stream) << "{";
-            (*_stream) << difference << "'b";
-            for (int i = 0; i < difference; ++i) {
-                (*_stream) << "0";
-            }
-            (*_stream) << ", ";
+    if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
+        auto difference = targetWidth - sourceWidth;
+        (*_stream) << "{" << difference << "'b";
+        for (unsigned long long i = 0; i < difference; ++i) {
+            (*_stream) << "0";
         }
-    }
-    // Print the identifier name.
-    (*_stream) << identifier->getName();
-    if (need_padding) {
+        (*_stream) << ", ";
+        castedValue->acceptVisitor(*this);
         (*_stream) << "}";
+        return 0;
     }
+    castedValue->acceptVisitor(*this);
     return 0;
-#else
-    (*_stream) << this->getValue(o.getValue());
-    return 0;
-    // return GuideVisitor::visitCast(o);
-#endif
 }
 
 auto VerilogPrinter::visitChar(Char &o) -> int { return GuideVisitor::visitChar(o); }
@@ -390,12 +356,16 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
 
         // Equality operators
     case op_eq:
+        (*_stream) << "==";
+        break;
     case op_case_eq:
-        (*_stream) << "=";
+        (*_stream) << "===";
         break;
     case op_neq:
-    case op_case_neq:
         (*_stream) << "!=";
+        break;
+    case op_case_neq:
+        (*_stream) << "!==";
         break;
 
         // Relational operators
@@ -676,7 +646,34 @@ auto VerilogPrinter::visitIdentifier(Identifier &o) -> int
     return 0;
 }
 
-auto VerilogPrinter::visitIf(If &o) -> int { return GuideVisitor::visitIf(o); }
+auto VerilogPrinter::visitIf(If &o) -> int
+{
+    bool first = true;
+    for (hif::IfAlt *alt : o.alts) {
+        if (first) {
+            (*_stream) << "if ( " << this->getValue(alt->getCondition()) << " ) begin\n";
+            first = false;
+        } else {
+            (*_stream) << "else if ( " << this->getValue(alt->getCondition()) << " ) begin\n";
+        }
+        _stream->indent();
+        for (hif::Action *action : alt->actions) {
+            action->acceptVisitor(*this);
+        }
+        _stream->unindent();
+        (*_stream) << "end\n";
+    }
+    if (!o.defaults.empty()) {
+        (*_stream) << "else begin\n";
+        _stream->indent();
+        for (hif::Action *action : o.defaults) {
+            action->acceptVisitor(*this);
+        }
+        _stream->unindent();
+        (*_stream) << "end\n";
+    }
+    return 0;
+}
 
 auto VerilogPrinter::visitIfAlt(IfAlt &o) -> int { return GuideVisitor::visitIfAlt(o); }
 
@@ -700,7 +697,14 @@ auto VerilogPrinter::visitInstance(Instance &o) -> int
 
 auto VerilogPrinter::visitInt(Int &o) -> int { return hif::GuideVisitor::visitInt(o); }
 
-auto VerilogPrinter::visitIntValue(IntValue &o) -> int { return hif::GuideVisitor::visitIntValue(o); }
+auto VerilogPrinter::visitIntValue(IntValue &o) -> int
+{
+    auto value = this->getValue(&o);
+    if (!value.empty()) {
+        (*_stream) << value;
+    }
+    return 0;
+}
 
 auto VerilogPrinter::visitLibraryDef(LibraryDef &o) -> int { return hif::GuideVisitor::visitLibraryDef(o); }
 
@@ -881,13 +885,58 @@ auto VerilogPrinter::visitViewReference(ViewReference &o) -> int { return GuideV
 
 auto VerilogPrinter::visitWait(Wait &o) -> int { return GuideVisitor::visitWait(o); }
 
-auto VerilogPrinter::visitWhen(When &o) -> int { return GuideVisitor::visitWhen(o); }
+auto VerilogPrinter::visitWhen(When &o) -> int
+{
+    (*_stream) << "(";
+    for (hif::WhenAlt *alt : o.alts) {
+        (*_stream) << "(";
+        alt->getCondition()->acceptVisitor(*this);
+        (*_stream) << ") ? (";
+        alt->getValue()->acceptVisitor(*this);
+        (*_stream) << ") : ";
+    }
+    if (o.getDefault() != nullptr) {
+        (*_stream) << "(";
+        o.getDefault()->acceptVisitor(*this);
+        (*_stream) << ")";
+    } else {
+        (*_stream) << "'bx";
+    }
+    (*_stream) << ")";
+    return 0;
+}
 
 auto VerilogPrinter::visitWhenAlt(WhenAlt &o) -> int { return GuideVisitor::visitWhenAlt(o); }
 
 auto VerilogPrinter::visitWhile(While &o) -> int { return hif::GuideVisitor::visitWhile(o); }
 
-auto VerilogPrinter::visitWith(With &o) -> int { return GuideVisitor::visitWith(o); }
+auto VerilogPrinter::visitWith(With &o) -> int
+{
+    (*_stream) << "(";
+    for (hif::WithAlt *alt : o.alts) {
+        (*_stream) << "(";
+        for (std::size_t i = 0; i < alt->conditions.size(); ++i) {
+            o.getCondition()->acceptVisitor(*this);
+            (*_stream) << " == ";
+            alt->conditions.at(i)->acceptVisitor(*this);
+            if (i + 1 < alt->conditions.size()) {
+                (*_stream) << " || ";
+            }
+        }
+        (*_stream) << ") ? (";
+        alt->getValue()->acceptVisitor(*this);
+        (*_stream) << ") : ";
+    }
+    if (o.getDefault() != nullptr) {
+        (*_stream) << "(";
+        o.getDefault()->acceptVisitor(*this);
+        (*_stream) << ")";
+    } else {
+        (*_stream) << "'bx";
+    }
+    (*_stream) << ")";
+    return 0;
+}
 
 auto VerilogPrinter::visitWithAlt(WithAlt &o) -> int { return GuideVisitor::visitWithAlt(o); }
 
@@ -988,9 +1037,7 @@ std::string VerilogPrinter::getValue(hif::Value *value)
         }
     }
     if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
-        if (int_value->getValue()) {
-            ss << int_value->getValue();
-        }
+        ss << int_value->getValue();
     } else if (auto bitvector_value = dynamic_cast<BitvectorValue *>(value)) {
         if (bitvector_value->is01()) {
             if (is_integer(bitvector_value->getType())) {
