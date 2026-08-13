@@ -30,7 +30,7 @@ make
 ctest --test-dir build --output-on-failure
 ```
 
-One test, `unresolved_parameter`, needs a sibling `hif-frontend` build (`../hif-frontend/build`) to produce its input HIF; it's skipped if that's not found. It is also a **known, tracked failure** — hif-core's `VerilogAnalysis` currently has no typing rule for two `Int`-typed operands, so this fixture's `hif2verilog` step aborts. The test is marked `WILL_FAIL` so this stays visible without failing CI: if it ever unexpectedly starts passing, that's the signal the underlying gap has been fixed.
+One test, `unresolved_parameter`, needs a sibling `hif-frontend` build (`../hif-frontend/build`) to produce its input HIF; it's skipped if that's not found.
 
 ## Documentation
 
