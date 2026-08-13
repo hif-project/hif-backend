@@ -770,6 +770,34 @@ auto VerilogPrinter::visitParameterAssign(ParameterAssign &o) -> int
     return hif::GuideVisitor::visitParameterAssign(o);
 }
 
+auto VerilogPrinter::visitProcedure(Procedure &o) -> int
+{
+    // Procedures reaching this printer are frontend-synthesized "cone
+    // functions" (hif-frontend's generateConeFunctions/fixLogicCones,
+    // FixDescription_3.cpp) wrapping a shared combinational
+    // sub-expression - e.g. the logic a primitive gate instance or a
+    // flattened combinational submodule instance lowers to. Verilog has
+    // no user-declarable procedure construct, so nothing else reaches
+    // here today. Render as a self-contained combinational always block;
+    // each action prints itself normally - ProcedureCall actions (calls
+    // to other cone functions) already print nothing, since the callee is
+    // rendered independently wherever *it* is declared, and Verilog
+    // variables/signals don't need an explicit call to become visible to
+    // other logic.
+    auto *stateTable = o.getStateTable();
+    if (stateTable == nullptr) {
+        return 0;
+    }
+    (*_stream) << "always @(*) begin\n";
+    _stream->indent();
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+    _stream->unindent();
+    (*_stream) << "end\n";
+    return 0;
+}
+
 auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisitor::visitParameter(o); }
 
 auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int { return hif::GuideVisitor::visitProcedureCall(o); }
@@ -779,8 +807,6 @@ auto VerilogPrinter::visitPointer(Pointer &o) -> int { return hif::GuideVisitor:
 auto VerilogPrinter::visitPortAssign(PortAssign &o) -> int { return hif::GuideVisitor::visitPortAssign(o); }
 
 auto VerilogPrinter::visitPort(Port &o) -> int { return hif::GuideVisitor::visitPort(o); }
-
-auto VerilogPrinter::visitProcedure(Procedure &o) -> int { return hif::GuideVisitor::visitProcedure(o); }
 
 auto VerilogPrinter::visitRange(Range &o) -> int { return hif::GuideVisitor::visitRange(o); }
 
@@ -1280,6 +1306,13 @@ void VerilogPrinter::printList(
             } else {
                 continue;
             }
+        } else if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
+            // Cone-function procedures (see visitProcedure) print
+            // themselves as complete, self-terminated always-blocks -
+            // skip the shared separator/newline logic below, which
+            // assumes a single-line, separator-terminated item.
+            procedure->acceptVisitor(*this);
+            continue;
         }
         if (i < (list.size() - 1)) {
             if (!separator.empty()) {
