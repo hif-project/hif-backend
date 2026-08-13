@@ -41,6 +41,18 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/reduction_operators_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/reduction_operators_test.cmake
     )
+    # Regression: hif2verilog renders an unresolved top-level parametric
+    # port width as a huge unsigned-wraparound literal, and never prints
+    # the parameter's own declaration at all.
+    add_test(
+        NAME parametric_port_width
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/parametric_port_width.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/parametric_port_width_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/parametric_port_width_test.cmake
+    )
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width tests.")
 endif()
