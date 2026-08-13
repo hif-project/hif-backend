@@ -2,11 +2,8 @@
 
 **hif-backend** provides `hif2verilog` and `hif2vhdl` — code generators that translate the HDL-Independent Format (HIF) back into Verilog and VHDL. A third generator, `hif2sc` (SystemC), is built automatically when a SystemC installation is detected, and skipped otherwise.
 
-Part of the HIF toolchain for HDL-independent-format compilation:
-- [hif-core](https://github.com/hif-project/hif-core) — shared AST/IR library
-- [hif-frontend](https://github.com/hif-project/hif-frontend) — Verilog/VHDL → HIF
-- **hif-backend** (this repo) — HIF → Verilog/VHDL(/SystemC)
-- [hif-muffin](https://github.com/hif-project/hif-muffin) — RTL fault injection, built on the above
+Part of the HIF project. See https://github.com/hif-project for the
+complete list of repositories and tools.
 
 ![CI](https://github.com/hif-project/hif-backend/actions/workflows/ci.yml/badge.svg?branch=develop)
 
