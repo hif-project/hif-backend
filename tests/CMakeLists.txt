@@ -46,6 +46,29 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/parametric_port_width_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/parametric_port_width_test.cmake
     )
+    # Regression: hif2verilog silently dropped Procedure declarations (the
+    # "cone functions" hif-frontend synthesizes for primitive gate
+    # instances and flattened combinational submodule instances) instead
+    # of printing their driving logic.
+    add_test(
+        NAME gate_primitives
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/gate_primitives.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/gate_primitives_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/gate_primitives_test.cmake
+    )
+    # Same root cause as gate_primitives, from plain module instantiation.
+    add_test(
+        NAME module_instantiation
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/module_instantiation.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/module_instantiation_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/module_instantiation_test.cmake
+    )
     # Regression: `localparam` declarations (HIF Const) were silently
     # dropped from regenerated Verilog.
     add_test(
@@ -58,5 +81,5 @@ if(VERILOG2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
     )
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/localparam_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/localparam_emission tests.")
 endif()
