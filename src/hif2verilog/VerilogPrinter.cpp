@@ -9,6 +9,7 @@
 
 #include <hif/semantics/declarationUtils.hpp>
 
+#include <cctype>
 #include <utility>
 
 // Namespace hifsuite
@@ -277,6 +278,20 @@ auto VerilogPrinter::visitEvent(Event &o) -> int { return GuideVisitor::visitEve
 
 auto VerilogPrinter::visitExpression(Expression &o) -> int
 {
+    // Concatenation is not an infix operator - unlike every other case
+    // below, it doesn't sit between its operands, it wraps them:
+    // "{a, b}". N-way concatenation composes naturally as nested
+    // op_concat expressions (e.g. {a, {b, c}}), so this needs no special
+    // multi-operand handling.
+    if (o.getOperator() == op_concat) {
+        (*_stream) << "{";
+        o.getValue1()->acceptVisitor(*this);
+        (*_stream) << ", ";
+        o.getValue2()->acceptVisitor(*this);
+        (*_stream) << "}";
+        return 0;
+    }
+
     // Set use of parenthesis for expression operands.
     bool needOp1Paren =
         ((dynamic_cast<ConstValue *>(o.getValue1()) == nullptr) &&
@@ -349,10 +364,8 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "ror"; // TODO
         break;
 
-        // Concatenation operator
-    case op_concat:
-        (*_stream) << "{ }";
-        break;
+        // Concatenation operator: handled by the early return above, never
+        // reaches this switch.
 
         // Equality operators
     case op_eq:
@@ -418,8 +431,19 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "%";
         break;
     case op_andrd:
+        // Reduction AND: same literal token as binary op_band, applied here
+        // in unary (single-operand) position - e.g. ~&a lowers to
+        // op_bnot(op_andrd(a)), printed as "~ &a".
+        (*_stream) << "&";
+        break;
     case op_orrd:
+        // Reduction OR: same token as binary op_bor, unary position.
+        (*_stream) << "|";
+        break;
     case op_xorrd:
+        // Reduction XOR: same token as binary op_bxor, unary position.
+        (*_stream) << "^";
+        break;
     case op_assign:
     case op_conv:
     case op_bind:
@@ -457,6 +481,39 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
 
 auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
+    if (o.getName() == "hif_verilog_iterated_concat") {
+        // Verilog replication ({times{expression}}), synthesized internally
+        // by hif-frontend's _fixiteratedConcat as a call to hif-core's
+        // standard-library iterated_concat subprogram. Printed here using
+        // real Verilog replication syntax: generic function-call printing
+        // would be wrong even if it worked (there is no such callable
+        // function in real Verilog), and ParameterAssign/ValueTPAssign
+        // values aren't printed at all by the generic path below.
+        ValueTPAssign *timesAssign = nullptr;
+        for (auto *tpAssign : o.templateParameterAssigns) {
+            auto *vtpAssign = dynamic_cast<ValueTPAssign *>(tpAssign);
+            if (vtpAssign != nullptr && vtpAssign->getName() == "times") {
+                timesAssign = vtpAssign;
+                break;
+            }
+        }
+        ParameterAssign *exprAssign = nullptr;
+        for (auto *pAssign : o.parameterAssigns) {
+            if (pAssign->getName() == "expression") {
+                exprAssign = pAssign;
+                break;
+            }
+        }
+        messageAssert(
+            timesAssign != nullptr && exprAssign != nullptr, "Malformed iterated_concat call", &o, _sem);
+        (*_stream) << "{";
+        timesAssign->getValue()->acceptVisitor(*this);
+        (*_stream) << "{";
+        exprAssign->getValue()->acceptVisitor(*this);
+        (*_stream) << "}}";
+        return 0;
+    }
+
     (*_stream) << o.getName() << "(";
     for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
         o.parameterAssigns.at(i)->acceptVisitor(*this);
@@ -725,6 +782,34 @@ auto VerilogPrinter::visitParameterAssign(ParameterAssign &o) -> int
     return hif::GuideVisitor::visitParameterAssign(o);
 }
 
+auto VerilogPrinter::visitProcedure(Procedure &o) -> int
+{
+    // Procedures reaching this printer are frontend-synthesized "cone
+    // functions" (hif-frontend's generateConeFunctions/fixLogicCones,
+    // FixDescription_3.cpp) wrapping a shared combinational
+    // sub-expression - e.g. the logic a primitive gate instance or a
+    // flattened combinational submodule instance lowers to. Verilog has
+    // no user-declarable procedure construct, so nothing else reaches
+    // here today. Render as a self-contained combinational always block;
+    // each action prints itself normally - ProcedureCall actions (calls
+    // to other cone functions) already print nothing, since the callee is
+    // rendered independently wherever *it* is declared, and Verilog
+    // variables/signals don't need an explicit call to become visible to
+    // other logic.
+    auto *stateTable = o.getStateTable();
+    if (stateTable == nullptr) {
+        return 0;
+    }
+    (*_stream) << "always @(*) begin\n";
+    _stream->indent();
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+    _stream->unindent();
+    (*_stream) << "end\n";
+    return 0;
+}
+
 auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisitor::visitParameter(o); }
 
 auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int { return hif::GuideVisitor::visitProcedureCall(o); }
@@ -734,8 +819,6 @@ auto VerilogPrinter::visitPointer(Pointer &o) -> int { return hif::GuideVisitor:
 auto VerilogPrinter::visitPortAssign(PortAssign &o) -> int { return hif::GuideVisitor::visitPortAssign(o); }
 
 auto VerilogPrinter::visitPort(Port &o) -> int { return hif::GuideVisitor::visitPort(o); }
-
-auto VerilogPrinter::visitProcedure(Procedure &o) -> int { return hif::GuideVisitor::visitProcedure(o); }
 
 auto VerilogPrinter::visitRange(Range &o) -> int { return hif::GuideVisitor::visitRange(o); }
 
@@ -1011,6 +1094,29 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << this->getBitwidth(parameter->getType());
             ss << parameter->getName();
         }
+    } else if (auto valueTP = dynamic_cast<hif::ValueTP *>(declaration)) {
+        // Module-level generic/template parameter (e.g. `parameter WIDTH = 8`).
+        // Printed as a plain (non-ANSI) body declaration, matching how
+        // view->templateParameters is already fed through this same
+        // getDeclaration()/printList() path elsewhere in this file.
+        ss << "parameter ";
+        ss << valueTP->getName();
+        auto value = this->getValue(valueTP->getValue());
+        if (!value.empty()) {
+            ss << " = " << value;
+        }
+    } else if (auto constDecl = dynamic_cast<hif::Const *>(declaration)) {
+        // Verilog `localparam` (e.g. state-machine state encodings). Was
+        // missing entirely: this function returned an empty string for
+        // Const, which printList() then silently dropped - no declaration,
+        // no separator, no diagnostic - while code elsewhere kept
+        // referencing the (now undeclared) name.
+        ss << "localparam ";
+        ss << constDecl->getName();
+        auto value = this->getValue(constDecl->getValue());
+        if (!value.empty()) {
+            ss << " = " << value;
+        }
     }
     // else {
     //     messageError("Unexpected Declaration", declaration, _sem);
@@ -1022,10 +1128,42 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
 {
     std::stringstream ss;
     unsigned long long bw = hif::semantics::typeGetSpanBitwidth(type, _sem);
-    if (bw != 1) {
-        ss << "[" << (bw - 1) << ":0] ";
+    if (bw == 1) {
+        return ss.str();
     }
+    if (bw == 0) {
+        // Bitwidth could not be statically resolved (e.g. an unresolved,
+        // top-level parametric port with no instantiation providing a
+        // concrete value - see fixtures/parametric_port_width.v). Falling
+        // through to `bw - 1` here would wrap around in unsigned
+        // arithmetic and print a nonsensical literal like
+        // [18446744073709551615:0]. Print the original symbolic range
+        // bounds instead - both correct and valid Verilog.
+        auto *typeSpan = dynamic_cast<hif::features::ITypeSpan *>(type);
+        hif::Range *span = typeSpan != nullptr ? typeSpan->getSpan() : nullptr;
+        if (span != nullptr && span->getLeftBound() != nullptr && span->getRightBound() != nullptr) {
+            ss << "[" << this->getSymbolicValue(span->getLeftBound()) << ":"
+               << this->getSymbolicValue(span->getRightBound()) << "] ";
+        }
+        return ss.str();
+    }
+    ss << "[" << (bw - 1) << ":0] ";
     return ss.str();
+}
+
+std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
+{
+    // Print an arbitrary sub-expression to a string by temporarily
+    // redirecting this visitor's output stream into a local buffer -
+    // getValue() only handles constant-like values, not general
+    // Expression trees (e.g. the "WIDTH - 1" this function exists for).
+    std::stringbuf buf;
+    hif::backends::IndentedStream localStream(&buf);
+    hif::backends::IndentedStream *saved = _stream;
+    _stream                              = &localStream;
+    value->acceptVisitor(*this);
+    _stream = saved;
+    return buf.str();
 }
 
 std::string VerilogPrinter::getValue(hif::Value *value)
@@ -1062,6 +1200,25 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                     }
                     ss << bitvector_value->getValue();
                 }
+            }
+        } else if (auto *bitvector_type = dynamic_cast<hif::Bitvector *>(bitvector_value->getType())) {
+            // Four-state value (contains X/Z, e.g. an all-Z {N{1'bz}}
+            // replication fill value) - the is01() branch above only
+            // handles clean 0/1 values. Verilog literal syntax accepts
+            // 0/1/x/z digits; HIF stores them uppercase (IEEE 1164
+            // style), so lowercase them on the way out.
+            auto span = bitvector_type->getSpan();
+            if (span) {
+                auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                if (left_bound && right_bound) {
+                    auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                    ss << width << "'b";
+                }
+            }
+            std::string raw = bitvector_value->getValue();
+            for (char c : raw) {
+                ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             }
         }
     } else if (auto identifier = dynamic_cast<hif::Identifier *>(value)) {
@@ -1173,6 +1330,13 @@ void VerilogPrinter::printList(
             } else {
                 continue;
             }
+        } else if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
+            // Cone-function procedures (see visitProcedure) print
+            // themselves as complete, self-terminated always-blocks -
+            // skip the shared separator/newline logic below, which
+            // assumes a single-line, separator-terminated item.
+            procedure->acceptVisitor(*this);
+            continue;
         }
         if (i < (list.size() - 1)) {
             if (!separator.empty()) {

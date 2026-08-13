@@ -122,6 +122,8 @@ private:
 
     std::string getBitwidth(hif::Type *type);
 
+    std::string getSymbolicValue(hif::Value *value);
+
     std::string getValue(hif::Value *value);
 
     std::string getPortAssign(hif::PortAssign *port_assign);
