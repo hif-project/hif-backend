@@ -80,6 +80,17 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/concat_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/concat_emission_test.cmake
     )
+    # Regression: `localparam` declarations (HIF Const) were silently
+    # dropped from regenerated Verilog.
+    add_test(
+        NAME localparam_emission
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/localparam_emission.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/localparam_emission_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
+    )
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission tests.")
 endif()

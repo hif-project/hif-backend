@@ -1105,6 +1105,18 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
         if (!value.empty()) {
             ss << " = " << value;
         }
+    } else if (auto constDecl = dynamic_cast<hif::Const *>(declaration)) {
+        // Verilog `localparam` (e.g. state-machine state encodings). Was
+        // missing entirely: this function returned an empty string for
+        // Const, which printList() then silently dropped - no declaration,
+        // no separator, no diagnostic - while code elsewhere kept
+        // referencing the (now undeclared) name.
+        ss << "localparam ";
+        ss << constDecl->getName();
+        auto value = this->getValue(constDecl->getValue());
+        if (!value.empty()) {
+            ss << " = " << value;
+        }
     }
     // else {
     //     messageError("Unexpected Declaration", declaration, _sem);
