@@ -35,4 +35,35 @@ if(NOT result EQUAL 0)
     message(FATAL_ERROR "hif2verilog failed with exit code ${result} (expected 0)")
 endif()
 
+set(OUTPUT_VERILOG ${WORK_DIR}/verilog_out/unresolved_param.v)
+if(NOT EXISTS ${OUTPUT_VERILOG})
+    message(FATAL_ERROR "Expected regenerated Verilog not produced: ${OUTPUT_VERILOG}")
+endif()
+
+file(READ ${OUTPUT_VERILOG} verilog_content)
+
+# Must not contain the unsigned-wraparound width literal, or a bare/
+# undefined call to the internal iterated_concat system function - both
+# previously present, both invalid/nonsensical Verilog.
+foreach(unexpected
+    "18446744073709551615"
+    "hif_verilog_iterated_concat("
+)
+    string(FIND "${verilog_content}" "${unexpected}" found_at)
+    if(NOT found_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog contains invalid content: ${unexpected}\nFull content:\n${verilog_content}")
+    endif()
+endforeach()
+
+foreach(expected
+    "parameter WIDTH = 8"
+    "[WIDTH - 1:0]"
+    "{WIDTH{1'bz}}"
+)
+    string(FIND "${verilog_content}" "${expected}" found_at)
+    if(found_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog missing expected content: ${expected}\nFull content:\n${verilog_content}")
+    endif()
+endforeach()
+
 message(STATUS "unresolved_parameter test passed.")

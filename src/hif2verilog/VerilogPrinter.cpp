@@ -9,6 +9,7 @@
 
 #include <hif/semantics/declarationUtils.hpp>
 
+#include <cctype>
 #include <utility>
 
 // Namespace hifsuite
@@ -468,6 +469,39 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
 
 auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
+    if (o.getName() == "hif_verilog_iterated_concat") {
+        // Verilog replication ({times{expression}}), synthesized internally
+        // by hif-frontend's _fixiteratedConcat as a call to hif-core's
+        // standard-library iterated_concat subprogram. Printed here using
+        // real Verilog replication syntax: generic function-call printing
+        // would be wrong even if it worked (there is no such callable
+        // function in real Verilog), and ParameterAssign/ValueTPAssign
+        // values aren't printed at all by the generic path below.
+        ValueTPAssign *timesAssign = nullptr;
+        for (auto *tpAssign : o.templateParameterAssigns) {
+            auto *vtpAssign = dynamic_cast<ValueTPAssign *>(tpAssign);
+            if (vtpAssign != nullptr && vtpAssign->getName() == "times") {
+                timesAssign = vtpAssign;
+                break;
+            }
+        }
+        ParameterAssign *exprAssign = nullptr;
+        for (auto *pAssign : o.parameterAssigns) {
+            if (pAssign->getName() == "expression") {
+                exprAssign = pAssign;
+                break;
+            }
+        }
+        messageAssert(
+            timesAssign != nullptr && exprAssign != nullptr, "Malformed iterated_concat call", &o, _sem);
+        (*_stream) << "{";
+        timesAssign->getValue()->acceptVisitor(*this);
+        (*_stream) << "{";
+        exprAssign->getValue()->acceptVisitor(*this);
+        (*_stream) << "}}";
+        return 0;
+    }
+
     (*_stream) << o.getName() << "(";
     for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
         o.parameterAssigns.at(i)->acceptVisitor(*this);
@@ -1116,6 +1150,25 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                     }
                     ss << bitvector_value->getValue();
                 }
+            }
+        } else if (auto *bitvector_type = dynamic_cast<hif::Bitvector *>(bitvector_value->getType())) {
+            // Four-state value (contains X/Z, e.g. an all-Z {N{1'bz}}
+            // replication fill value) - the is01() branch above only
+            // handles clean 0/1 values. Verilog literal syntax accepts
+            // 0/1/x/z digits; HIF stores them uppercase (IEEE 1164
+            // style), so lowercase them on the way out.
+            auto span = bitvector_type->getSpan();
+            if (span) {
+                auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                if (left_bound && right_bound) {
+                    auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                    ss << width << "'b";
+                }
+            }
+            std::string raw = bitvector_value->getValue();
+            for (char c : raw) {
+                ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             }
         }
     } else if (auto identifier = dynamic_cast<hif::Identifier *>(value)) {
