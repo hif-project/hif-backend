@@ -1022,6 +1022,17 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << this->getBitwidth(parameter->getType());
             ss << parameter->getName();
         }
+    } else if (auto valueTP = dynamic_cast<hif::ValueTP *>(declaration)) {
+        // Module-level generic/template parameter (e.g. `parameter WIDTH = 8`).
+        // Printed as a plain (non-ANSI) body declaration, matching how
+        // view->templateParameters is already fed through this same
+        // getDeclaration()/printList() path elsewhere in this file.
+        ss << "parameter ";
+        ss << valueTP->getName();
+        auto value = this->getValue(valueTP->getValue());
+        if (!value.empty()) {
+            ss << " = " << value;
+        }
     }
     // else {
     //     messageError("Unexpected Declaration", declaration, _sem);
@@ -1033,10 +1044,42 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
 {
     std::stringstream ss;
     unsigned long long bw = hif::semantics::typeGetSpanBitwidth(type, _sem);
-    if (bw != 1) {
-        ss << "[" << (bw - 1) << ":0] ";
+    if (bw == 1) {
+        return ss.str();
     }
+    if (bw == 0) {
+        // Bitwidth could not be statically resolved (e.g. an unresolved,
+        // top-level parametric port with no instantiation providing a
+        // concrete value - see fixtures/parametric_port_width.v). Falling
+        // through to `bw - 1` here would wrap around in unsigned
+        // arithmetic and print a nonsensical literal like
+        // [18446744073709551615:0]. Print the original symbolic range
+        // bounds instead - both correct and valid Verilog.
+        auto *typeSpan = dynamic_cast<hif::features::ITypeSpan *>(type);
+        hif::Range *span = typeSpan != nullptr ? typeSpan->getSpan() : nullptr;
+        if (span != nullptr && span->getLeftBound() != nullptr && span->getRightBound() != nullptr) {
+            ss << "[" << this->getSymbolicValue(span->getLeftBound()) << ":"
+               << this->getSymbolicValue(span->getRightBound()) << "] ";
+        }
+        return ss.str();
+    }
+    ss << "[" << (bw - 1) << ":0] ";
     return ss.str();
+}
+
+std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
+{
+    // Print an arbitrary sub-expression to a string by temporarily
+    // redirecting this visitor's output stream into a local buffer -
+    // getValue() only handles constant-like values, not general
+    // Expression trees (e.g. the "WIDTH - 1" this function exists for).
+    std::stringbuf buf;
+    hif::backends::IndentedStream localStream(&buf);
+    hif::backends::IndentedStream *saved = _stream;
+    _stream                              = &localStream;
+    value->acceptVisitor(*this);
+    _stream = saved;
+    return buf.str();
 }
 
 std::string VerilogPrinter::getValue(hif::Value *value)
