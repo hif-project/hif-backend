@@ -278,6 +278,20 @@ auto VerilogPrinter::visitEvent(Event &o) -> int { return GuideVisitor::visitEve
 
 auto VerilogPrinter::visitExpression(Expression &o) -> int
 {
+    // Concatenation is not an infix operator - unlike every other case
+    // below, it doesn't sit between its operands, it wraps them:
+    // "{a, b}". N-way concatenation composes naturally as nested
+    // op_concat expressions (e.g. {a, {b, c}}), so this needs no special
+    // multi-operand handling.
+    if (o.getOperator() == op_concat) {
+        (*_stream) << "{";
+        o.getValue1()->acceptVisitor(*this);
+        (*_stream) << ", ";
+        o.getValue2()->acceptVisitor(*this);
+        (*_stream) << "}";
+        return 0;
+    }
+
     // Set use of parenthesis for expression operands.
     bool needOp1Paren =
         ((dynamic_cast<ConstValue *>(o.getValue1()) == nullptr) &&
@@ -350,10 +364,8 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "ror"; // TODO
         break;
 
-        // Concatenation operator
-    case op_concat:
-        (*_stream) << "{ }";
-        break;
+        // Concatenation operator: handled by the early return above, never
+        // reaches this switch.
 
         // Equality operators
     case op_eq:
