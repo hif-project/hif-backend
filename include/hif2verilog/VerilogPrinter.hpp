@@ -200,6 +200,22 @@ private:
     /// @param names Receives the target names.
     void collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names);
 
+    /// @brief Whether a Procedure is a frontend-synthesized logic cone rather
+    /// than a user-written Verilog task.
+    /// @details Both are a Procedure carrying a StateTable, and a cone's lack of
+    /// parameters does not separate them because a task may be declared without
+    /// arguments either. hif-frontend records which it meant in the name: a cone
+    /// is named from the reserved stem "hif_cone_" (hif-backend#38).
+    /// @param procedure The declaration to classify.
+    /// @return True if the procedure is a cone, whose body is inlined at its
+    /// call sites.
+    static auto isConeProcedure(hif::Procedure *procedure) -> bool;
+
+    /// @brief Prints a user-written Verilog task declaration.
+    /// @param o The procedure to print as a task.
+    /// @return 0.
+    auto printTask(hif::Procedure &o) -> int;
+
     /// @brief Whether a rendered Verilog literal is entirely unknown.
     /// @details Both frontends give a port that stated no initial value one
     /// anyway - 'U' from vhdl2hif, all-x from verilog2hif - and an all-unknown
@@ -268,8 +284,11 @@ private:
         bool print_new_line       = false,
         bool print_last_separator = false);
 
-    /// @brief Calls the visitor on any Function inside the list.
+    /// @brief Calls the visitor on any Function or user-written task inside the
+    /// list.
+    /// @details Cone Procedures are skipped: their bodies belong at their call
+    /// sites rather than in a declaration (hif-backend#38).
     /// @param list The list of objects to be printed.
-    /// @return true if any function was found, false otherwise.
-    bool printFunctions(const hif::BList<hif::Object> &list);
+    /// @return true if anything was printed, false otherwise.
+    bool printSubprograms(const hif::BList<hif::Object> &list);
 };
