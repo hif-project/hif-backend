@@ -255,6 +255,30 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
 
     // Print the module header.
     (*_stream) << "module " << name;
+
+    // Template parameters go in an ANSI-style `#( ... )` clause, ahead of
+    // the port list. They used to be printed as body declarations, which
+    // put `parameter WIDTH = 4;` *after* the port list that referenced
+    // WIDTH - accepted by every tool tried, but not Verilog-2001, and
+    // trivially avoidable (hif-backend#20).
+    if (!view->templateParameters.empty()) {
+        (*_stream) << " #(\n";
+        _stream->indent();
+        for (std::size_t i = 0; i < view->templateParameters.size(); ++i) {
+            auto *templateParameter = dynamic_cast<hif::Declaration *>(view->templateParameters.at(i));
+            if (templateParameter == nullptr) {
+                continue;
+            }
+            (*_stream) << this->getDeclaration(templateParameter);
+            if (i < (view->templateParameters.size() - 1)) {
+                (*_stream) << ",";
+            }
+            (*_stream) << "\n";
+        }
+        _stream->unindent();
+        (*_stream) << ")";
+    }
+
     entity->acceptVisitor(*this);
     (*_stream) << "\n";
     _stream->indent();
@@ -266,17 +290,17 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // Keep track if the view has variables.
     bool has_variables = false;
 
-    // Print the list of template parameters.
-    this->printList(view->templateParameters, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
-
-    // Print the list of view declarations.
+    // Print the list of view declarations. Each of these tested
+    // view->templateParameters rather than the list it had just printed,
+    // so the trailing blank line was governed by whether the module had
+    // parameters. Now that parameters are printed in the header instead,
+    // that would have been not just misleading but wrong.
     this->printList(view->declarations, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
+    has_variables = has_variables || !view->declarations.empty();
 
     // Print the list of content declarations.
     this->printList(content->declarations, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
+    has_variables = has_variables || !content->declarations.empty();
 
     // Print the list of state table declarations.
     for (auto stateTable : content->stateTables) {
