@@ -134,6 +134,37 @@ auto VerilogPrinter::visitBoolValue(BoolValue &o) -> int { return GuideVisitor::
 
 auto VerilogPrinter::visitBreak(Break &o) -> int { return GuideVisitor::visitBreak(o); }
 
+namespace
+{
+
+/// @brief Whether a Verilog part-select may be applied directly to @p value.
+/// @details Verilog-2001 allows a part-select on a net or variable
+/// reference - an identifier, a bit-select of one, or a slice of one - but
+/// not on an arbitrary expression.
+auto isPartSelectable(hif::Value *value) -> bool
+{
+    return dynamic_cast<hif::Identifier *>(value) != nullptr || dynamic_cast<hif::Member *>(value) != nullptr ||
+           dynamic_cast<hif::Slice *>(value) != nullptr || dynamic_cast<hif::FieldReference *>(value) != nullptr;
+}
+
+} // namespace
+
+auto VerilogPrinter::isTruncatedByAssignmentContext(hif::Cast &o, unsigned long long targetWidth) -> bool
+{
+    // Only the whole right-hand side qualifies. A cast nested inside a
+    // larger expression is not truncated by the assignment: the enclosing
+    // operator sees the untruncated operand first.
+    auto *assign = dynamic_cast<hif::Assign *>(o.getParent());
+    if (assign == nullptr || assign->getRightHandSide() != &o) {
+        return false;
+    }
+    Type *lhsType = hif::semantics::getSemanticType(assign->getLeftHandSide(), _sem);
+    if (lhsType == nullptr) {
+        return false;
+    }
+    return hif::semantics::typeGetSpanBitwidth(lhsType, _sem) == targetWidth;
+}
+
 auto VerilogPrinter::visitCast(Cast &o) -> int
 {
     // A Cast to a Bitvector/Bit/Signed/Unsigned narrower than the source
@@ -151,8 +182,37 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
     unsigned long long targetWidth = targetType ? hif::semantics::typeGetSpanBitwidth(targetType, _sem) : 0;
 
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth < sourceWidth) {
+        // A part-select applies to a net or a variable, not to an arbitrary
+        // expression: `(a << 2)[7:0]` is not legal Verilog-2001, and without
+        // the parentheses the brackets bind to the shift amount instead
+        // (hif-backend#18). Only emit the part-select when the operand is
+        // something it can legally apply to.
+        if (isPartSelectable(castedValue)) {
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "[" << (targetWidth - 1) << ":0]";
+            return 0;
+        }
+        // Otherwise, if this cast is the whole right-hand side of an
+        // assignment to a target of exactly the cast's width, the
+        // truncation is what Verilog already does on assignment - so
+        // emitting the operand alone is both legal and exact.
+        if (isTruncatedByAssignmentContext(o, targetWidth)) {
+            castedValue->acceptVisitor(*this);
+            return 0;
+        }
+        // Anything else - a narrowing cast of an expression somewhere the
+        // width is self-determined, such as inside a concatenation - cannot
+        // be expressed without introducing a temporary, which is a tree
+        // transformation rather than something this printer can do. Emit
+        // parenthesised so the operands at least group as intended, and say
+        // so rather than producing a silently wrong width.
+        messageWarning(
+            "Cannot truncate this expression to " + std::to_string(targetWidth) +
+                " bits without a temporary; emitted part-select is not valid Verilog (hif-backend#18).",
+            &o, _sem);
+        (*_stream) << "(";
         castedValue->acceptVisitor(*this);
-        (*_stream) << "[" << (targetWidth - 1) << ":0]";
+        (*_stream) << ")[" << (targetWidth - 1) << ":0]";
         return 0;
     }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
@@ -1308,12 +1368,33 @@ std::string VerilogPrinter::getValue(hif::Value *value)
             ss << this->getValue(right_bound);
         }
     } else if (auto expression = dynamic_cast<hif::Expression *>(value)) {
-        // Visit the expression.
-        expression->acceptVisitor(*this);
+        // Capture the expression rather than letting it write straight to
+        // _stream. Streaming it here emitted the expression at whatever
+        // point the enclosing construct had reached, ahead of the string
+        // being assembled - so a slice with expression bounds came out as
+        // "DEPTH * WIDTH - 1(DEPTH - 1) * WIDTHchain[:]", every piece
+        // present, in the wrong order, with empty brackets (hif-backend#18).
+        ss << this->renderToString(expression);
     } else if (auto cast = dynamic_cast<hif::Cast *>(value)) {
         ss << this->getValue(cast->getValue());
     }
     return ss.str();
+}
+
+std::string VerilogPrinter::renderToString(hif::Object *object)
+{
+    if (object == nullptr) {
+        return {};
+    }
+    std::stringbuf buffer;
+    hif::backends::IndentedStream captured(&buffer);
+
+    hif::backends::IndentedStream *previous = _stream;
+    _stream                                 = &captured;
+    object->acceptVisitor(*this);
+    _stream = previous;
+
+    return buffer.str();
 }
 
 std::string VerilogPrinter::getPortAssign(hif::PortAssign *port_assign)

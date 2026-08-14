@@ -92,6 +92,19 @@ if(VERILOG2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
     )
 
+    # Regression (hif-backend#18): slice/part-select emission produced
+    # invalid Verilog - a part-select applied to an expression, and
+    # parameter-expression bounds printed ahead of their identifier.
+    add_test(
+        NAME slice_emission
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/slice_emission.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/slice_emission_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/slice_emission_test.cmake
+    )
+
     # Regression (hif-backend#16): regenerated Verilog was not behaviorally
     # equivalent to its source - cone Procedures were hoisted into their own
     # always blocks, leaving the processes that read their targets not

@@ -133,6 +133,24 @@ private:
 
     std::string getValue(hif::Value *value);
 
+    /// @brief Render an object through the visitor, capturing its output
+    /// instead of writing it to the current stream.
+    /// @details getValue() assembles a string, so any branch of it that
+    /// needs the visitor must not let the visitor write to _stream: doing
+    /// so emits the nested text at the point the *enclosing* construct has
+    /// reached, ahead of the string being assembled.
+    /// @param object The object to render.
+    /// @return The text the visitor produced for \p object.
+    std::string renderToString(hif::Object *object);
+
+    /// @brief Whether a narrowing cast needs no explicit truncation because
+    /// the assignment it sits in already truncates to the same width.
+    /// @param o The narrowing cast.
+    /// @param targetWidth The width \p o casts to.
+    /// @return True if \p o is the whole right-hand side of an assignment
+    /// whose left-hand side is exactly \p targetWidth bits wide.
+    auto isTruncatedByAssignmentContext(hif::Cast &o, unsigned long long targetWidth) -> bool;
+
     std::string getPortAssign(hif::PortAssign *port_assign);
 
     /// @brief Print a list of objects.
