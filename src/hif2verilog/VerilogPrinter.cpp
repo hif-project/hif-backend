@@ -329,10 +329,12 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // Get the view content.
     auto content = view->getContents();
 
-    // Which of this module's nets and outputs a child instance drives has to
-    // be known before anything is printed: it decides wire-vs-reg for both the
-    // port list and the body declarations (hif-backend#26).
-    this->collectInstanceDrivenDeclarations(content);
+    // Which of this module's nets and outputs are driven continuously - by a
+    // child instance's output port, or by a global action printed below as a
+    // continuous "assign" - has to be known before anything is printed: it
+    // decides wire-vs-reg for both the port list and the body declarations
+    // (hif-backend#26, #32).
+    this->collectContinuouslyDrivenDeclarations(content);
 
     // Delays are emitted as plain numbers, so the unit they count in has to be
     // declared before the module that uses them (hif-backend#24). Only designs
@@ -418,6 +420,20 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // ========================================================================
     // PRINT THE REST
     // ========================================================================
+
+    // The view's concurrent statements. vhdl2hif puts every VHDL concurrent
+    // signal assignment here, and nothing printed them, so a VHDL design
+    // regenerated as a module with the right ports and an empty body - valid
+    // Verilog that drives nothing, produced with exit code 0 and no
+    // diagnostic (hif-backend#32). Designs that came through verilog2hif are
+    // unaffected either way: that frontend rewrites continuous assignments
+    // into processes, which is why every existing test still passes.
+    if (content->getGlobalAction() != nullptr) {
+        content->getGlobalAction()->acceptVisitor(*this);
+        if (!content->getGlobalAction()->actions.empty()) {
+            (*_stream) << "\n";
+        }
+    }
 
     for (auto instance : content->instances) {
         instance->acceptVisitor(*this);
@@ -906,7 +922,58 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     // return GuideVisitor::visitFunction(o);
 }
 
-auto VerilogPrinter::visitGlobalAction(GlobalAction &o) -> int { return GuideVisitor::visitGlobalAction(o); }
+auto VerilogPrinter::visitGlobalAction(GlobalAction &o) -> int
+{
+    // A global action is a *concurrent* statement, so it cannot be printed by
+    // falling through to the Assign visitor: that one emits the procedural
+    // form ("t <= rhs;"), which is only legal inside a process and would
+    // assign to a reg. The concurrent equivalent is a continuous assignment,
+    // which is also exactly what the VHDL this comes from means
+    // (hif-backend#32).
+    //
+    // The targets were registered as nets by collectContinuouslyDrivenDeclarations,
+    // so what is declared and what is driven agree.
+    for (auto *action : o.actions) {
+        auto *assign = dynamic_cast<Assign *>(action);
+
+        // Anything else has no continuous form to be emitted as. Dropping it
+        // is what this issue was about, so this fails loudly and names the
+        // construct instead of producing a module that quietly does less than
+        // its source. Neither frontend can currently produce one: vhdl2hif
+        // puts only concurrent signal assignments here (its parser types the
+        // list as BList<Assign>), and verilog2hif rewrites global actions into
+        // processes before the backend sees them.
+        messageAssert(
+            assign != nullptr,
+            "Unsupported global action: only a concurrent signal assignment has a Verilog continuous-assignment "
+            "equivalent, and emitting nothing would silently drop a driver (hif-backend#32).",
+            action, _sem);
+
+        (*_stream) << "assign ";
+
+        // A continuous assignment states its delay right after the keyword
+        // ("assign #2 t = ...;"). It cannot use the intra-assignment position
+        // visitAssign emits ("t <= #2 ...") - that form is procedural-only.
+        // This is the first path on which a VHDL "after" delay reaches the
+        // output at all: it was already carried in the HIF and already
+        // handled by renderDelay/resolveTimescale (hif-backend#24), but no
+        // VHDL-derived assignment was being printed to carry it
+        // (hif-backend#32).
+        const std::string delay(this->renderDelay(assign->getDelay()));
+        if (!delay.empty()) {
+            (*_stream) << "#" << delay << " ";
+        }
+
+        assign->getLeftHandSide()->acceptVisitor(*this);
+
+        // Always "=". A continuous assignment has no blocking/non-blocking
+        // distinction - "<=" here would parse as less-than-or-equal.
+        (*_stream) << " = ";
+        assign->getRightHandSide()->acceptVisitor(*this);
+        (*_stream) << ";\n";
+    }
+    return 0;
+}
 
 auto VerilogPrinter::visitEntity(Entity &o) -> int
 {
@@ -1624,13 +1691,44 @@ auto VerilogPrinter::renderDelay(hif::Value *delay) -> std::string
     return "(" + this->renderToString(delay) + ")";
 }
 
-void VerilogPrinter::collectInstanceDrivenDeclarations(hif::Contents *contents)
+void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::Contents *contents)
 {
-    _instanceDrivenDeclarations.clear();
+    _continuouslyDrivenDeclarations.clear();
     if (contents == nullptr) {
         return;
     }
 
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers   = true;
+    prefixOptions.recurseIntoSlices    = true;
+    prefixOptions.recurseIntoFieldRefs = true;
+
+    // ------------------------------------------------------------------
+    // Driver 1: a global action, emitted as a continuous "assign".
+    // ------------------------------------------------------------------
+    // These are collected first because visitGlobalAction is what makes them
+    // continuous drivers: if that ever stops emitting an "assign" for an
+    // action, this has to stop claiming its target is a net.
+    if (contents->getGlobalAction() != nullptr) {
+        for (auto *action : contents->getGlobalAction()->actions) {
+            auto *assign = dynamic_cast<hif::Assign *>(action);
+            if (assign == nullptr) {
+                continue;
+            }
+            auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+            if (dynamic_cast<hif::Identifier *>(target) == nullptr) {
+                continue;
+            }
+            auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(target, _sem));
+            if (decl != nullptr) {
+                _continuouslyDrivenDeclarations.insert(decl);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Driver 2: a child instance's output or inout port.
+    // ------------------------------------------------------------------
     // Search the whole contents rather than only contents->instances, so an
     // instance inside a generate block is covered too - it is bound to the
     // enclosing module's nets exactly the same way.
@@ -1641,11 +1739,6 @@ void VerilogPrinter::collectInstanceDrivenDeclarations(hif::Contents *contents)
     std::list<hif::Instance *> instances;
     hif::HifTypedQuery<hif::Instance> query;
     hif::search(instances, contents, query);
-
-    hif::TerminalPrefixOptions prefixOptions;
-    prefixOptions.recurseIntoMembers   = true;
-    prefixOptions.recurseIntoSlices    = true;
-    prefixOptions.recurseIntoFieldRefs = true;
 
     for (auto *instance : instances) {
         for (auto *portAssign : instance->portAssigns) {
@@ -1671,16 +1764,16 @@ void VerilogPrinter::collectInstanceDrivenDeclarations(hif::Contents *contents)
             }
             auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(actual, _sem));
             if (decl != nullptr) {
-                _instanceDrivenDeclarations.insert(decl);
+                _continuouslyDrivenDeclarations.insert(decl);
             }
         }
     }
 }
 
-auto VerilogPrinter::isInstanceDriven(hif::Declaration *declaration) -> bool
+auto VerilogPrinter::isContinuouslyDriven(hif::Declaration *declaration) -> bool
 {
     auto *dataDeclaration = dynamic_cast<hif::DataDeclaration *>(declaration);
-    return dataDeclaration != nullptr && _instanceDrivenDeclarations.count(dataDeclaration) != 0;
+    return dataDeclaration != nullptr && _continuouslyDrivenDeclarations.count(dataDeclaration) != 0;
 }
 
 std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
@@ -1713,9 +1806,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << " = " << value;
         }
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
-        // A net an instance drives must be a wire; everything else is written
-        // by a process, which needs a reg (hif-backend#26).
-        ss << (this->isInstanceDriven(declaration) ? "wire " : "reg ");
+        // A continuously driven net must be a wire; everything else is written
+        // by a process, which needs a reg (hif-backend#26, #32).
+        ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
         ss << this->getBitwidth(signal->getType());
         ss << signal->getName();
         auto value = this->getValue(signal->getValue());
@@ -1728,9 +1821,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << "input wire ";
             break;
         case PortDirection::dir_out:
-            // Same rule as for signals: an output a child instance drives is
-            // a wire, one a process drives is a reg (hif-backend#26).
-            ss << (this->isInstanceDriven(declaration) ? "output wire " : "output reg ");
+            // Same rule as for signals: a continuously driven output is a
+            // wire, one a process drives is a reg (hif-backend#26, #32).
+            ss << (this->isContinuouslyDriven(declaration) ? "output wire " : "output reg ");
             break;
         case PortDirection::dir_inout:
             ss << "inout ";
