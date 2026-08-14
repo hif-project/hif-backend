@@ -150,6 +150,14 @@ private:
     /// qualify - see collectContinuouslyDrivenDeclarations.
     std::list<hif::Port *> _valueDrivenPorts;
 
+    /// @brief Output ports whose initial value has to be re-emitted as an
+    /// `initial` assignment, in declaration order.
+    /// @details The complement of _valueDrivenPorts: these ports state an
+    /// initial value *and* are written by a process, so they are regs and a
+    /// continuous assign would be a second driver on them (hif-backend#36).
+    /// The value is what the port holds until that process first writes it.
+    std::list<hif::Port *> _initialValuePorts;
+
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
     /// file's `timescale, so a delay cannot be emitted without also
@@ -191,6 +199,15 @@ private:
     /// @param stateTable The process to scan.
     /// @param names Receives the target names.
     void collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names);
+
+    /// @brief Whether a rendered Verilog literal is entirely unknown.
+    /// @details Both frontends give a port that stated no initial value one
+    /// anyway - 'U' from vhdl2hif, all-x from verilog2hif - and an all-unknown
+    /// value says nothing a declaration does not already say, since an
+    /// uninitialized reg and an undriven net both read x (hif-backend#36).
+    /// @param literal The rendered literal, which may carry a size prefix.
+    /// @return True if every digit is x or z.
+    static auto isUnknownLiteral(const std::string &literal) -> bool;
 
     /// @brief Whether a process can be woken up again after it finishes.
     /// @details A process is re-triggerable if it has a sensitivity list, or if

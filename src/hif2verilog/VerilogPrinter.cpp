@@ -452,6 +452,24 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
         (*_stream) << "\n";
     }
 
+    // The other half of the same field: an output port that states an initial
+    // value and is written by a process. That port is a reg, so a continuous
+    // assign would be a second driver on it - the value is what it holds until
+    // the process first writes it, which is an `initial` assignment
+    // (hif-backend#36). Blocking, and in one block, so the ports are
+    // initialized before any process that reads them can run.
+    if (!_initialValuePorts.empty()) {
+        (*_stream) << "initial begin\n";
+        _stream->indent();
+        for (auto *port : _initialValuePorts) {
+            (*_stream) << port->getName() << " = ";
+            port->getValue()->acceptVisitor(*this);
+            (*_stream) << ";\n";
+        }
+        _stream->unindent();
+        (*_stream) << "end\n\n";
+    }
+
     for (auto instance : content->instances) {
         instance->acceptVisitor(*this);
     }
@@ -1724,6 +1742,27 @@ void VerilogPrinter::resolveTimescale(hif::View *view)
     _timescale.valid = true;
 }
 
+auto VerilogPrinter::isUnknownLiteral(const std::string &literal) -> bool
+{
+    // Skip a sized-literal prefix, so that the "4" and the "b" of 4'bxxxx are
+    // not mistaken for known digits.
+    auto start = literal.find('\'');
+    start      = (start == std::string::npos) ? 0 : start + 2;
+
+    bool sawDigit = false;
+    for (auto index = start; index < literal.size(); ++index) {
+        const char character = literal[index];
+        if (character == '_') {
+            continue;
+        }
+        sawDigit = true;
+        if (character != 'x' && character != 'X' && character != 'z' && character != 'Z') {
+            return false;
+        }
+    }
+    return sawDigit;
+}
+
 auto VerilogPrinter::isRetriggerable(hif::StateTable &stateTable) -> bool
 {
     if (!stateTable.sensitivity.empty() || !stateTable.sensitivityPos.empty() ||
@@ -1823,6 +1862,7 @@ void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::View *view)
 {
     _continuouslyDrivenDeclarations.clear();
     _valueDrivenPorts.clear();
+    _initialValuePorts.clear();
     if (view == nullptr) {
         return;
     }
@@ -1942,14 +1982,29 @@ void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::View *view)
         if (port->getDirection() != PortDirection::dir_out || port->getValue() == nullptr) {
             continue;
         }
-        if (_continuouslyDrivenDeclarations.count(port) != 0 || assignedAnywhere.count(port) != 0) {
+        // Tell a value the source actually wrote from one a frontend supplied
+        // for a port that stated none. Both frontends supply one: vhdl2hif
+        // gives every out port the 'U' default, which has no Verilog literal
+        // and renders empty, and verilog2hif gives a reg port an all-x value.
+        // Neither says anything a declaration does not already say - an
+        // uninitialized reg and an undriven net both read x - and emitting the
+        // first would produce "assign q = ;".
+        const std::string rendered = this->renderToString(port->getValue());
+        if (rendered.empty() || isUnknownLiteral(rendered)) {
             continue;
         }
-        // A value with no Verilog literal renders empty - 'U' and 'Z' from
-        // VHDL reach here that way. Emitting "assign q = ;" would be worse
-        // than emitting nothing, and an undriven net already reads x, which is
-        // what 'U' meant.
-        if (this->renderToString(port->getValue()).empty()) {
+        if (_continuouslyDrivenDeclarations.count(port) != 0) {
+            // Something already drives it continuously, so it is a net and its
+            // value is not ours to restate.
+            continue;
+        }
+        if (assignedAnywhere.count(port) != 0) {
+            // Driven procedurally, so the port is a reg. A continuous assign
+            // would be a second driver on it; the value is what it holds until
+            // that process first writes it, which is an `initial` assignment
+            // (hif-backend#36). Deliberately does NOT mark the port as
+            // continuously driven: it stays a reg.
+            _initialValuePorts.push_back(port);
             continue;
         }
         _valueDrivenPorts.push_back(port);
