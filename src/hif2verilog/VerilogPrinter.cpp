@@ -65,7 +65,31 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
 {
     o.getLeftHandSide()->acceptVisitor(*this);
 
-    auto dd = hif::semantics::getDeclaration(o.getLeftHandSide(), _sem);
+    // Resolve the declaration of the assignment *target*, which is not
+    // necessarily the left-hand side itself: a bit-select is a Member
+    // wrapping the identifier and a part-select is a Slice. Neither is a
+    // symbol, and handing one to getDeclaration asserts inside hif-core
+    // ("Passed non-symbol object"), terminating the process after the output
+    // file has been created and leaving it zero bytes (hif-backend#23).
+    //
+    // Recurse through members, slices and field references to reach the
+    // identifier they are built on. hif-frontend resolves the same shape the
+    // same way in splitLogicConesLoops.
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers    = true;
+    prefixOptions.recurseIntoSlices     = true;
+    prefixOptions.recurseIntoFieldRefs  = true;
+
+    Value *target = hif::getTerminalPrefix(o.getLeftHandSide(), prefixOptions);
+
+    // The lookup only chooses between "=" and "<=" below, so a target that
+    // still cannot be resolved must not be fatal: fall through with a null
+    // declaration and emit the assignment. Losing the whole module is a far
+    // worse outcome than defaulting the assignment operator.
+    hif::Declaration *dd = nullptr;
+    if (dynamic_cast<hif::Identifier *>(target) != nullptr) {
+        dd = hif::semantics::getDeclaration(target, _sem);
+    }
 
     // "<=" in Verilog is called non-blocking assignment which brings a whole lot of difference than "=" which is called
     // as blocking assignment because of scheduling events in any vendor based simulators.
