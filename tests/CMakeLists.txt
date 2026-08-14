@@ -166,8 +166,27 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/edge_sensitivity_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/edge_sensitivity_test.cmake
         )
+        # Regression (hif-backend#26): a structure-preserving round trip
+        # regenerated the parent's connection nets as reg while they were
+        # still bound to child instance output ports, which Verilog forbids -
+        # so the regenerated hierarchy did not compile at all. Needs a
+        # simulator for the same reason the two above do: the check that
+        # matters is that the output is accepted and behaves identically.
+        add_test(
+            NAME preserved_hierarchy
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE_PARENT=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/preserved_hierarchy.v
+                -DFIXTURE_CHILD=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/preserved_hierarchy_child.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/preserved_hierarchy_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/preserved_hierarchy_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/preserved_hierarchy_test.cmake
+        )
     else()
-        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy tests.")
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")

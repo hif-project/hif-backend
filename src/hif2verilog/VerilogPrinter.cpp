@@ -303,6 +303,11 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // Get the view content.
     auto content = view->getContents();
 
+    // Which of this module's nets and outputs a child instance drives has to
+    // be known before anything is printed: it decides wire-vs-reg for both the
+    // port list and the body declarations (hif-backend#26).
+    this->collectInstanceDrivenDeclarations(content);
+
     // Print the module header.
     (*_stream) << "module " << name;
 
@@ -1291,6 +1296,65 @@ inline auto is_integer(hif::Type *type) -> bool
     return false;
 }
 
+void VerilogPrinter::collectInstanceDrivenDeclarations(hif::Contents *contents)
+{
+    _instanceDrivenDeclarations.clear();
+    if (contents == nullptr) {
+        return;
+    }
+
+    // Search the whole contents rather than only contents->instances, so an
+    // instance inside a generate block is covered too - it is bound to the
+    // enclosing module's nets exactly the same way.
+    //
+    // The search also turns up the Instance nodes that carry a call's library
+    // scope (the "standard" instance on a standard-library FunctionCall).
+    // Those have no portAssigns, so they contribute nothing.
+    std::list<hif::Instance *> instances;
+    hif::HifTypedQuery<hif::Instance> query;
+    hif::search(instances, contents, query);
+
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers   = true;
+    prefixOptions.recurseIntoSlices    = true;
+    prefixOptions.recurseIntoFieldRefs = true;
+
+    for (auto *instance : instances) {
+        for (auto *portAssign : instance->portAssigns) {
+            // An unresolvable formal is left alone: the direction is what
+            // decides here, and guessing it would be worse than keeping the
+            // previous emission.
+            auto *formal = dynamic_cast<hif::Port *>(hif::semantics::getDeclaration(portAssign, _sem));
+            if (formal == nullptr) {
+                continue;
+            }
+            if (formal->getDirection() != PortDirection::dir_out &&
+                formal->getDirection() != PortDirection::dir_inout) {
+                continue;
+            }
+            if (portAssign->getValue() == nullptr) {
+                continue;
+            }
+            // The actual may be a bit-select or part-select of the net rather
+            // than the net itself; it is still that net that gets driven.
+            auto *actual = hif::getTerminalPrefix(portAssign->getValue(), prefixOptions);
+            if (dynamic_cast<hif::Identifier *>(actual) == nullptr) {
+                continue;
+            }
+            auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(actual, _sem));
+            if (decl != nullptr) {
+                _instanceDrivenDeclarations.insert(decl);
+            }
+        }
+    }
+}
+
+auto VerilogPrinter::isInstanceDriven(hif::Declaration *declaration) -> bool
+{
+    auto *dataDeclaration = dynamic_cast<hif::DataDeclaration *>(declaration);
+    return dataDeclaration != nullptr && _instanceDrivenDeclarations.count(dataDeclaration) != 0;
+}
+
 std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
 {
     std::stringstream ss;
@@ -1307,7 +1371,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << " = " << value;
         }
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
-        ss << "reg ";
+        // A net an instance drives must be a wire; everything else is written
+        // by a process, which needs a reg (hif-backend#26).
+        ss << (this->isInstanceDriven(declaration) ? "wire " : "reg ");
         ss << this->getBitwidth(signal->getType());
         ss << signal->getName();
         auto value = this->getValue(signal->getValue());
@@ -1320,7 +1386,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << "input wire ";
             break;
         case PortDirection::dir_out:
-            ss << "output reg ";
+            // Same rule as for signals: an output a child instance drives is
+            // a wire, one a process drives is a reg (hif-backend#26).
+            ss << (this->isInstanceDriven(declaration) ? "output wire " : "output reg ");
             break;
         case PortDirection::dir_inout:
             ss << "inout ";
