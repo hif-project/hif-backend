@@ -47,7 +47,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ${{ matrix.cc }} libpoco-dev flex bison
+          # iverilog: three regressions here compare the simulated behaviour of
+          # regenerated Verilog against its source, because the bugs they cover
+          # produce output that is either rejected outright or syntactically
+          # perfect and wrong. Without a simulator installed, CMake skipped
+          # them and CI reported green on 11 of 14 tests.
+          sudo apt-get install -y ${{ matrix.cc }} libpoco-dev flex bison iverilog
 
       - name: Build hif-core
         run: |
