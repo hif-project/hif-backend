@@ -91,6 +91,17 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/localparam_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
     )
+    # Regression (hif-backend#23): assigning to a bit-select aborted the
+    # printer, leaving a zero-byte output file behind.
+    add_test(
+        NAME bitselect_target
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/bitselect_target.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/bitselect_target_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/bitselect_target_test.cmake
+    )
 
     # Regression (hif-backend#18): slice/part-select emission produced
     # invalid Verilog - a part-select applied to an expression, and
@@ -146,7 +157,7 @@ if(VERILOG2HIF_EXECUTABLE)
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
     endif()
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/slice_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission tests.")
 endif()
 
 # Guards the invariant the hif-backend#16 fix rests on: a cone target must be
