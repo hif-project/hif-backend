@@ -146,5 +146,19 @@ if(VERILOG2HIF_EXECUTABLE)
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
     endif()
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/slice_emission tests.")
 endif()
+
+# Guards the invariant the hif-backend#16 fix rests on: a cone target must be
+# a Variable, so the inlined body is assigned with blocking "=" and the reads
+# after the call see the value just computed. The fixture is a hand-built HIF
+# because hif-frontend cannot currently produce this shape, which is also why
+# this test needs no verilog2hif and runs regardless of it.
+add_test(
+    NAME cone_signal_target
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/cone_signal_target.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cone_signal_target_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
+)

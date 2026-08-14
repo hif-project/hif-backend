@@ -1,0 +1,132 @@
+<SYSTEM formatVersion="5.0" generationDate="9:56:18:133101" languageId="RTL" name="system" release="1.0.0" tool="VERILOG2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_verilog_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="mini">
+			<VIEW filename="" languageId="RTL" name="behav" standard="false">
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="a" wrapper="false">
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+						<CODE_INFO column_number="19" file="mini.v" line_number="1"/>
+					</PORT>
+					<PORT direction="IN" name="b" wrapper="false">
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+						<CODE_INFO column_number="26" file="mini.v" line_number="1"/>
+					</PORT>
+					<PORT direction="OUT" name="y" wrapper="false">
+						<VALUE>
+							<BITVAL value="Z">
+								<TYPE>
+									<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+								</TYPE>
+							</BITVAL>
+						</VALUE>
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+						<CODE_INFO column_number="34" file="mini.v" line_number="1"/>
+					</PORT>
+					<CODE_INFO column_number="7" file="mini.v" line_number="1"/>
+				</ENTITY>
+				<CONTENTS name="Architecture">
+					<DECLARATIONS>
+						<SIGNAL instance="true" name="t" standard="false">
+							<TYPE>
+								<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+							</TYPE>
+							<VALUE>
+								<BITVAL value="X">
+									<TYPE>
+										<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+									</TYPE>
+								</BITVAL>
+							</VALUE>
+						</SIGNAL>
+						<PROCEDURE kind="INSTANCE" name="hif_cone_t_0" standard="false">
+							<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="hif_cone" standard="false">
+								<STATES>
+									<STATE atomic="false" name="hif_cone" priority="0">
+										<ACTIONS>
+											<ASSIGN>
+												<LEFTHANDSIDE>
+													<IDENTIFIER name="t">
+														<CODE_INFO column_number="9" file="mini.v" line_number="3"/>
+													</IDENTIFIER>
+												</LEFTHANDSIDE>
+												<RIGHTHANDSIDE>
+													<EXPRESSION operator="&amp;">
+														<VALUE1>
+															<IDENTIFIER name="a">
+																<CODE_INFO column_number="11" file="mini.v" line_number="3"/>
+															</IDENTIFIER>
+														</VALUE1>
+														<VALUE2>
+															<IDENTIFIER name="b">
+																<CODE_INFO column_number="13" file="mini.v" line_number="3"/>
+															</IDENTIFIER>
+														</VALUE2>
+														<CODE_INFO column_number="13" file="mini.v" line_number="3"/>
+													</EXPRESSION>
+												</RIGHTHANDSIDE>
+												<CODE_INFO column_number="13" file="mini.v" line_number="3"/>
+											</ASSIGN>
+										</ACTIONS>
+									</STATE>
+								</STATES>
+							</STATETABLE>
+						</PROCEDURE>
+					</DECLARATIONS>
+					<STATETABLES>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="globact_process_0" standard="false">
+							<SENSITIVITY>
+								<IDENTIFIER name="a">
+									<CODE_INFO column_number="13" file="mini.v" line_number="4"/>
+								</IDENTIFIER>
+								<IDENTIFIER name="b"/>
+							</SENSITIVITY>
+							<STATES>
+								<STATE atomic="false" name="state_0" priority="0">
+									<ACTIONS>
+										<PCALL name="hif_cone_t_0"/>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="y">
+													<CODE_INFO column_number="9" file="mini.v" line_number="4"/>
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<EXPRESSION operator="^">
+													<VALUE1>
+														<IDENTIFIER name="a">
+															<CODE_INFO column_number="13" file="mini.v" line_number="4"/>
+														</IDENTIFIER>
+													</VALUE1>
+													<VALUE2>
+														<IDENTIFIER name="t">
+															<CODE_INFO column_number="11" file="mini.v" line_number="4"/>
+														</IDENTIFIER>
+													</VALUE2>
+													<CODE_INFO column_number="13" file="mini.v" line_number="4"/>
+												</EXPRESSION>
+											</RIGHTHANDSIDE>
+											<CODE_INFO column_number="13" file="mini.v" line_number="4"/>
+										</ASSIGN>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+					</STATETABLES>
+					<GLOBALACTION/>
+					<CODE_INFO column_number="7" file="mini.v" line_number="1"/>
+				</CONTENTS>
+				<CODE_INFO column_number="7" file="mini.v" line_number="1"/>
+			</VIEW>
+			<CODE_INFO column_number="7" file="mini.v" line_number="1"/>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>

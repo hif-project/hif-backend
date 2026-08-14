@@ -76,6 +76,32 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // Non-blocking statements in sequential block will infer flip flop in actual hardware.
     //
     // Always remember do not mix blocking and non-blocking in any sequential or combinational block.
+    //
+    // Inside an inlined cone the choice below is load-bearing rather than
+    // stylistic. visitProcedureCall expands a cone's body at its call site,
+    // and the statements that follow - the reads of the cone's target that
+    // motivated the call - only observe the value just computed because a
+    // Variable target is assigned with blocking "=". A cone target that
+    // reached here as anything else would be emitted with "<=", and those
+    // reads would silently go back to seeing the previous value: exactly
+    // the staleness hif-backend#16 was about, moved inside a single process
+    // where it is harder to spot.
+    //
+    // The frontend guarantees this today - refineToVariables shadows a
+    // target that must stay a signal into a "_sig_var" Variable and drives
+    // the signal from a separate process - so this is a check on that
+    // contract, not a case seen in practice. messageAssert is deliberate:
+    // it survives release builds, so a future change to that contract fails
+    // loudly instead of quietly emitting wrong Verilog.
+    if (!_inliningCones.empty()) {
+        messageAssert(
+            dynamic_cast<Variable *>(dd) != nullptr,
+            "Inlined cone assigns to a non-Variable target, which would be emitted with "
+            "non-blocking '<=' and leave the reads after the call observing a stale value "
+            "(hif-backend#16).",
+            &o, _sem);
+    }
+
     if (dynamic_cast<Variable *>(dd) != nullptr) {
         (*_stream) << " = ";
     } else {
