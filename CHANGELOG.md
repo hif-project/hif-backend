@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fixed Verilog system functions being emitted under their internal name (`hif_verilog__system_clog2` rather than `$clog2`), which no simulator accepts and the frontend cannot bind on the way back in, breaking the round trip of any design using `$clog2`. (#19)
+
 ## [1.1.0] - 2026-08-14
 
 - Fixed regenerated Verilog not being behaviorally equivalent to its source. Frontend-generated logic cones were hoisted into their own `always @(*)` blocks and their call dropped, turning an intra-process dependency into an unordered inter-process one, so a process could read a cone target before the block that writes it had run. Cones are now emitted at their call site, inside the process that reads them. (#16)
