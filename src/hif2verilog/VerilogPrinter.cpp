@@ -996,17 +996,33 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         (*_stream) << "end\n";
     } else {
         (*_stream) << "always";
-        if (!o.sensitivity.empty()) {
-            (*_stream) << " @( ";
-            this->printList(o.sensitivity, ",", false, false);
-            (*_stream) << " )";
-        } else if (!o.sensitivityPos.empty()) {
-            (*_stream) << " @( posedge ";
-            this->printList(o.sensitivityPos, ",", false, false);
-            (*_stream) << " )";
-        } else if (!o.sensitivityNeg.empty()) {
-            (*_stream) << " @( negedge ";
-            this->printList(o.sensitivityNeg, ",", false, false);
+
+        // Emit the union of the three lists, qualifying each signal
+        // individually.
+        //
+        // This used to be an if/else-if chain that printed whichever list
+        // was non-empty first, and put a single `posedge`/`negedge` ahead of
+        // a whole comma-separated list. Both halves lost sensitivity
+        // silently (hif-backend#21): `always @(posedge clk or negedge rst_n)`
+        // came back as `always @(posedge clk)`, turning an asynchronous
+        // reset into a synchronous one, and `always @(posedge clk or posedge
+        // rst)` came back as `always @(posedge clk, rst)`, leaving rst
+        // sensitive to both of its edges.
+        if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
+            bool isFirst = true;
+            auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
+                for (auto *signal : list) {
+                    (*_stream) << (isFirst ? " @( " : ", ");
+                    isFirst = false;
+                    if (!edge.empty()) {
+                        (*_stream) << edge << " ";
+                    }
+                    signal->acceptVisitor(*this);
+                }
+            };
+            printSensitivity(o.sensitivity, "");
+            printSensitivity(o.sensitivityPos, "posedge");
+            printSensitivity(o.sensitivityNeg, "negedge");
             (*_stream) << " )";
         }
         (*_stream) << " begin" << '\n';

@@ -125,8 +125,25 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/sensitivity_equivalence_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/sensitivity_equivalence_test.cmake
         )
+        # Regression (hif-backend#21): only one of a process's three
+        # sensitivity lists was emitted, and the posedge/negedge keyword was
+        # printed once per list rather than once per signal - regenerating
+        # an asynchronous reset as a synchronous one. Also invisible to a
+        # text or reparse check.
+        add_test(
+            NAME edge_sensitivity
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/edge_sensitivity.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/edge_sensitivity_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/edge_sensitivity_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/edge_sensitivity_test.cmake
+        )
     else()
-        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence test.")
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission tests.")
