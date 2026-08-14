@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fixed a structure-preserving round trip (`verilog2hif -s`) regenerating the parent's connection nets and instance-driven outputs as `reg`, which Verilog forbids for anything an instance drives, so the regenerated hierarchy did not compile at all. Declarations bound to an instance's `out`/`inout` port are now emitted as nets. (#26)
 - Fixed Verilog system functions being emitted under their internal name (`hif_verilog__system_clog2` rather than `$clog2`), which no simulator accepts and the frontend cannot bind on the way back in, breaking the round trip of any design using `$clog2`. (#19)
 
 ## [1.1.0] - 2026-08-14

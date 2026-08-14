@@ -124,6 +124,22 @@ private:
     /// malformed input looping the printer forever - it is not expected
     /// to trip in practice.
     std::set<hif::Procedure *> _inliningCones;
+    /// @brief Declarations bound to an instance's output or inout port, in the
+    /// design unit currently being printed.
+    /// @details Verilog requires these to be nets: a `reg` cannot be driven by
+    /// a module instance's output, so declaring one as `reg` produces Verilog
+    /// no simulator accepts (hif-backend#26). Repopulated per design unit.
+    std::set<hif::DataDeclaration *> _instanceDrivenDeclarations;
+
+    /// @brief Fills _instanceDrivenDeclarations for @p contents.
+    /// @param contents The contents of the view being printed.
+    void collectInstanceDrivenDeclarations(hif::Contents *contents);
+
+    /// @brief Whether @p declaration must be emitted as a net rather than a
+    /// variable, because an instance's output drives it.
+    /// @param declaration The declaration being printed.
+    /// @return True if it is bound to an instance's out or inout port.
+    auto isInstanceDriven(hif::Declaration *declaration) -> bool;
 
     std::string getDeclaration(hif::Declaration *declaration);
 
