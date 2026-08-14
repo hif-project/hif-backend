@@ -227,6 +227,24 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_value_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_value_test.cmake
         )
+        # Regression (hif-backend#29): system task calls ($display, $write)
+        # were emitted as nothing at all, so a round trip discarded the whole
+        # observable output of a design. Needs a simulator, because the
+        # question is literally whether the regenerated design still prints.
+        # The fixture also carries gate primitives, so the cone-inlining path
+        # this shares with visitProcedureCall is exercised at the same time.
+        add_test(
+            NAME system_task_calls
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/system_task_calls.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/system_task_calls_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/system_task_calls_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/system_task_calls_test.cmake
+        )
     else()
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
     endif()
