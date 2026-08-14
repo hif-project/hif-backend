@@ -91,6 +91,85 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/localparam_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
     )
+    # Regression (hif-backend#23): assigning to a bit-select aborted the
+    # printer, leaving a zero-byte output file behind.
+    add_test(
+        NAME bitselect_target
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/bitselect_target.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/bitselect_target_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/bitselect_target_test.cmake
+    )
+
+    # Regression (hif-backend#18): slice/part-select emission produced
+    # invalid Verilog - a part-select applied to an expression, and
+    # parameter-expression bounds printed ahead of their identifier.
+    add_test(
+        NAME slice_emission
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/slice_emission.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/slice_emission_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/slice_emission_test.cmake
+    )
+
+    # Regression (hif-backend#16): regenerated Verilog was not behaviorally
+    # equivalent to its source - cone Procedures were hoisted into their own
+    # always blocks, leaving the processes that read their targets not
+    # sensitive to them. This one needs a simulator: the broken output is
+    # syntactically perfect, so no text or reparse check can see it.
+    find_program(IVERILOG_EXECUTABLE NAMES iverilog)
+    find_program(VVP_EXECUTABLE NAMES vvp)
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME sensitivity_equivalence
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sensitivity_equivalence.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sensitivity_equivalence_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/sensitivity_equivalence_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/sensitivity_equivalence_test.cmake
+        )
+        # Regression (hif-backend#21): only one of a process's three
+        # sensitivity lists was emitted, and the posedge/negedge keyword was
+        # printed once per list rather than once per signal - regenerating
+        # an asynchronous reset as a synchronous one. Also invisible to a
+        # text or reparse check.
+        add_test(
+            NAME edge_sensitivity
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/edge_sensitivity.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/edge_sensitivity_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/edge_sensitivity_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/edge_sensitivity_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
+    endif()
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission tests.")
 endif()
+
+# Guards the invariant the hif-backend#16 fix rests on: a cone target must be
+# a Variable, so the inlined body is assigned with blocking "=" and the reads
+# after the call see the value just computed. The fixture is a hand-built HIF
+# because hif-frontend cannot currently produce this shape, which is also why
+# this test needs no verilog2hif and runs regardless of it.
+add_test(
+    NAME cone_signal_target
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/cone_signal_target.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cone_signal_target_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
+)

@@ -4,8 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-08-13
+## [1.1.0] - 2026-08-14
 
+- Fixed regenerated Verilog not being behaviorally equivalent to its source. Frontend-generated logic cones were hoisted into their own `always @(*)` blocks and their call dropped, turning an intra-process dependency into an unordered inter-process one, so a process could read a cone target before the block that writes it had run. Cones are now emitted at their call site, inside the process that reads them. (#16)
+- Fixed `hif2verilog` aborting on an assignment whose target is a bit-select, which left a zero-byte output file behind. The target's declaration is now resolved through the terminal prefix. (#17)
+- Fixed slice emission producing invalid Verilog: a part-select applied to an expression, and part-select bounds printed ahead of their identifier with empty brackets. (#18)
+- Fixed module parameters being emitted as body declarations after the port list that references them; they are now emitted as an ANSI `#( ... )` clause. (#20)
+- Fixed only one of a process's three sensitivity lists being emitted, with the `posedge`/`negedge` keyword printed once per list rather than once per signal. An asynchronous reset was regenerated as a synchronous one. (#21)
 - Fixed `VerilogPrinter` to print the reduction-AND/OR/XOR operators.
 - Fixed rendering of unresolved parametric port widths in `hif2verilog`.
 - Fixed printing of `iterated_concat` (Verilog's `{N{expr}}` replication) and four-state (`x`/`z`) values. `unresolved_parameter` now passes for real — the `Int`-`Int` typing gap noted below under 1.0.0 was fixed upstream in hif-core v1.1.0, and the `WILL_FAIL` tripwire has been removed.

@@ -117,6 +117,13 @@ private:
     hif::semantics::ILanguageSemantics *_sem;
     /// @brief The output stream to write on.
     hif::backends::IndentedStream *_stream;
+    /// @brief Cone procedures currently being inlined, innermost last.
+    /// @details Cone procedures are expanded at their call sites (see
+    /// visitProcedureCall), and one cone may call another. The frontend
+    /// emits that call graph as a DAG, so this only guards against a
+    /// malformed input looping the printer forever - it is not expected
+    /// to trip in practice.
+    std::set<hif::Procedure *> _inliningCones;
 
     std::string getDeclaration(hif::Declaration *declaration);
 
@@ -125,6 +132,24 @@ private:
     std::string getSymbolicValue(hif::Value *value);
 
     std::string getValue(hif::Value *value);
+
+    /// @brief Render an object through the visitor, capturing its output
+    /// instead of writing it to the current stream.
+    /// @details getValue() assembles a string, so any branch of it that
+    /// needs the visitor must not let the visitor write to _stream: doing
+    /// so emits the nested text at the point the *enclosing* construct has
+    /// reached, ahead of the string being assembled.
+    /// @param object The object to render.
+    /// @return The text the visitor produced for \p object.
+    std::string renderToString(hif::Object *object);
+
+    /// @brief Whether a narrowing cast needs no explicit truncation because
+    /// the assignment it sits in already truncates to the same width.
+    /// @param o The narrowing cast.
+    /// @param targetWidth The width \p o casts to.
+    /// @return True if \p o is the whole right-hand side of an assignment
+    /// whose left-hand side is exactly \p targetWidth bits wide.
+    auto isTruncatedByAssignmentContext(hif::Cast &o, unsigned long long targetWidth) -> bool;
 
     std::string getPortAssign(hif::PortAssign *port_assign);
 

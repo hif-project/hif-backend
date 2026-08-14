@@ -46,7 +46,6 @@ endif()
 file(READ ${OUTPUT_VERILOG} verilog_content)
 
 foreach(expected
-    "always @(*)"
     "ab = a & b"
     "axb = a ^ b"
     "axb_cin = axb & cin"
@@ -56,6 +55,44 @@ foreach(expected
         message(FATAL_ERROR "Regenerated Verilog missing expected content: ${expected}\nFull content:\n${verilog_content}")
     endif()
 endforeach()
+
+# Require a cone's driver to be emitted inside the very block that consumes
+# it, with no intervening `always` opening a new one.
+#
+# This replaces an earlier check for the literal string "always @(*)". That
+# string pinned the shape of the fix that first made cone logic appear at
+# all - each cone hoisted into a combinational block of its own - rather
+# than the property being tested, which is that the driver is emitted and
+# reaches its consumer. Hoisting turned out to be what made regenerated
+# Verilog simulate differently from its source (hif-backend#16): the
+# consumer was left sensitive to the cone's primary inputs while reading a
+# target another block wrote. The check below is strictly stronger - it
+# would have failed on the hoisted output that "always @(*)" accepted.
+function(require_driver_in_consumer_block driver consumer)
+    string(FIND "${verilog_content}" "${driver}" driver_at)
+    if(driver_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog missing cone driver: ${driver}\nFull content:\n${verilog_content}")
+    endif()
+    string(FIND "${verilog_content}" "${consumer}" consumer_at)
+    if(consumer_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog missing consumer: ${consumer}\nFull content:\n${verilog_content}")
+    endif()
+    if(driver_at GREATER consumer_at)
+        message(FATAL_ERROR
+            "Cone driver '${driver}' is emitted after its consumer '${consumer}'.\nFull content:\n${verilog_content}")
+    endif()
+    math(EXPR span "${consumer_at} - ${driver_at}")
+    string(SUBSTRING "${verilog_content}" ${driver_at} ${span} between)
+    if(between MATCHES "always")
+        message(FATAL_ERROR
+            "Cone driver '${driver}' is hoisted into a separate always block from its consumer "
+            "'${consumer}', so the consumer is not sensitive to it (hif-backend#16).\nFull content:\n${verilog_content}")
+    endif()
+endfunction()
+
+require_driver_in_consumer_block("axb = a ^ b" "sum <= axb ^ cin")
+require_driver_in_consumer_block("ab = a & b" "cout <= ab | axb_cin")
+require_driver_in_consumer_block("axb_cin = axb & cin" "cout <= ab | axb_cin")
 
 # The bug this guards against actually manifests as a reparse failure (the
 # dropped Procedure declarations became bare ';' statements - a syntax
