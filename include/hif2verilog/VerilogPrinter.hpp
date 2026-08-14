@@ -117,6 +117,13 @@ private:
     hif::semantics::ILanguageSemantics *_sem;
     /// @brief The output stream to write on.
     hif::backends::IndentedStream *_stream;
+    /// @brief Cone procedures currently being inlined, innermost last.
+    /// @details Cone procedures are expanded at their call sites (see
+    /// visitProcedureCall), and one cone may call another. The frontend
+    /// emits that call graph as a DAG, so this only guards against a
+    /// malformed input looping the printer forever - it is not expected
+    /// to trip in practice.
+    std::set<hif::Procedure *> _inliningCones;
 
     std::string getDeclaration(hif::Declaration *declaration);
 

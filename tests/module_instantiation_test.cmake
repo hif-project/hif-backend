@@ -48,7 +48,6 @@ endif()
 file(READ ${OUTPUT_VERILOG} verilog_content)
 
 foreach(expected
-    "always @(*)"
     "and_out = a & b"
     "or_out = a | b"
 )
@@ -57,6 +56,35 @@ foreach(expected
         message(FATAL_ERROR "Regenerated Verilog missing expected content: ${expected}\nFull content:\n${verilog_content}")
     endif()
 endforeach()
+
+# Require both cone drivers to be emitted inside the block that consumes
+# them, with no intervening `always` opening a new one. See the same check
+# in gate_primitives_test.cmake for why this replaces an earlier check for
+# the literal string "always @(*)", and why it is strictly stronger.
+function(require_driver_in_consumer_block driver consumer)
+    string(FIND "${verilog_content}" "${driver}" driver_at)
+    if(driver_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog missing cone driver: ${driver}\nFull content:\n${verilog_content}")
+    endif()
+    string(FIND "${verilog_content}" "${consumer}" consumer_at)
+    if(consumer_at EQUAL -1)
+        message(FATAL_ERROR "Regenerated Verilog missing consumer: ${consumer}\nFull content:\n${verilog_content}")
+    endif()
+    if(driver_at GREATER consumer_at)
+        message(FATAL_ERROR
+            "Cone driver '${driver}' is emitted after its consumer '${consumer}'.\nFull content:\n${verilog_content}")
+    endif()
+    math(EXPR span "${consumer_at} - ${driver_at}")
+    string(SUBSTRING "${verilog_content}" ${driver_at} ${span} between)
+    if(between MATCHES "always")
+        message(FATAL_ERROR
+            "Cone driver '${driver}' is hoisted into a separate always block from its consumer "
+            "'${consumer}', so the consumer is not sensitive to it (hif-backend#16).\nFull content:\n${verilog_content}")
+    endif()
+endfunction()
+
+require_driver_in_consumer_block("and_out = a & b" "result <= ((sel) ? (or_out) : (and_out))")
+require_driver_in_consumer_block("or_out = a | b" "result <= ((sel) ? (or_out) : (and_out))")
 
 execute_process(
     COMMAND ${VERILOG2HIF_EXECUTABLE} -o module_instantiation_reparsed ${OUTPUT_VERILOG}

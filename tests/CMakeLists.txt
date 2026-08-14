@@ -91,6 +91,30 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/localparam_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/localparam_emission_test.cmake
     )
+
+    # Regression (hif-backend#16): regenerated Verilog was not behaviorally
+    # equivalent to its source - cone Procedures were hoisted into their own
+    # always blocks, leaving the processes that read their targets not
+    # sensitive to them. This one needs a simulator: the broken output is
+    # syntactically perfect, so no text or reparse check can see it.
+    find_program(IVERILOG_EXECUTABLE NAMES iverilog)
+    find_program(VVP_EXECUTABLE NAMES vvp)
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME sensitivity_equivalence
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sensitivity_equivalence.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sensitivity_equivalence_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/sensitivity_equivalence_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/sensitivity_equivalence_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence test.")
+    endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission tests.")
 endif()

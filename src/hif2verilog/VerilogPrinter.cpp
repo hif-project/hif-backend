@@ -790,29 +790,65 @@ auto VerilogPrinter::visitProcedure(Procedure &o) -> int
     // sub-expression - e.g. the logic a primitive gate instance or a
     // flattened combinational submodule instance lowers to. Verilog has
     // no user-declarable procedure construct, so nothing else reaches
-    // here today. Render as a self-contained combinational always block;
-    // each action prints itself normally - ProcedureCall actions (calls
-    // to other cone functions) already print nothing, since the callee is
-    // rendered independently wherever *it* is declared, and Verilog
-    // variables/signals don't need an explicit call to become visible to
-    // other logic.
-    auto *stateTable = o.getStateTable();
-    if (stateTable == nullptr) {
-        return 0;
-    }
-    (*_stream) << "always @(*) begin\n";
-    _stream->indent();
-    for (auto state : stateTable->states) {
-        state->acceptVisitor(*this);
-    }
-    _stream->unindent();
-    (*_stream) << "end\n";
+    // here today.
+    //
+    // A cone is *not* an independent process: the frontend inserts an
+    // explicit call to it into the body of every process that reads its
+    // target, and gives those processes a sensitivity list over the
+    // cone's transitive primary inputs precisely because the cone is
+    // re-evaluated inside the caller. Nothing is printed here; the body
+    // is expanded at each call site by visitProcedureCall.
+    //
+    // Emitting the cone as its own `always @(*)` block instead - as this
+    // printer used to - hoists it out of every caller, converting an
+    // intra-process dependency into an inter-process one that nothing
+    // orders. The caller stays sensitive to the primary inputs while
+    // reading a target some other process now writes, so it can evaluate
+    // a stale value: the regenerated Verilog parses and reparses cleanly
+    // but does not simulate like its source (hif-backend#16).
+    static_cast<void>(o);
     return 0;
 }
 
 auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisitor::visitParameter(o); }
 
-auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int { return hif::GuideVisitor::visitProcedureCall(o); }
+auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
+{
+    // Expand the callee's body here. See visitProcedure for why cones are
+    // inlined at their call sites rather than hoisted into a process of
+    // their own.
+    //
+    // The cone's target is a Variable, so visitAssign renders its
+    // assignments with blocking "=": statements printed after this call -
+    // including the reads of the target that motivated the call - observe
+    // the value just computed, which is exactly the HIF semantics of the
+    // call being replaced.
+    //
+    // Inlining a cone into each of its callers means a shared cone's
+    // target is written by more than one always block. That is not
+    // introduced here: the HIF already has several processes calling the
+    // one cone, and each write recomputes the same pure function of the
+    // same inputs, so every caller reads the value it just wrote
+    // regardless of how the blocks interleave.
+    auto *procedure = dynamic_cast<Procedure *>(hif::semantics::getDeclaration(&o, _sem));
+    if (procedure == nullptr) {
+        return hif::GuideVisitor::visitProcedureCall(o);
+    }
+
+    auto *stateTable = procedure->getStateTable();
+    if (stateTable == nullptr) {
+        return 0;
+    }
+
+    if (!_inliningCones.insert(procedure).second) {
+        messageError("Recursive cone procedure cannot be inlined", &o, _sem);
+    }
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+    _inliningCones.erase(procedure);
+    return 0;
+}
 
 auto VerilogPrinter::visitPointer(Pointer &o) -> int { return hif::GuideVisitor::visitPointer(o); }
 
