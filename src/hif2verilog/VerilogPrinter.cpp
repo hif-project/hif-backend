@@ -76,6 +76,32 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // Non-blocking statements in sequential block will infer flip flop in actual hardware.
     //
     // Always remember do not mix blocking and non-blocking in any sequential or combinational block.
+    //
+    // Inside an inlined cone the choice below is load-bearing rather than
+    // stylistic. visitProcedureCall expands a cone's body at its call site,
+    // and the statements that follow - the reads of the cone's target that
+    // motivated the call - only observe the value just computed because a
+    // Variable target is assigned with blocking "=". A cone target that
+    // reached here as anything else would be emitted with "<=", and those
+    // reads would silently go back to seeing the previous value: exactly
+    // the staleness hif-backend#16 was about, moved inside a single process
+    // where it is harder to spot.
+    //
+    // The frontend guarantees this today - refineToVariables shadows a
+    // target that must stay a signal into a "_sig_var" Variable and drives
+    // the signal from a separate process - so this is a check on that
+    // contract, not a case seen in practice. messageAssert is deliberate:
+    // it survives release builds, so a future change to that contract fails
+    // loudly instead of quietly emitting wrong Verilog.
+    if (!_inliningCones.empty()) {
+        messageAssert(
+            dynamic_cast<Variable *>(dd) != nullptr,
+            "Inlined cone assigns to a non-Variable target, which would be emitted with "
+            "non-blocking '<=' and leave the reads after the call observing a stale value "
+            "(hif-backend#16).",
+            &o, _sem);
+    }
+
     if (dynamic_cast<Variable *>(dd) != nullptr) {
         (*_stream) << " = ";
     } else {
@@ -134,6 +160,37 @@ auto VerilogPrinter::visitBoolValue(BoolValue &o) -> int { return GuideVisitor::
 
 auto VerilogPrinter::visitBreak(Break &o) -> int { return GuideVisitor::visitBreak(o); }
 
+namespace
+{
+
+/// @brief Whether a Verilog part-select may be applied directly to @p value.
+/// @details Verilog-2001 allows a part-select on a net or variable
+/// reference - an identifier, a bit-select of one, or a slice of one - but
+/// not on an arbitrary expression.
+auto isPartSelectable(hif::Value *value) -> bool
+{
+    return dynamic_cast<hif::Identifier *>(value) != nullptr || dynamic_cast<hif::Member *>(value) != nullptr ||
+           dynamic_cast<hif::Slice *>(value) != nullptr || dynamic_cast<hif::FieldReference *>(value) != nullptr;
+}
+
+} // namespace
+
+auto VerilogPrinter::isTruncatedByAssignmentContext(hif::Cast &o, unsigned long long targetWidth) -> bool
+{
+    // Only the whole right-hand side qualifies. A cast nested inside a
+    // larger expression is not truncated by the assignment: the enclosing
+    // operator sees the untruncated operand first.
+    auto *assign = dynamic_cast<hif::Assign *>(o.getParent());
+    if (assign == nullptr || assign->getRightHandSide() != &o) {
+        return false;
+    }
+    Type *lhsType = hif::semantics::getSemanticType(assign->getLeftHandSide(), _sem);
+    if (lhsType == nullptr) {
+        return false;
+    }
+    return hif::semantics::typeGetSpanBitwidth(lhsType, _sem) == targetWidth;
+}
+
 auto VerilogPrinter::visitCast(Cast &o) -> int
 {
     // A Cast to a Bitvector/Bit/Signed/Unsigned narrower than the source
@@ -151,8 +208,37 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
     unsigned long long targetWidth = targetType ? hif::semantics::typeGetSpanBitwidth(targetType, _sem) : 0;
 
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth < sourceWidth) {
+        // A part-select applies to a net or a variable, not to an arbitrary
+        // expression: `(a << 2)[7:0]` is not legal Verilog-2001, and without
+        // the parentheses the brackets bind to the shift amount instead
+        // (hif-backend#18). Only emit the part-select when the operand is
+        // something it can legally apply to.
+        if (isPartSelectable(castedValue)) {
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "[" << (targetWidth - 1) << ":0]";
+            return 0;
+        }
+        // Otherwise, if this cast is the whole right-hand side of an
+        // assignment to a target of exactly the cast's width, the
+        // truncation is what Verilog already does on assignment - so
+        // emitting the operand alone is both legal and exact.
+        if (isTruncatedByAssignmentContext(o, targetWidth)) {
+            castedValue->acceptVisitor(*this);
+            return 0;
+        }
+        // Anything else - a narrowing cast of an expression somewhere the
+        // width is self-determined, such as inside a concatenation - cannot
+        // be expressed without introducing a temporary, which is a tree
+        // transformation rather than something this printer can do. Emit
+        // parenthesised so the operands at least group as intended, and say
+        // so rather than producing a silently wrong width.
+        messageWarning(
+            "Cannot truncate this expression to " + std::to_string(targetWidth) +
+                " bits without a temporary; emitted part-select is not valid Verilog (hif-backend#18).",
+            &o, _sem);
+        (*_stream) << "(";
         castedValue->acceptVisitor(*this);
-        (*_stream) << "[" << (targetWidth - 1) << ":0]";
+        (*_stream) << ")[" << (targetWidth - 1) << ":0]";
         return 0;
     }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
@@ -195,6 +281,30 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
 
     // Print the module header.
     (*_stream) << "module " << name;
+
+    // Template parameters go in an ANSI-style `#( ... )` clause, ahead of
+    // the port list. They used to be printed as body declarations, which
+    // put `parameter WIDTH = 4;` *after* the port list that referenced
+    // WIDTH - accepted by every tool tried, but not Verilog-2001, and
+    // trivially avoidable (hif-backend#20).
+    if (!view->templateParameters.empty()) {
+        (*_stream) << " #(\n";
+        _stream->indent();
+        for (std::size_t i = 0; i < view->templateParameters.size(); ++i) {
+            auto *templateParameter = dynamic_cast<hif::Declaration *>(view->templateParameters.at(i));
+            if (templateParameter == nullptr) {
+                continue;
+            }
+            (*_stream) << this->getDeclaration(templateParameter);
+            if (i < (view->templateParameters.size() - 1)) {
+                (*_stream) << ",";
+            }
+            (*_stream) << "\n";
+        }
+        _stream->unindent();
+        (*_stream) << ")";
+    }
+
     entity->acceptVisitor(*this);
     (*_stream) << "\n";
     _stream->indent();
@@ -206,17 +316,17 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // Keep track if the view has variables.
     bool has_variables = false;
 
-    // Print the list of template parameters.
-    this->printList(view->templateParameters, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
-
-    // Print the list of view declarations.
+    // Print the list of view declarations. Each of these tested
+    // view->templateParameters rather than the list it had just printed,
+    // so the trailing blank line was governed by whether the module had
+    // parameters. Now that parameters are printed in the header instead,
+    // that would have been not just misleading but wrong.
     this->printList(view->declarations, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
+    has_variables = has_variables || !view->declarations.empty();
 
     // Print the list of content declarations.
     this->printList(content->declarations, ";", true, true);
-    has_variables = has_variables || !view->templateParameters.empty();
+    has_variables = has_variables || !content->declarations.empty();
 
     // Print the list of state table declarations.
     for (auto stateTable : content->stateTables) {
@@ -790,29 +900,65 @@ auto VerilogPrinter::visitProcedure(Procedure &o) -> int
     // sub-expression - e.g. the logic a primitive gate instance or a
     // flattened combinational submodule instance lowers to. Verilog has
     // no user-declarable procedure construct, so nothing else reaches
-    // here today. Render as a self-contained combinational always block;
-    // each action prints itself normally - ProcedureCall actions (calls
-    // to other cone functions) already print nothing, since the callee is
-    // rendered independently wherever *it* is declared, and Verilog
-    // variables/signals don't need an explicit call to become visible to
-    // other logic.
-    auto *stateTable = o.getStateTable();
-    if (stateTable == nullptr) {
-        return 0;
-    }
-    (*_stream) << "always @(*) begin\n";
-    _stream->indent();
-    for (auto state : stateTable->states) {
-        state->acceptVisitor(*this);
-    }
-    _stream->unindent();
-    (*_stream) << "end\n";
+    // here today.
+    //
+    // A cone is *not* an independent process: the frontend inserts an
+    // explicit call to it into the body of every process that reads its
+    // target, and gives those processes a sensitivity list over the
+    // cone's transitive primary inputs precisely because the cone is
+    // re-evaluated inside the caller. Nothing is printed here; the body
+    // is expanded at each call site by visitProcedureCall.
+    //
+    // Emitting the cone as its own `always @(*)` block instead - as this
+    // printer used to - hoists it out of every caller, converting an
+    // intra-process dependency into an inter-process one that nothing
+    // orders. The caller stays sensitive to the primary inputs while
+    // reading a target some other process now writes, so it can evaluate
+    // a stale value: the regenerated Verilog parses and reparses cleanly
+    // but does not simulate like its source (hif-backend#16).
+    static_cast<void>(o);
     return 0;
 }
 
 auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisitor::visitParameter(o); }
 
-auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int { return hif::GuideVisitor::visitProcedureCall(o); }
+auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
+{
+    // Expand the callee's body here. See visitProcedure for why cones are
+    // inlined at their call sites rather than hoisted into a process of
+    // their own.
+    //
+    // The cone's target is a Variable, so visitAssign renders its
+    // assignments with blocking "=": statements printed after this call -
+    // including the reads of the target that motivated the call - observe
+    // the value just computed, which is exactly the HIF semantics of the
+    // call being replaced.
+    //
+    // Inlining a cone into each of its callers means a shared cone's
+    // target is written by more than one always block. That is not
+    // introduced here: the HIF already has several processes calling the
+    // one cone, and each write recomputes the same pure function of the
+    // same inputs, so every caller reads the value it just wrote
+    // regardless of how the blocks interleave.
+    auto *procedure = dynamic_cast<Procedure *>(hif::semantics::getDeclaration(&o, _sem));
+    if (procedure == nullptr) {
+        return hif::GuideVisitor::visitProcedureCall(o);
+    }
+
+    auto *stateTable = procedure->getStateTable();
+    if (stateTable == nullptr) {
+        return 0;
+    }
+
+    if (!_inliningCones.insert(procedure).second) {
+        messageError("Recursive cone procedure cannot be inlined", &o, _sem);
+    }
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+    _inliningCones.erase(procedure);
+    return 0;
+}
 
 auto VerilogPrinter::visitPointer(Pointer &o) -> int { return hif::GuideVisitor::visitPointer(o); }
 
@@ -876,17 +1022,33 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         (*_stream) << "end\n";
     } else {
         (*_stream) << "always";
-        if (!o.sensitivity.empty()) {
-            (*_stream) << " @( ";
-            this->printList(o.sensitivity, ",", false, false);
-            (*_stream) << " )";
-        } else if (!o.sensitivityPos.empty()) {
-            (*_stream) << " @( posedge ";
-            this->printList(o.sensitivityPos, ",", false, false);
-            (*_stream) << " )";
-        } else if (!o.sensitivityNeg.empty()) {
-            (*_stream) << " @( negedge ";
-            this->printList(o.sensitivityNeg, ",", false, false);
+
+        // Emit the union of the three lists, qualifying each signal
+        // individually.
+        //
+        // This used to be an if/else-if chain that printed whichever list
+        // was non-empty first, and put a single `posedge`/`negedge` ahead of
+        // a whole comma-separated list. Both halves lost sensitivity
+        // silently (hif-backend#21): `always @(posedge clk or negedge rst_n)`
+        // came back as `always @(posedge clk)`, turning an asynchronous
+        // reset into a synchronous one, and `always @(posedge clk or posedge
+        // rst)` came back as `always @(posedge clk, rst)`, leaving rst
+        // sensitive to both of its edges.
+        if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
+            bool isFirst = true;
+            auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
+                for (auto *signal : list) {
+                    (*_stream) << (isFirst ? " @( " : ", ");
+                    isFirst = false;
+                    if (!edge.empty()) {
+                        (*_stream) << edge << " ";
+                    }
+                    signal->acceptVisitor(*this);
+                }
+            };
+            printSensitivity(o.sensitivity, "");
+            printSensitivity(o.sensitivityPos, "posedge");
+            printSensitivity(o.sensitivityNeg, "negedge");
             (*_stream) << " )";
         }
         (*_stream) << " begin" << '\n';
@@ -1272,12 +1434,33 @@ std::string VerilogPrinter::getValue(hif::Value *value)
             ss << this->getValue(right_bound);
         }
     } else if (auto expression = dynamic_cast<hif::Expression *>(value)) {
-        // Visit the expression.
-        expression->acceptVisitor(*this);
+        // Capture the expression rather than letting it write straight to
+        // _stream. Streaming it here emitted the expression at whatever
+        // point the enclosing construct had reached, ahead of the string
+        // being assembled - so a slice with expression bounds came out as
+        // "DEPTH * WIDTH - 1(DEPTH - 1) * WIDTHchain[:]", every piece
+        // present, in the wrong order, with empty brackets (hif-backend#18).
+        ss << this->renderToString(expression);
     } else if (auto cast = dynamic_cast<hif::Cast *>(value)) {
         ss << this->getValue(cast->getValue());
     }
     return ss.str();
+}
+
+std::string VerilogPrinter::renderToString(hif::Object *object)
+{
+    if (object == nullptr) {
+        return {};
+    }
+    std::stringbuf buffer;
+    hif::backends::IndentedStream captured(&buffer);
+
+    hif::backends::IndentedStream *previous = _stream;
+    _stream                                 = &captured;
+    object->acceptVisitor(*this);
+    _stream = previous;
+
+    return buffer.str();
 }
 
 std::string VerilogPrinter::getPortAssign(hif::PortAssign *port_assign)

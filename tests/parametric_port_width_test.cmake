@@ -62,4 +62,21 @@ foreach(expected
     endif()
 endforeach()
 
+# hif-backend#20: the parameter must be declared before the port list that
+# references it. It used to be emitted as a body declaration, placing
+# `parameter WIDTH = 8;` after the `[WIDTH - 1:0]` port that uses it -
+# tolerated by every tool tried, but not Verilog-2001.
+string(FIND "${verilog_content}" "parameter WIDTH = 8" parameter_at)
+string(FIND "${verilog_content}" "[WIDTH - 1:0]" use_at)
+if(parameter_at GREATER use_at)
+    message(FATAL_ERROR
+        "Parameter WIDTH is declared after the port list that uses it (hif-backend#20).\nFull content:\n${verilog_content}")
+endif()
+
+# And it should be the ANSI form the source used, not a body declaration.
+if(NOT verilog_content MATCHES "module parametric_port_width[ \t\r\n]*#\\(")
+    message(FATAL_ERROR
+        "Parameter is not emitted as an ANSI-style #( ... ) clause (hif-backend#20).\nFull content:\n${verilog_content}")
+endif()
+
 message(STATUS "parametric_port_width test passed.")
