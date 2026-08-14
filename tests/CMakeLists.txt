@@ -209,6 +209,24 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/assign_delay_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/assign_delay_test.cmake
         )
+        # Regression (hif-backend#30): verilog2hif folds a constant continuous
+        # assignment into the driven port's initial value, and that value was
+        # printed nowhere - Verilog-2001 has no place for an initializer in an
+        # ANSI port list - so the output regenerated with no driver at all.
+        # Needs a simulator: the broken output compiles and reparses, and the
+        # only symptom is that the output reads x.
+        add_test(
+            NAME port_initial_value
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/port_initial_value.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/port_initial_value_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_value_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_value_test.cmake
+        )
     else()
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
     endif()

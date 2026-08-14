@@ -134,10 +134,21 @@ private:
     /// Two constructs qualify, and they are the same rule rather than two:
     ///   - a net bound to a module instance's out/inout port (hif-backend#26);
     ///   - the target of a continuous `assign`, which is how a view's
-    ///     GlobalAction is emitted (hif-backend#32).
+    ///     GlobalAction is emitted (hif-backend#32);
+    ///   - an output port whose initial value is re-emitted as a continuous
+    ///     assign because nothing else drives it (hif-backend#30).
     /// #26 saw only the first because a GlobalAction was not printed at all,
     /// so a continuous assign was not yet something hif2verilog could produce.
     std::set<hif::DataDeclaration *> _continuouslyDrivenDeclarations;
+
+    /// @brief Output ports whose initial value has to be re-emitted as a
+    /// continuous assignment, in declaration order.
+    /// @details The frontend folds a constant continuous assignment into the
+    /// driven port's value, and a port declaration cannot carry an initializer
+    /// in a Verilog-2001 ANSI port list, so the assignment has to be written
+    /// back out as one (hif-backend#30). Only ports that nothing else drives
+    /// qualify - see collectContinuouslyDrivenDeclarations.
+    std::list<hif::Port *> _valueDrivenPorts;
 
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
@@ -154,9 +165,14 @@ private:
     /// @brief The timescale of the design unit currently being printed.
     Timescale _timescale;
 
-    /// @brief Fills _continuouslyDrivenDeclarations for @p contents.
-    /// @param contents The contents of the view being printed.
-    void collectContinuouslyDrivenDeclarations(hif::Contents *contents);
+    /// @brief Fills _continuouslyDrivenDeclarations and _valueDrivenPorts for
+    /// @p view.
+    /// @details Takes the view rather than its contents because the last of
+    /// the three continuous drivers is a property of a *port*, and ports live
+    /// on the entity while everything that could drive them lives in the
+    /// contents. Deciding one needs both.
+    /// @param view The view being printed.
+    void collectContinuouslyDrivenDeclarations(hif::View *view);
 
     /// @brief Resolves _timescale for the design unit rooted at @p view.
     /// @details Left invalid when the design unit carries no delay, so a
