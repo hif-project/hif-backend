@@ -12,6 +12,11 @@ find_program(
     NAMES verilog2hif
     HINTS ${CMAKE_SOURCE_DIR}/../hif-frontend/build
 )
+find_program(
+    VHDL2HIF_EXECUTABLE
+    NAMES vhdl2hif
+    HINTS ${CMAKE_SOURCE_DIR}/../hif-frontend/build
+)
 
 if(VERILOG2HIF_EXECUTABLE)
     add_test(
@@ -206,6 +211,28 @@ if(VERILOG2HIF_EXECUTABLE)
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")
+endif()
+
+# The VHDL backend's own output. Needs vhdl2hif rather than verilog2hif, so it
+# is gated separately - a checkout with one frontend tool but not the other is
+# not a shape worth reasoning about, but the gate should still name what it
+# wants.
+if(VHDL2HIF_EXECUTABLE)
+    # Regression (hif-backend#27): hif2vhdl left the design unit it emitted
+    # last as a zero-byte file while exiting 0 - which, for a single-unit
+    # design, was the whole output.
+    add_test(
+        NAME vhdl_output_flushed
+        COMMAND ${CMAKE_COMMAND}
+            -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+            -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+            -DSINGLE_FIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_single_unit.vhd
+            -DHIERARCHY_FIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_hierarchy.vhd
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vhdl_output_flushed_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
+    )
+else()
+    message(STATUS "vhdl2hif not found; skipping vhdl_output_flushed test.")
 endif()
 
 # Guards the invariant the hif-backend#16 fix rests on: a cone target must be
