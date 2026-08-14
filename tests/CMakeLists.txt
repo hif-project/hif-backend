@@ -245,6 +245,26 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/system_task_calls_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/system_task_calls_test.cmake
         )
+        # Regression (hif-backend#40): a process with no sensitivity list was
+        # emitted as a bare `always begin ... end`, a zero-delay infinite loop
+        # that Icarus rejects at elaboration - so every design containing an
+        # `initial` block regenerated into something that does not compile,
+        # silently. Needs a simulator twice over: the failure is an
+        # elaboration error rather than a parse error, and the fix must be
+        # shown not to reorder what the initial block computes.
+        add_test(
+            NAME initial_process
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/initial_process.v
+                -DWAIT_FIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/initial_process_wait.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/initial_process_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/initial_process_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/initial_process_test.cmake
+        )
     else()
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
     endif()

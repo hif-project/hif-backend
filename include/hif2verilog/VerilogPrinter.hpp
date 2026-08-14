@@ -192,6 +192,14 @@ private:
     /// @param names Receives the target names.
     void collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names);
 
+    /// @brief Whether a process can be woken up again after it finishes.
+    /// @details A process is re-triggerable if it has a sensitivity list, or if
+    /// it suspends on a `wait`. One with neither runs exactly once, which is an
+    /// `initial` block rather than an `always` one (hif-backend#40).
+    /// @param stateTable The process to classify.
+    /// @return True if the process can run more than once.
+    static auto isRetriggerable(hif::StateTable &stateTable) -> bool;
+
     /// @brief Renders an assignment delay as a Verilog delay expression.
     /// @param delay The HIF delay value.
     /// @return The text to print after '#', in _timescale units.
