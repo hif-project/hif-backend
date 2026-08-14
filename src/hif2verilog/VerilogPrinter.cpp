@@ -686,7 +686,8 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
 namespace
 {
 
-/// @brief Recovers the Verilog spelling of a call to a system function.
+/// @brief Recovers the Verilog spelling of a call to a system function or
+/// system task.
 /// @details Verilog spells these with a leading '$'. verilog2hif renames
 /// "$name" to "_system_name" (FixDescription_1::_fixSystemTaskCalls) and
 /// standardization then prefixes standard-library symbols with
@@ -694,11 +695,19 @@ namespace
 /// "hif_verilog__system_clog2". Printing that name verbatim is not valid
 /// Verilog - there is no such callable function, and nothing declares it on
 /// the way back in, so the round trip breaks (hif-backend#19).
+///
+/// The renaming is the same for tasks as for functions - one frontend pass
+/// does both - so recovering the name is too. Templated on the call type
+/// rather than duplicated: a FunctionCall and a ProcedureCall differ in how
+/// they are *printed* (an expression versus a statement), not in how their
+/// name got mangled. hif-backend#29 was the task half going unprinted
+/// entirely.
 /// @param call The call to inspect.
 /// @param sem The semantics used to resolve @p call's declaration.
-/// @return The system function name without its '$', or an empty string if
-/// @p call is not a call to a Verilog system function.
-auto getSystemFunctionName(hif::FunctionCall &call, hif::semantics::ILanguageSemantics *sem) -> std::string
+/// @return The system call's name without its '$', or an empty string if
+/// @p call is not a call to a Verilog system function or task.
+template <typename TCall>
+auto getSystemCallName(TCall &call, hif::semantics::ILanguageSemantics *sem) -> std::string
 {
     const std::string standardPrefix("hif_" + sem->getName() + "_");
     const std::string systemPrefix("_system_");
@@ -711,12 +720,12 @@ auto getSystemFunctionName(hif::FunctionCall &call, hif::semantics::ILanguageSem
         return "";
     }
 
-    // "_system_" is a legal identifier prefix in Verilog, so a user function
+    // "_system_" is a legal identifier prefix in Verilog, so a user subprogram
     // could carry this name of its own accord. Only the standard library's
-    // ones are the renamed '$' functions; anything a design declares itself
-    // keeps the name it has. A call whose declaration cannot be resolved is
-    // treated as a system function: the name says it came from '$', and
-    // printing it unchanged is known to be wrong.
+    // ones are the renamed '$' ones; anything a design declares itself keeps
+    // the name it has. A call whose declaration cannot be resolved is treated
+    // as a system call: the name says it came from '$', and printing it
+    // unchanged is known to be wrong.
     auto *decl = hif::semantics::getDeclaration(&call, sem);
     if (decl != nullptr && !hif::declarationIsPartOfStandard(decl)) {
         return "";
@@ -762,7 +771,7 @@ auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
         return 0;
     }
 
-    const std::string systemName(getSystemFunctionName(o, _sem));
+    const std::string systemName(getSystemCallName(o, _sem));
     if (!systemName.empty()) {
         (*_stream) << "$" << systemName;
         // Verilog's argument-less system functions ($time, $realtime, ...)
@@ -1125,6 +1134,45 @@ auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisi
 
 auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
 {
+    // A Verilog system task ($display, $monitor, $finish, ...). Handled before
+    // anything else below, and returning immediately, so that the
+    // cone-inlining logic and the hif-backend#16 contract it carries are left
+    // exactly as they were: a system task is not a cone, has no body to
+    // inline, and must not participate in any of that reasoning.
+    //
+    // It used to fall through to the "no StateTable" early return further
+    // down. hif-core declares these as subprograms with no return type and no
+    // body (ILanguageSemantics::_addMultiparamFunction, called with a null
+    // return type), so the call resolved to a Procedure whose getStateTable()
+    // is null, and "return 0" dropped it without a word. Verified by
+    // instrumenting this function: a $display call reports
+    // PROCEDURE_NO_STATETABLE with declarationIsPartOfStandard true
+    // (hif-backend#29).
+    //
+    // Dropping it regenerates a design that compiles and simulates and prints
+    // nothing, which is how a round trip silently discards a testbench's or an
+    // instrumented model's entire observable output.
+    const std::string systemName(getSystemCallName(o, _sem));
+    if (!systemName.empty()) {
+        (*_stream) << "$" << systemName;
+        // Argument-less system tasks are spelled without parentheses, as the
+        // argument-less system *functions* are in visitFunctionCall: "$finish"
+        // rather than "$finish()".
+        if (!o.parameterAssigns.empty()) {
+            (*_stream) << "(";
+            for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
+                o.parameterAssigns.at(i)->acceptVisitor(*this);
+                if (i < o.parameterAssigns.size() - 1) {
+                    (*_stream) << ", ";
+                }
+            }
+            (*_stream) << ")";
+        }
+        // A task call is a statement, not an expression: it terminates itself.
+        (*_stream) << ";\n";
+        return 0;
+    }
+
     // Expand the callee's body here. See visitProcedure for why cones are
     // inlined at their call sites rather than hoisted into a process of
     // their own.
@@ -1332,7 +1380,37 @@ auto VerilogPrinter::visitSwitch(Switch &o) -> int
     return 0;
 }
 
-auto VerilogPrinter::visitStringValue(StringValue &o) -> int { return GuideVisitor::visitStringValue(o); }
+auto VerilogPrinter::visitStringValue(StringValue &o) -> int
+{
+    // String literals were printed nowhere at all: this delegated to
+    // GuideVisitor, which visits children and writes nothing.
+    //
+    // This is fixed here rather than filed separately because restoring
+    // $display without it does not actually restore anything (hif-backend#29).
+    // A "$display(, a)" - which is what emitting the call alone produces - has
+    // lost the format string that carries the message, so the regenerated
+    // design still prints nothing useful, and verilog2hif rejects it on the
+    // way back in (exit 1). A fix that re-emits system task calls has to own
+    // how their arguments are written, and the first argument of the task this
+    // issue is about is always a string.
+    //
+    // A "plain" StringValue is an opaque passthrough - text that is already
+    // target-language source and must not be quoted at all.
+    if (o.isPlain()) {
+        (*_stream) << o.getValue();
+        return 0;
+    }
+
+    // Emitted verbatim between quotes, NOT re-escaped. verilog2hif stores the
+    // literal's text in source form, with its escape sequences left as they
+    // were written: `\"` is stored as backslash-quote and `\\` as
+    // backslash-backslash, as the XML shows. Escaping again would double every
+    // backslash and turn `"a\"b"` into `"a\\\"b"`, which says something
+    // different. Writing the stored text back out is what makes the literal
+    // round trip byte for byte.
+    (*_stream) << "\"" << o.getValue() << "\"";
+    return 0;
+}
 
 auto VerilogPrinter::visitTime(Time &o) -> int { return hif::GuideVisitor::visitTime(o); }
 
