@@ -330,11 +330,12 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     auto content = view->getContents();
 
     // Which of this module's nets and outputs are driven continuously - by a
-    // child instance's output port, or by a global action printed below as a
-    // continuous "assign" - has to be known before anything is printed: it
-    // decides wire-vs-reg for both the port list and the body declarations
-    // (hif-backend#26, #32).
-    this->collectContinuouslyDrivenDeclarations(content);
+    // child instance's output port, by a global action printed below as a
+    // continuous "assign", or by an output port's own initial value written
+    // back out as one - has to be known before anything is printed: it decides
+    // wire-vs-reg for both the port list and the body declarations
+    // (hif-backend#26, #32, #30).
+    this->collectContinuouslyDrivenDeclarations(view);
 
     // Delays are emitted as plain numbers, so the unit they count in has to be
     // declared before the module that uses them (hif-backend#24). Only designs
@@ -433,6 +434,22 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
         if (!content->getGlobalAction()->actions.empty()) {
             (*_stream) << "\n";
         }
+    }
+
+    // An output port's initial value, written back out as the continuous
+    // assignment the frontend folded into it. verilog2hif does that folding
+    // for any constant right-hand side, and the value was then printed
+    // nowhere - Verilog-2001 has no place for an initializer in an ANSI port
+    // list - so "assign c = 32'd7;" regenerated as an empty module with an
+    // undriven output (hif-backend#30). collectContinuouslyDrivenDeclarations
+    // has already established that nothing else drives these.
+    for (auto *port : _valueDrivenPorts) {
+        (*_stream) << "assign " << port->getName() << " = ";
+        port->getValue()->acceptVisitor(*this);
+        (*_stream) << ";\n";
+    }
+    if (!_valueDrivenPorts.empty()) {
+        (*_stream) << "\n";
     }
 
     for (auto instance : content->instances) {
@@ -1691,9 +1708,14 @@ auto VerilogPrinter::renderDelay(hif::Value *delay) -> std::string
     return "(" + this->renderToString(delay) + ")";
 }
 
-void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::Contents *contents)
+void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::View *view)
 {
     _continuouslyDrivenDeclarations.clear();
+    _valueDrivenPorts.clear();
+    if (view == nullptr) {
+        return;
+    }
+    hif::Contents *contents = view->getContents();
     if (contents == nullptr) {
         return;
     }
@@ -1767,6 +1789,60 @@ void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::Contents *conten
                 _continuouslyDrivenDeclarations.insert(decl);
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Driver 3: an output port's own initial value (hif-backend#30).
+    // ------------------------------------------------------------------
+    // verilog2hif folds a constant continuous assignment into the value of the
+    // port it drives, and Verilog-2001 does not accept an initializer inside
+    // an ANSI port list, so the only way that assignment survives is to be
+    // written back out as the continuous assignment it came from.
+    //
+    // Strictly gated on the port having no driver of its own, and that gate is
+    // load-bearing rather than defensive: vhdl2hif gives EVERY out port a
+    // value - the 'U' default - whether the source wrote one or not. Without
+    // this check every VHDL output would get a second continuous driver on top
+    // of the one it already has, which resolves to x. The check has to cover
+    // procedural drivers too, not just the two continuous kinds above: a port
+    // a process writes is a reg, and a continuous assign cannot drive a reg.
+    if (view->getEntity() == nullptr) {
+        return;
+    }
+
+    std::set<hif::DataDeclaration *> assignedAnywhere;
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, contents, assignQuery);
+    for (auto *assign : assigns) {
+        auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+        if (dynamic_cast<hif::Identifier *>(target) == nullptr) {
+            continue;
+        }
+        auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(target, _sem));
+        if (decl != nullptr) {
+            assignedAnywhere.insert(decl);
+        }
+    }
+
+    for (auto *port : view->getEntity()->ports) {
+        // Outputs only. An inout with a value must not be permanently driven:
+        // that would defeat the direction it was declared with.
+        if (port->getDirection() != PortDirection::dir_out || port->getValue() == nullptr) {
+            continue;
+        }
+        if (_continuouslyDrivenDeclarations.count(port) != 0 || assignedAnywhere.count(port) != 0) {
+            continue;
+        }
+        // A value with no Verilog literal renders empty - 'U' and 'Z' from
+        // VHDL reach here that way. Emitting "assign q = ;" would be worse
+        // than emitting nothing, and an undriven net already reads x, which is
+        // what 'U' meant.
+        if (this->renderToString(port->getValue()).empty()) {
+            continue;
+        }
+        _valueDrivenPorts.push_back(port);
+        _continuouslyDrivenDeclarations.insert(port);
     }
 }
 
