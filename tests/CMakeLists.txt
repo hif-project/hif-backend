@@ -18,6 +18,11 @@ find_program(
     HINTS ${CMAKE_SOURCE_DIR}/../hif-frontend/build
 )
 
+# Looked up here rather than beside the first test that needs one, because
+# both the Verilog-sourced and the VHDL-sourced groups below gate on these.
+find_program(IVERILOG_EXECUTABLE NAMES iverilog)
+find_program(VVP_EXECUTABLE NAMES vvp)
+
 if(VERILOG2HIF_EXECUTABLE)
     add_test(
         NAME unresolved_parameter
@@ -139,8 +144,6 @@ if(VERILOG2HIF_EXECUTABLE)
     # always blocks, leaving the processes that read their targets not
     # sensitive to them. This one needs a simulator: the broken output is
     # syntactically perfect, so no text or reparse check can see it.
-    find_program(IVERILOG_EXECUTABLE NAMES iverilog)
-    find_program(VVP_EXECUTABLE NAMES vvp)
     if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
         add_test(
             NAME sensitivity_equivalence
@@ -231,8 +234,32 @@ if(VHDL2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vhdl_output_flushed_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
+
+    # Regression (hif-backend#32): a view's GlobalAction was never printed, so
+    # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
+    # produced a module with the right ports and an empty body. Needs both
+    # frontends (vhdl2hif to produce the input, verilog2hif to check the output
+    # still reparses) and a simulator: the broken output compiles and reparses
+    # perfectly, so only running it shows that it drives nothing.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME global_action_emission
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/global_action_emission.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/global_action_emission_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/global_action_emission_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/global_action_emission_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping global_action_emission test.")
+    endif()
 else()
-    message(STATUS "vhdl2hif not found; skipping vhdl_output_flushed test.")
+    message(STATUS "vhdl2hif not found; skipping vhdl_output_flushed/global_action_emission tests.")
 endif()
 
 # Guards the invariant the hif-backend#16 fix rests on: a cone target must be

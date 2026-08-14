@@ -124,12 +124,20 @@ private:
     /// malformed input looping the printer forever - it is not expected
     /// to trip in practice.
     std::set<hif::Procedure *> _inliningCones;
-    /// @brief Declarations bound to an instance's output or inout port, in the
-    /// design unit currently being printed.
-    /// @details Verilog requires these to be nets: a `reg` cannot be driven by
-    /// a module instance's output, so declaring one as `reg` produces Verilog
-    /// no simulator accepts (hif-backend#26). Repopulated per design unit.
-    std::set<hif::DataDeclaration *> _instanceDrivenDeclarations;
+    /// @brief Declarations that a *continuous* driver writes, in the design
+    /// unit currently being printed.
+    /// @details Verilog requires these to be nets. A `reg` is written by
+    /// procedural statements only, so anything that drives continuously needs
+    /// a net on the other end, and declaring one as `reg` produces Verilog no
+    /// simulator accepts. Repopulated per design unit.
+    ///
+    /// Two constructs qualify, and they are the same rule rather than two:
+    ///   - a net bound to a module instance's out/inout port (hif-backend#26);
+    ///   - the target of a continuous `assign`, which is how a view's
+    ///     GlobalAction is emitted (hif-backend#32).
+    /// #26 saw only the first because a GlobalAction was not printed at all,
+    /// so a continuous assign was not yet something hif2verilog could produce.
+    std::set<hif::DataDeclaration *> _continuouslyDrivenDeclarations;
 
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
@@ -146,9 +154,9 @@ private:
     /// @brief The timescale of the design unit currently being printed.
     Timescale _timescale;
 
-    /// @brief Fills _instanceDrivenDeclarations for @p contents.
+    /// @brief Fills _continuouslyDrivenDeclarations for @p contents.
     /// @param contents The contents of the view being printed.
-    void collectInstanceDrivenDeclarations(hif::Contents *contents);
+    void collectContinuouslyDrivenDeclarations(hif::Contents *contents);
 
     /// @brief Resolves _timescale for the design unit rooted at @p view.
     /// @details Left invalid when the design unit carries no delay, so a
@@ -174,10 +182,11 @@ private:
     auto renderDelay(hif::Value *delay) -> std::string;
 
     /// @brief Whether @p declaration must be emitted as a net rather than a
-    /// variable, because an instance's output drives it.
+    /// variable, because something drives it continuously.
     /// @param declaration The declaration being printed.
-    /// @return True if it is bound to an instance's out or inout port.
-    auto isInstanceDriven(hif::Declaration *declaration) -> bool;
+    /// @return True if it is bound to an instance's out/inout port, or is the
+    /// target of a global action emitted as a continuous assign.
+    auto isContinuouslyDriven(hif::Declaration *declaration) -> bool;
 
     std::string getDeclaration(hif::Declaration *declaration);
 
