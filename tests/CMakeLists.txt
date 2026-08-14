@@ -185,8 +185,24 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/preserved_hierarchy_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/preserved_hierarchy_test.cmake
         )
+        # Regression (hif-backend#24): the delay on a delayed assignment was
+        # dropped, so the regenerated design responded immediately where its
+        # source waited. Invisible without simulating with timing: the output
+        # parsed and reparsed cleanly either way.
+        add_test(
+            NAME assign_delay
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/assign_delay.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/assign_delay_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/assign_delay_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/assign_delay_test.cmake
+        )
     else()
-        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy tests.")
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")
