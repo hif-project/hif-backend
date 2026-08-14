@@ -1269,6 +1269,21 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         _stream->unindent();
         (*_stream) << "\n";
         (*_stream) << "end\n";
+    } else if (!isRetriggerable(o)) {
+        // A process with nothing to wake it up runs exactly once, at time
+        // zero. `always` would make it a zero-delay infinite loop, which no
+        // source ever meant and which Icarus rejects at elaboration
+        // (hif-backend#40). Verilog spells "run once at startup" `initial`.
+        (*_stream) << "initial begin" << '\n';
+        _stream->indent();
+
+        for (auto state : o.states) {
+            state->acceptVisitor(*this);
+        }
+
+        _stream->unindent();
+        (*_stream) << "\n";
+        (*_stream) << "end\n";
     } else {
         (*_stream) << "always";
 
@@ -1707,6 +1722,24 @@ void VerilogPrinter::resolveTimescale(hif::View *view)
     }
 
     _timescale.valid = true;
+}
+
+auto VerilogPrinter::isRetriggerable(hif::StateTable &stateTable) -> bool
+{
+    if (!stateTable.sensitivity.empty() || !stateTable.sensitivityPos.empty() ||
+        !stateTable.sensitivityNeg.empty()) {
+        return true;
+    }
+
+    // A VHDL process may carry no sensitivity list and suspend on an explicit
+    // `wait` instead. That process does run repeatedly, so it stays an
+    // `always`: the sensitivity lives on the Wait rather than on the
+    // StateTable, and reading only the StateTable's own lists would silently
+    // demote it to a run-once `initial`.
+    std::list<hif::Wait *> waits;
+    hif::HifTypedQuery<hif::Wait> waitQuery;
+    hif::search(waits, &stateTable, waitQuery);
+    return !waits.empty();
 }
 
 void VerilogPrinter::collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names)
