@@ -408,10 +408,10 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
 
     bool has_functions = false;
 
-    has_functions |= this->printFunctions(view->declarations);
-    has_functions |= this->printFunctions(content->declarations);
+    has_functions |= this->printSubprograms(view->declarations);
+    has_functions |= this->printSubprograms(content->declarations);
     for (auto stateTable : content->stateTables) {
-        has_functions |= this->printFunctions(stateTable->declarations);
+        has_functions |= this->printSubprograms(stateTable->declarations);
     }
 
     if (has_functions) {
@@ -1122,13 +1122,24 @@ auto VerilogPrinter::visitParameterAssign(ParameterAssign &o) -> int
 
 auto VerilogPrinter::visitProcedure(Procedure &o) -> int
 {
-    // Procedures reaching this printer are frontend-synthesized "cone
-    // functions" (hif-frontend's generateConeFunctions/fixLogicCones,
-    // FixDescription_3.cpp) wrapping a shared combinational
-    // sub-expression - e.g. the logic a primitive gate instance or a
-    // flattened combinational submodule instance lowers to. Verilog has
-    // no user-declarable procedure construct, so nothing else reaches
-    // here today.
+    // A user-written Verilog task. It is a Procedure with a StateTable, just
+    // as a cone is, and it used to take the cone path below: inlined at its
+    // call site, where the hif-backend#16 assert then fired because a task
+    // assigns to the signals and ports it was written to drive rather than to
+    // the "_sig_var" Variables a cone uses. The tool exited 1 and left a
+    // zero-byte file, reporting a cone invariant about a design containing no
+    // cone (hif-backend#38).
+    //
+    // Verilog does have a user-declarable procedure construct after all - a
+    // task - so a task is emitted as one, and called rather than expanded.
+    if (!isConeProcedure(&o)) {
+        return this->printTask(o);
+    }
+
+    // Cones are frontend-synthesized "cone functions" (hif-frontend's
+    // generateConeFunctions/fixLogicCones, FixDescription_3.cpp) wrapping a
+    // shared combinational sub-expression - e.g. the logic a primitive gate
+    // instance or a flattened combinational submodule instance lowers to.
     //
     // A cone is *not* an independent process: the frontend inserts an
     // explicit call to it into the body of every process that reads its
@@ -1214,6 +1225,27 @@ auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
 
     auto *stateTable = procedure->getStateTable();
     if (stateTable == nullptr) {
+        return 0;
+    }
+
+    // A user-written task is called, not expanded. Inlining one hit the
+    // hif-backend#16 assert - a task assigns to the signals and ports it was
+    // written to drive, not to a cone's "_sig_var" Variable - and aborted with
+    // a zero-byte output file (hif-backend#38). The cone contract below is
+    // untouched: this returns before reaching it.
+    if (!isConeProcedure(procedure)) {
+        (*_stream) << o.getName();
+        if (!o.parameterAssigns.empty()) {
+            (*_stream) << "(";
+            for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
+                o.parameterAssigns.at(i)->acceptVisitor(*this);
+                if (i < o.parameterAssigns.size() - 1) {
+                    (*_stream) << ", ";
+                }
+            }
+            (*_stream) << ")";
+        }
+        (*_stream) << ";\n";
         return 0;
     }
 
@@ -1740,6 +1772,69 @@ void VerilogPrinter::resolveTimescale(hif::View *view)
     }
 
     _timescale.valid = true;
+}
+
+auto VerilogPrinter::isConeProcedure(hif::Procedure *procedure) -> bool
+{
+    if (procedure == nullptr) {
+        return false;
+    }
+    // hif-frontend names every cone it synthesizes from a reserved stem -
+    // getFreshName("hif_cone_" + the driven declaration's name) - and gives the
+    // cone's StateTable the literal name "hif_cone" (generateConeFunctions,
+    // FixDescription_3.cpp). A user-written task keeps the name the source gave
+    // it.
+    //
+    // The distinction cannot be drawn from shape instead. A cone takes no
+    // parameters, but so does a task declared without arguments, and both are a
+    // Procedure carrying a StateTable of states. The name is the only thing
+    // that records which of the two the frontend meant, and it is reserved
+    // rather than incidental.
+    static const std::string conePrefix("hif_cone_");
+    const std::string name(procedure->getName());
+    return name.rfind(conePrefix, 0) == 0;
+}
+
+auto VerilogPrinter::printTask(hif::Procedure &o) -> int
+{
+    auto *stateTable = o.getStateTable();
+    if (stateTable == nullptr) {
+        // Nothing to declare. A bodiless procedure that is not a system task
+        // reaches here; visitProcedureCall drops its calls the same way.
+        return 0;
+    }
+
+    (*_stream) << "task " << o.getName() << ";\n";
+    _stream->indent();
+
+    // A task's arguments are declared inside its body in Verilog, as a
+    // function's are, and carry their own direction.
+    bool hasDeclarations = false;
+    for (auto parameter : o.parameters) {
+        (*_stream) << this->getDeclaration(parameter) << ";\n";
+        hasDeclarations = true;
+    }
+    for (auto declaration : stateTable->declarations) {
+        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        hasDeclarations = true;
+    }
+    if (hasDeclarations) {
+        (*_stream) << "\n";
+    }
+
+    (*_stream) << "begin\n";
+    _stream->indent();
+
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+
+    _stream->unindent();
+    (*_stream) << "end\n";
+    _stream->unindent();
+    (*_stream) << "endtask\n";
+
+    return 0;
 }
 
 auto VerilogPrinter::isUnknownLiteral(const std::string &literal) -> bool
@@ -2338,12 +2433,13 @@ void VerilogPrinter::printList(
             } else {
                 continue;
             }
-        } else if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
-            // Cone-function procedures (see visitProcedure) print
-            // themselves as complete, self-terminated always-blocks -
-            // skip the shared separator/newline logic below, which
-            // assumes a single-line, separator-terminated item.
-            procedure->acceptVisitor(*this);
+        } else if (dynamic_cast<hif::Procedure *>(list.at(i))) {
+            // Skip procedures for the same reason as functions above: they are
+            // printed by printSubprograms, in the section after the variable
+            // declarations. Visiting one here used to be harmless because
+            // visitProcedure printed nothing at all - a cone's body belongs at
+            // its call sites - but a user-written task does print, and printing
+            // it here as well declared it twice (hif-backend#38).
             continue;
         }
         if (i < (list.size() - 1)) {
@@ -2366,14 +2462,26 @@ void VerilogPrinter::printList(
     }
 }
 
-bool VerilogPrinter::printFunctions(const hif::BList<hif::Object> &list)
+bool VerilogPrinter::printSubprograms(const hif::BList<hif::Object> &list)
 {
-    bool has_functions = false;
+    bool printed = false;
     for (std::size_t i = 0; i < list.size(); ++i) {
         if (auto function = dynamic_cast<hif::Function *>(list.at(i))) {
             function->acceptVisitor(*this);
-            has_functions = true;
+            printed = true;
+            continue;
+        }
+        // Procedures too, since a user-written task is one and has to be
+        // declared before it can be called (hif-backend#38). A cone is a
+        // Procedure as well, but visitProcedure prints nothing for it: its body
+        // belongs at its call sites, not here.
+        if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
+            if (isConeProcedure(procedure)) {
+                continue;
+            }
+            procedure->acceptVisitor(*this);
+            printed = true;
         }
     }
-    return has_functions;
+    return printed;
 }

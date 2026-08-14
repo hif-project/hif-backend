@@ -265,6 +265,26 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/initial_process_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/initial_process_test.cmake
         )
+        # Regression (hif-backend#38): a user-defined Verilog task was inlined
+        # as if it were a frontend-synthesized logic cone, which tripped the
+        # hif-backend#16 assert and aborted with a zero-byte output file - so a
+        # design containing an ordinary task could not be regenerated at all.
+        # The fixture carries a task and a gate primitive's cone together,
+        # because the fix is a distinction between the two rather than a change
+        # to either. Needs a simulator: a task emitted with the wrong
+        # assignment kind compiles and reads stale values.
+        add_test(
+            NAME user_task
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_task.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_task_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/user_task_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/user_task_test.cmake
+        )
     else()
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
     endif()
