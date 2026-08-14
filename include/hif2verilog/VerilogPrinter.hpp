@@ -131,9 +131,47 @@ private:
     /// no simulator accepts (hif-backend#26). Repopulated per design unit.
     std::set<hif::DataDeclaration *> _instanceDrivenDeclarations;
 
+    /// @brief The `timescale a file's `#N` delays are expressed in.
+    /// @details Verilog delays are plain numbers scaled by the enclosing
+    /// file's `timescale, so a delay cannot be emitted without also
+    /// establishing the unit it counts in (hif-backend#24).
+    struct Timescale {
+        double unitValue{1.0};                                          ///< 1, 10 or 100.
+        hif::TimeValue::TimeUnit unit{hif::TimeValue::time_ns};         ///< The unit itself.
+        double precisionValue{1.0};                                     ///< 1, 10 or 100.
+        hif::TimeValue::TimeUnit precision{hif::TimeValue::time_ns};    ///< The unit itself.
+        bool valid{false};                                              ///< False when nothing needs one.
+    };
+
+    /// @brief The timescale of the design unit currently being printed.
+    Timescale _timescale;
+
     /// @brief Fills _instanceDrivenDeclarations for @p contents.
     /// @param contents The contents of the view being printed.
     void collectInstanceDrivenDeclarations(hif::Contents *contents);
+
+    /// @brief Resolves _timescale for the design unit rooted at @p view.
+    /// @details Left invalid when the design unit carries no delay, so a
+    /// design without delays regenerates exactly as before.
+    /// @param view The view being printed.
+    void resolveTimescale(hif::View *view);
+
+    /// @brief Prints the `timescale directive for _timescale, if it is valid.
+    void printTimescaleDirective();
+
+    /// @brief Names of the targets of delayed assignments reachable from a
+    /// process, including through the cone procedures it calls.
+    /// @details A delayed assignment schedules its target for later, so the
+    /// process has to be re-triggered when that target actually changes or the
+    /// reads that follow keep the pre-delay value forever (hif-backend#24).
+    /// @param stateTable The process to scan.
+    /// @param names Receives the target names.
+    void collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names);
+
+    /// @brief Renders an assignment delay as a Verilog delay expression.
+    /// @param delay The HIF delay value.
+    /// @return The text to print after '#', in _timescale units.
+    auto renderDelay(hif::Value *delay) -> std::string;
 
     /// @brief Whether @p declaration must be emitted as a net rather than a
     /// variable, because an instance's output drives it.

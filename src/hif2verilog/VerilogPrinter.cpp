@@ -9,7 +9,9 @@
 
 #include <hif/semantics/declarationUtils.hpp>
 
+#include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <utility>
 
 // Namespace hifsuite
@@ -117,7 +119,14 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // contract, not a case seen in practice. messageAssert is deliberate:
     // it survives release builds, so a future change to that contract fails
     // loudly instead of quietly emitting wrong Verilog.
-    if (!_inliningCones.empty()) {
+    // A *delayed* assignment is the one case where the reads that follow must
+    // NOT see the new value: the whole point of the delay is that the target
+    // changes later, and visitStateTable makes the process re-run then by
+    // adding the target to its sensitivity list. So the reasoning above does
+    // not apply to it, and neither does the assert.
+    const std::string delay(this->renderDelay(o.getDelay()));
+
+    if (delay.empty() && !_inliningCones.empty()) {
         messageAssert(
             dynamic_cast<Variable *>(dd) != nullptr,
             "Inlined cone assigns to a non-Variable target, which would be emitted with "
@@ -126,11 +135,28 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
             &o, _sem);
     }
 
-    if (dynamic_cast<Variable *>(dd) != nullptr) {
+    if (delay.empty() && dynamic_cast<Variable *>(dd) != nullptr) {
         (*_stream) << " = ";
     } else {
         (*_stream) << " <= ";
     }
+
+    // A delayed assignment carries its delay in the HIF; it used to be read by
+    // nobody, so the regenerated design responded immediately where its source
+    // waited - silently, since the output parses and reparses either way
+    // (hif-backend#24).
+    //
+    // Emitted as an *intra-assignment* delay ("t <= #2 a & b") rather than as a
+    // leading one ("#2 t = a & b"): the right-hand side is evaluated when the
+    // process runs and the target updated after the delay, which is what a HIF
+    // delay on an Assign means, and what the source's `assign #2` meant. A
+    // leading delay would instead suspend the process, so every other path
+    // through it - including a reader's own direct dependence on a primary
+    // input - would be delayed too, which the source did not say.
+    if (!delay.empty()) {
+        (*_stream) << "#" << delay << " ";
+    }
+
     o.getRightHandSide()->acceptVisitor(*this);
     (*_stream) << ";\n";
     return 0;
@@ -307,6 +333,12 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // be known before anything is printed: it decides wire-vs-reg for both the
     // port list and the body declarations (hif-backend#26).
     this->collectInstanceDrivenDeclarations(content);
+
+    // Delays are emitted as plain numbers, so the unit they count in has to be
+    // declared before the module that uses them (hif-backend#24). Only designs
+    // that carry a delay get a directive.
+    this->resolveTimescale(view);
+    this->printTimescaleDirective();
 
     // Print the module header.
     (*_stream) << "module " << name;
@@ -1134,6 +1166,37 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
             printSensitivity(o.sensitivity, "");
             printSensitivity(o.sensitivityPos, "posedge");
             printSensitivity(o.sensitivityNeg, "negedge");
+
+            // A delayed assignment in this process schedules its target for
+            // later instead of writing it now, so the statements after it -
+            // and the whole process on its next run - would keep reading the
+            // pre-delay value unless the target itself re-triggers the process
+            // (hif-backend#24). The HIF sensitivity list names the delayed
+            // net's *inputs*, which is correct for an immediate assignment and
+            // one event too early for a delayed one.
+            //
+            // Only level-sensitive processes are extended. Adding a plain
+            // entry to an edge-sensitive list would make a register update
+            // between clock edges, which is a worse error than the one being
+            // fixed.
+            if (o.sensitivityPos.empty() && o.sensitivityNeg.empty()) {
+                std::set<std::string> alreadySensitive;
+                for (auto *signal : o.sensitivity) {
+                    auto *identifier = dynamic_cast<hif::Identifier *>(signal);
+                    if (identifier != nullptr) {
+                        alreadySensitive.insert(identifier->getName());
+                    }
+                }
+                std::set<std::string> delayedTargets;
+                this->collectDelayedTargets(&o, delayedTargets);
+                for (const auto &name : delayedTargets) {
+                    if (alreadySensitive.count(name) != 0) {
+                        continue;
+                    }
+                    (*_stream) << ", " << name;
+                }
+            }
+
             (*_stream) << " )";
         }
         (*_stream) << " begin" << '\n';
@@ -1296,6 +1359,271 @@ inline auto is_integer(hif::Type *type) -> bool
     return false;
 }
 
+namespace
+{
+
+/// @brief Name verilog2hif gives the constant holding a file's timescale unit.
+const char *const timescaleUnitName = "hif_verilog_timescale_unit";
+/// @brief ... and its precision.
+const char *const timescalePrecisionName = "hif_verilog_timescale_precision";
+
+/// @brief Looks up a Time-valued constant by name.
+/// @param declarations The declaration list to search.
+/// @param name The constant's name.
+/// @return Its TimeValue, or nullptr if there is no such constant.
+auto findTimeConstant(hif::BList<hif::Declaration> &declarations, const std::string &name) -> hif::TimeValue *
+{
+    for (auto *declaration : declarations) {
+        auto *constant = dynamic_cast<hif::Const *>(declaration);
+        if (constant == nullptr || constant->getName() != name) {
+            continue;
+        }
+        return dynamic_cast<hif::TimeValue *>(constant->getValue());
+    }
+    return nullptr;
+}
+
+/// @brief The Verilog spelling of a time unit.
+/// @param unit The HIF time unit.
+/// @return "fs", "ps", ... or an empty string for a unit Verilog cannot
+/// express (minutes and hours have no `timescale spelling).
+auto timeUnitToVerilog(hif::TimeValue::TimeUnit unit) -> std::string
+{
+    switch (unit) {
+    case hif::TimeValue::time_fs:
+        return "fs";
+    case hif::TimeValue::time_ps:
+        return "ps";
+    case hif::TimeValue::time_ns:
+        return "ns";
+    case hif::TimeValue::time_us:
+        return "us";
+    case hif::TimeValue::time_ms:
+        return "ms";
+    case hif::TimeValue::time_sec:
+        return "s";
+    default:
+        return "";
+    }
+}
+
+/// @brief Prints a delay count without a trailing ".000000".
+/// @param value The count, in timescale units.
+/// @return Its shortest exact decimal spelling.
+auto formatDelayCount(double value) -> std::string
+{
+    std::stringstream ss;
+    ss << std::setprecision(17) << value;
+    return ss.str();
+}
+
+/// @brief The factor of @p value that a Verilog timescale can name.
+/// @details Verilog only accepts 1, 10 or 100 there, so anything else is
+/// folded into the value printed at each delay instead.
+/// @param value The constant's numeric value.
+/// @return 1, 10 or 100.
+auto timescaleFactor(double value) -> double
+{
+    if (value >= 100.0) {
+        return 100.0;
+    }
+    if (value >= 10.0) {
+        return 10.0;
+    }
+    return 1.0;
+}
+
+/// @brief Converts a TimeValue into a number of timescale units.
+/// @param time The absolute time.
+/// @param unit The timescale unit.
+/// @param unitValue The timescale unit's factor.
+/// @return How many timescale units @p time is.
+auto toTimescaleUnits(const hif::TimeValue &time, hif::TimeValue::TimeUnit unit, double unitValue) -> double
+{
+    // changeUnit mutates, so work on a copy: the delay stays in the tree.
+    auto *converted = hif::copy(&time);
+    converted->changeUnit(unit);
+    const double result = converted->getValue() / unitValue;
+    delete converted;
+    return result;
+}
+
+/// @brief The unit-scaled operand of a "<count> * hif_verilog_timescale_unit"
+/// delay, which is how verilog2hif records "#<count>".
+/// @param delay The HIF delay value.
+/// @return The count operand, or nullptr if @p delay is not of that shape.
+auto getTimescaleScaledCount(hif::Value *delay) -> hif::Value *
+{
+    auto *expression = dynamic_cast<hif::Expression *>(delay);
+    if (expression == nullptr || expression->getOperator() != hif::op_mult) {
+        return nullptr;
+    }
+
+    auto *value1 = dynamic_cast<hif::Identifier *>(expression->getValue1());
+    auto *value2 = dynamic_cast<hif::Identifier *>(expression->getValue2());
+    if (value1 != nullptr && value1->getName() == timescaleUnitName) {
+        return expression->getValue2();
+    }
+    if (value2 != nullptr && value2->getName() == timescaleUnitName) {
+        return expression->getValue1();
+    }
+    return nullptr;
+}
+
+} // namespace
+
+void VerilogPrinter::resolveTimescale(hif::View *view)
+{
+    _timescale = Timescale();
+    if (view == nullptr) {
+        return;
+    }
+
+    // Only designs that actually carry a delay get a `timescale directive, so
+    // everything else regenerates byte-for-byte as before.
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> query;
+    hif::search(assigns, view, query);
+
+    std::list<hif::TimeValue *> absoluteDelays;
+    bool hasDelay = false;
+    for (auto *assign : assigns) {
+        auto *delay = assign->getDelay();
+        if (delay == nullptr) {
+            continue;
+        }
+        hasDelay = true;
+        // A delay that is an absolute time rather than a count of timescale
+        // units has to be converted, and the unit it converts into must be
+        // fine enough for every such delay in the file.
+        auto *absolute = dynamic_cast<hif::TimeValue *>(delay);
+        if (absolute != nullptr) {
+            absoluteDelays.push_back(absolute);
+        }
+    }
+    if (!hasDelay) {
+        return;
+    }
+
+    // verilog2hif records the source's own `timescale (or its 1ns/10ps
+    // default) as two constants, on the view when the source declared one and
+    // on the System when it did not.
+    hif::TimeValue *unit      = findTimeConstant(view->declarations, timescaleUnitName);
+    hif::TimeValue *precision = findTimeConstant(view->declarations, timescalePrecisionName);
+    auto *system              = hif::getNearestParent<hif::System>(view);
+    if (unit == nullptr && system != nullptr) {
+        unit      = findTimeConstant(system->declarations, timescaleUnitName);
+        precision = findTimeConstant(system->declarations, timescalePrecisionName);
+    }
+
+    if (unit != nullptr && !timeUnitToVerilog(unit->getUnit()).empty()) {
+        _timescale.unit      = unit->getUnit();
+        _timescale.unitValue = timescaleFactor(unit->getValue());
+    } else if (!absoluteDelays.empty()) {
+        // No usable timescale on record, so take the finest unit any absolute
+        // delay in this file uses. Every delay is then a whole number of it.
+        auto finest = (*absoluteDelays.begin())->getUnit();
+        for (auto *absolute : absoluteDelays) {
+            finest = std::min(finest, absolute->getUnit());
+        }
+        _timescale.unit      = finest;
+        _timescale.unitValue = 1.0;
+    } else {
+        // A count of timescale units with no timescale to count in: there is
+        // nothing to derive one from, so fall back to what verilog2hif uses
+        // when a source declares none.
+        _timescale.unit      = hif::TimeValue::time_ns;
+        _timescale.unitValue = 1.0;
+    }
+
+    if (precision != nullptr && !timeUnitToVerilog(precision->getUnit()).empty()) {
+        _timescale.precision      = precision->getUnit();
+        _timescale.precisionValue = timescaleFactor(precision->getValue());
+    } else {
+        _timescale.precision      = _timescale.unit;
+        _timescale.precisionValue = _timescale.unitValue;
+    }
+
+    _timescale.valid = true;
+}
+
+void VerilogPrinter::collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names)
+{
+    if (stateTable == nullptr) {
+        return;
+    }
+
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers   = true;
+    prefixOptions.recurseIntoSlices    = true;
+    prefixOptions.recurseIntoFieldRefs = true;
+
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, stateTable, assignQuery);
+    for (auto *assign : assigns) {
+        if (assign->getDelay() == nullptr) {
+            continue;
+        }
+        auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+        auto *identifier = dynamic_cast<hif::Identifier *>(target);
+        if (identifier != nullptr) {
+            names.insert(identifier->getName());
+        }
+    }
+
+    // Cone procedures are expanded at their call sites (visitProcedureCall),
+    // so a delayed assignment inside one lands in this process's body and
+    // needs the same treatment as one written here directly.
+    std::list<hif::ProcedureCall *> calls;
+    hif::HifTypedQuery<hif::ProcedureCall> callQuery;
+    hif::search(calls, stateTable, callQuery);
+    for (auto *call : calls) {
+        auto *procedure = dynamic_cast<hif::Procedure *>(hif::semantics::getDeclaration(call, _sem));
+        if (procedure == nullptr || procedure->getStateTable() == nullptr) {
+            continue;
+        }
+        if (!_inliningCones.insert(procedure).second) {
+            continue;
+        }
+        this->collectDelayedTargets(procedure->getStateTable(), names);
+        _inliningCones.erase(procedure);
+    }
+}
+
+void VerilogPrinter::printTimescaleDirective()
+{
+    if (!_timescale.valid) {
+        return;
+    }
+    (*_stream) << "`timescale " << formatDelayCount(_timescale.unitValue) << timeUnitToVerilog(_timescale.unit) << " / "
+               << formatDelayCount(_timescale.precisionValue) << timeUnitToVerilog(_timescale.precision) << "\n\n";
+}
+
+auto VerilogPrinter::renderDelay(hif::Value *delay) -> std::string
+{
+    if (delay == nullptr) {
+        return "";
+    }
+
+    // "#2" reaches HIF as "2 * hif_verilog_timescale_unit", and the emitted
+    // `timescale re-establishes that unit, so the count goes back out as it
+    // came in - including when it is a parameter rather than a literal.
+    if (auto *count = getTimescaleScaledCount(delay)) {
+        return this->renderToString(count);
+    }
+
+    // An absolute time - what vhdl2hif produces for "after 2 ns" - has to be
+    // expressed as a count of the unit the directive declares.
+    if (auto *absolute = dynamic_cast<hif::TimeValue *>(delay)) {
+        return formatDelayCount(toTimescaleUnits(*absolute, _timescale.unit, _timescale.unitValue));
+    }
+
+    // Any other shape is printed as-is, parenthesised. Verilog accepts an
+    // expression here, and printing what the HIF says beats dropping it.
+    return "(" + this->renderToString(delay) + ")";
+}
+
 void VerilogPrinter::collectInstanceDrivenDeclarations(hif::Contents *contents)
 {
     _instanceDrivenDeclarations.clear();
@@ -1358,6 +1686,20 @@ auto VerilogPrinter::isInstanceDriven(hif::Declaration *declaration) -> bool
 std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
 {
     std::stringstream ss;
+    // The timescale constants are verilog2hif's record of the source's
+    // `timescale, not declarations the design made. Verilog spells that as a
+    // directive, which printTimescaleDirective now emits, so printing them
+    // here would state the timescale twice - and state it invalidly: their
+    // value is a Time, which has no Verilog literal, so they came out as
+    // "localparam hif_verilog_timescale_unit;" and Icarus rejected the file
+    // ("localparam must have a value"). Reparsing failed on them too, so every
+    // design carrying an explicit `timescale regenerated unusable (part of
+    // hif-backend#24: emitting a delay means owning how its unit is written).
+    if (declaration != nullptr &&
+        (declaration->getName() == timescaleUnitName || declaration->getName() == timescalePrecisionName)) {
+        return "";
+    }
+
     if (auto variable = dynamic_cast<hif::Variable *>(declaration)) {
         if (is_integer(variable->getType())) {
             ss << "integer ";
