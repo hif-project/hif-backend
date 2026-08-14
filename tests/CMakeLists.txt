@@ -116,6 +116,19 @@ if(VERILOG2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/slice_emission_test.cmake
     )
 
+    # Regression (hif-backend#19): a Verilog system function ($clog2) was
+    # emitted under its internal, mangled name, which no simulator accepts
+    # and the frontend cannot bind on the way back in.
+    add_test(
+        NAME system_function_round_trip
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/system_function_round_trip.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/system_function_round_trip_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/system_function_round_trip_test.cmake
+    )
+
     # Regression (hif-backend#16): regenerated Verilog was not behaviorally
     # equivalent to its source - cone Procedures were hoisted into their own
     # always blocks, leaving the processes that read their targets not
@@ -157,7 +170,7 @@ if(VERILOG2HIF_EXECUTABLE)
         message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity tests.")
     endif()
 else()
-    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission tests.")
+    message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")
 endif()
 
 # Guards the invariant the hif-backend#16 fix rests on: a cone target must be

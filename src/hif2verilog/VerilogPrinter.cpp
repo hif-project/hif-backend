@@ -613,6 +613,50 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
     return 0;
 }
 
+namespace
+{
+
+/// @brief Recovers the Verilog spelling of a call to a system function.
+/// @details Verilog spells these with a leading '$'. verilog2hif renames
+/// "$name" to "_system_name" (FixDescription_1::_fixSystemTaskCalls) and
+/// standardization then prefixes standard-library symbols with
+/// "hif_<semantics>_", so "$clog2" reaches this printer named
+/// "hif_verilog__system_clog2". Printing that name verbatim is not valid
+/// Verilog - there is no such callable function, and nothing declares it on
+/// the way back in, so the round trip breaks (hif-backend#19).
+/// @param call The call to inspect.
+/// @param sem The semantics used to resolve @p call's declaration.
+/// @return The system function name without its '$', or an empty string if
+/// @p call is not a call to a Verilog system function.
+auto getSystemFunctionName(hif::FunctionCall &call, hif::semantics::ILanguageSemantics *sem) -> std::string
+{
+    const std::string standardPrefix("hif_" + sem->getName() + "_");
+    const std::string systemPrefix("_system_");
+
+    std::string name(call.getName());
+    if (name.compare(0, standardPrefix.size(), standardPrefix) == 0) {
+        name.erase(0, standardPrefix.size());
+    }
+    if (name.compare(0, systemPrefix.size(), systemPrefix) != 0) {
+        return "";
+    }
+
+    // "_system_" is a legal identifier prefix in Verilog, so a user function
+    // could carry this name of its own accord. Only the standard library's
+    // ones are the renamed '$' functions; anything a design declares itself
+    // keeps the name it has. A call whose declaration cannot be resolved is
+    // treated as a system function: the name says it came from '$', and
+    // printing it unchanged is known to be wrong.
+    auto *decl = hif::semantics::getDeclaration(&call, sem);
+    if (decl != nullptr && !hif::declarationIsPartOfStandard(decl)) {
+        return "";
+    }
+
+    return name.substr(systemPrefix.size());
+}
+
+} // namespace
+
 auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
     if (o.getName() == "hif_verilog_iterated_concat") {
@@ -648,7 +692,19 @@ auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
         return 0;
     }
 
-    (*_stream) << o.getName() << "(";
+    const std::string systemName(getSystemFunctionName(o, _sem));
+    if (!systemName.empty()) {
+        (*_stream) << "$" << systemName;
+        // Verilog's argument-less system functions ($time, $realtime, ...)
+        // are spelled without parentheses; "$time()" is not accepted.
+        if (o.parameterAssigns.empty()) {
+            return 0;
+        }
+    } else {
+        (*_stream) << o.getName();
+    }
+
+    (*_stream) << "(";
     for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
         o.parameterAssigns.at(i)->acceptVisitor(*this);
         if (i < o.parameterAssigns.size() - 1) {
