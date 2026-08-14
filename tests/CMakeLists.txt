@@ -311,6 +311,26 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/global_action_emission_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/global_action_emission_test.cmake
         )
+        # Regression (hif-backend#36): a VHDL output port's explicit initial
+        # value was dropped when a process drove the port, so the regenerated
+        # design read x until that process first wrote it. The other half of
+        # the field hif-backend#30 covers: there the port has no other driver
+        # and the value becomes a continuous assign, here it is a reg and the
+        # value becomes an `initial` assignment. Needs a simulator because the
+        # broken output compiles and reparses and the only symptom is a value.
+        add_test(
+            NAME port_initial_process
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/port_initial_process.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/port_initial_process_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_process_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_process_test.cmake
+        )
     else()
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping global_action_emission test.")
     endif()
