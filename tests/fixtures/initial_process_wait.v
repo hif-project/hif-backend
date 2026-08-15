@@ -5,11 +5,14 @@
 // the design responding after its first pass - which is worse than the bug
 // being fixed, because it compiles.
 //
-// Only checked structurally. hif2verilog does not currently emit the `wait`
-// itself (it prints the condition bare, next to the following statement), so
-// the regenerated module does not compile for reasons that have nothing to do
-// with #40. That is tracked separately; this fixture is here to pin down which
-// process keyword is chosen.
+// Only checked structurally. This fixture is here to pin down which process
+// keyword is chosen, not to be simulated.
+//
+// It used to be structural of necessity: hif2verilog emitted no `wait` at all,
+// printing the condition bare next to the following statement, so the
+// regenerated module did not compile for reasons unrelated to #40. That was
+// hif-backend#42 and is fixed, so this fixture could now be strengthened with
+// a testbench if the keyword check ever stops being enough.
 
 module initial_process_wait (
     input  wire       en,

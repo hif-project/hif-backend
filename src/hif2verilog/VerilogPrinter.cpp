@@ -1503,7 +1503,123 @@ auto VerilogPrinter::visitView(View &o) -> int { return hif::GuideVisitor::visit
 
 auto VerilogPrinter::visitViewReference(ViewReference &o) -> int { return GuideVisitor::visitViewReference(o); }
 
-auto VerilogPrinter::visitWait(Wait &o) -> int { return GuideVisitor::visitWait(o); }
+auto VerilogPrinter::visitWait(Wait &o) -> int
+{
+    // This used to be a bare `return GuideVisitor::visitWait(o);`. That printed
+    // no `wait` keyword, but the guide visitor still descended into the node's
+    // children, so the wait's condition or sensitivity was printed *bare* and
+    // ran straight into the statement that followed it: `wait (en); o = 4'd7;`
+    // came back as `eno <= 4'b0111;`, inventing an undeclared identifier by
+    // concatenation while hif2verilog exited 0 (hif-backend#42).
+    //
+    // Nothing below delegates to GuideVisitor: every branch prints the whole
+    // statement itself, and falling through to the guide visitor afterwards
+    // would print the children a second time.
+    const bool hasCondition = o.getCondition() != nullptr;
+    const bool hasSensitivity =
+        !o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty();
+    const bool hasTime = o.getTime() != nullptr;
+
+    // Verilog spells each of the three suspension forms with a different
+    // construct - `wait (c)`, `@( ... )`, `#t` - and has no single statement
+    // meaning more than one at once. VHDL does: `wait on a until c for 10 ns;`
+    // sets all three, because its three clauses are independently optional
+    // (vhdl2hif's parse_WaitStatement). Such a wait needs a lowering rather
+    // than a keyword, which this printer does not do, so it is refused here.
+    //
+    // Refusing is the point. The alternative is not "emit something slightly
+    // wrong", it is the silent splicing above: a shape this printer cannot
+    // spell has to stop the tool rather than corrupt the output.
+    const int forms = static_cast<int>(hasCondition) + static_cast<int>(hasSensitivity) + static_cast<int>(hasTime);
+    if (forms > 1) {
+        messageError(
+            "Unsupported Wait combination: a wait that sets more than one of condition, sensitivity and "
+            "timeout has no single Verilog construct and is not lowered by this printer (hif-backend#45).",
+            &o, _sem);
+    }
+    if (o.getRepetitions() != nullptr) {
+        messageError(
+            "Unsupported Wait shape: a repeated wait is not emitted by this printer (hif-backend#45). "
+            "verilog2hif lowers `repeat (n) @( ... )` to a For around a plain wait instead of setting "
+            "this field, so reaching here means the HIF came from somewhere else.",
+            &o, _sem);
+    }
+    if (!o.actions.empty()) {
+        messageError(
+            "Unsupported Wait shape: a wait carrying its own actions is not emitted by this printer "
+            "(hif-backend#45). verilog2hif's _manageWaitActions lifts those actions out to be following "
+            "siblings for every RTL process, leaving this list empty.",
+            &o, _sem);
+    }
+
+    if (forms == 0) {
+        // A wait that says nothing. Two different producers make one, and the
+        // node records nothing that tells them apart:
+        //
+        //  - verilog2hif appends an empty Wait to the end of every non-initial
+        //    process that contains a wait (_fixProcessesWithWait,
+        //    FixDescription_1.cpp). It is a marker for the SystemC lowering,
+        //    where the process becomes an SC_THREAD wrapped in `while (true)`
+        //    and this becomes the loop-tail `wait()` that reapplies the static
+        //    sensitivity. An `always` block already loops, so in Verilog the
+        //    marker has no syntax of its own.
+        //
+        //  - vhdl2hif emits one for VHDL `wait;`, which suspends the process
+        //    permanently.
+        //
+        // Printing nothing is right for the first and loses the second. It is
+        // the only choice available here, because the two are indistinguishable
+        // at this point - and it is what this printer already did before
+        // hif-backend#42, so nothing regresses. hif-backend#46 tracks removing
+        // the ambiguity at its source.
+        return 0;
+    }
+
+    if (hasCondition) {
+        // Verilog's `wait (c)` is level-sensitive: it falls through at once
+        // when c already holds. That is exactly what verilog2hif recorded from
+        // a source `wait (c)`. It is *not* what vhdl2hif's `wait until c`
+        // meant - VHDL suspends until an event makes the condition true, even
+        // if it is true on arrival - but the two land in the same field with
+        // nothing to separate them, and hif2sc collapses them the same way.
+        // hif-core#16 tracks that divergence.
+        (*_stream) << "wait ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " );\n";
+        return 0;
+    }
+
+    if (hasTime) {
+        // renderDelay rather than visiting the value: it maps both shapes a
+        // timeout arrives in - verilog2hif's "n * hif_verilog_timescale_unit"
+        // count and vhdl2hif's absolute TimeValue - onto a count of the unit
+        // the emitted `timescale declares. Visiting a TimeValue directly
+        // prints nothing at all.
+        (*_stream) << "#" << this->renderDelay(o.getTime()) << ";\n";
+        return 0;
+    }
+
+    // An event control. Each signal is qualified individually, for the reason
+    // visitStateTable qualifies its sensitivity individually (hif-backend#21):
+    // one leading `posedge` ahead of a comma-separated list silently applies to
+    // the first entry only.
+    bool isFirst = true;
+    auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
+        for (auto *signal : list) {
+            (*_stream) << (isFirst ? "@( " : ", ");
+            isFirst = false;
+            if (!edge.empty()) {
+                (*_stream) << edge << " ";
+            }
+            signal->acceptVisitor(*this);
+        }
+    };
+    printSensitivity(o.sensitivity, "");
+    printSensitivity(o.sensitivityPos, "posedge");
+    printSensitivity(o.sensitivityNeg, "negedge");
+    (*_stream) << " );\n";
+    return 0;
+}
 
 auto VerilogPrinter::visitWhen(When &o) -> int
 {
@@ -1708,28 +1824,44 @@ void VerilogPrinter::resolveTimescale(hif::View *view)
 
     // Only designs that actually carry a delay get a `timescale directive, so
     // everything else regenerates byte-for-byte as before.
-    std::list<hif::Assign *> assigns;
-    hif::HifTypedQuery<hif::Assign> query;
-    hif::search(assigns, view, query);
+    std::list<hif::Value *> delays;
 
-    std::list<hif::TimeValue *> absoluteDelays;
-    bool hasDelay = false;
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, view, assignQuery);
     for (auto *assign : assigns) {
-        auto *delay = assign->getDelay();
-        if (delay == nullptr) {
-            continue;
+        if (assign->getDelay() != nullptr) {
+            delays.push_back(assign->getDelay());
         }
-        hasDelay = true;
-        // A delay that is an absolute time rather than a count of timescale
-        // units has to be converted, and the unit it converts into must be
-        // fine enough for every such delay in the file.
+    }
+
+    // A timed wait - Verilog `#5;`, VHDL `wait for 10 ns;` - is a delay too,
+    // and visitWait emits it as a count of the unit this directive declares
+    // (hif-backend#42). Scanning only Assign delays left a design whose only
+    // delay was a wait with no `timescale at all, so that count was measured
+    // in whatever the simulator defaults to rather than in the source's unit.
+    std::list<hif::Wait *> waits;
+    hif::HifTypedQuery<hif::Wait> waitQuery;
+    hif::search(waits, view, waitQuery);
+    for (auto *wait : waits) {
+        if (wait->getTime() != nullptr) {
+            delays.push_back(wait->getTime());
+        }
+    }
+
+    if (delays.empty()) {
+        return;
+    }
+
+    // A delay that is an absolute time rather than a count of timescale units
+    // has to be converted, and the unit it converts into must be fine enough
+    // for every such delay in the file.
+    std::list<hif::TimeValue *> absoluteDelays;
+    for (auto *delay : delays) {
         auto *absolute = dynamic_cast<hif::TimeValue *>(delay);
         if (absolute != nullptr) {
             absoluteDelays.push_back(absolute);
         }
-    }
-    if (!hasDelay) {
-        return;
     }
 
     // verilog2hif records the source's own `timescale (or its 1ns/10ps
