@@ -265,6 +265,21 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/initial_process_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/initial_process_test.cmake
         )
+        # Regression (hif-backend#42): `wait` nodes were emitted without their
+        # keyword or timescale, splicing their conditions and delays into the
+        # next statement.
+        add_test(
+            NAME wait_emission
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/wait_emission.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/wait_emission_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/wait_emission_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/wait_emission_test.cmake
+        )
         # Regression (hif-backend#38): a user-defined Verilog task was inlined
         # as if it were a frontend-synthesized logic cone, which tripped the
         # hif-backend#16 assert and aborted with a zero-byte output file - so a
