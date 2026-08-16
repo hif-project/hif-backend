@@ -31,7 +31,15 @@ VHDLPrinter::VHDLPrinter(std::string outDir)
 
 VHDLPrinter::~VHDLPrinter()
 {
-    // ntd
+    // Deleting the stream is what writes the file: IndentedStream buffers and
+    // flushes from its own destructor. _initializeOutstream deletes the
+    // previous stream before opening the next, so every design unit but the
+    // last one was written as a side effect of starting the one after it - and
+    // the last one, never. Its file had been created, so hif2vhdl exited 0
+    // having left a zero-byte source file behind (hif-backend#27). With a
+    // single design unit that was the whole output.
+    delete _outstream;
+    _outstream = nullptr;
 }
 
 auto VHDLPrinter::visitAggregate(Aggregate &o) -> int

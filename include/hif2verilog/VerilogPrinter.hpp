@@ -124,6 +124,126 @@ private:
     /// malformed input looping the printer forever - it is not expected
     /// to trip in practice.
     std::set<hif::Procedure *> _inliningCones;
+    /// @brief Declarations that a *continuous* driver writes, in the design
+    /// unit currently being printed.
+    /// @details Verilog requires these to be nets. A `reg` is written by
+    /// procedural statements only, so anything that drives continuously needs
+    /// a net on the other end, and declaring one as `reg` produces Verilog no
+    /// simulator accepts. Repopulated per design unit.
+    ///
+    /// Two constructs qualify, and they are the same rule rather than two:
+    ///   - a net bound to a module instance's out/inout port (hif-backend#26);
+    ///   - the target of a continuous `assign`, which is how a view's
+    ///     GlobalAction is emitted (hif-backend#32);
+    ///   - an output port whose initial value is re-emitted as a continuous
+    ///     assign because nothing else drives it (hif-backend#30).
+    /// #26 saw only the first because a GlobalAction was not printed at all,
+    /// so a continuous assign was not yet something hif2verilog could produce.
+    std::set<hif::DataDeclaration *> _continuouslyDrivenDeclarations;
+
+    /// @brief Output ports whose initial value has to be re-emitted as a
+    /// continuous assignment, in declaration order.
+    /// @details The frontend folds a constant continuous assignment into the
+    /// driven port's value, and a port declaration cannot carry an initializer
+    /// in a Verilog-2001 ANSI port list, so the assignment has to be written
+    /// back out as one (hif-backend#30). Only ports that nothing else drives
+    /// qualify - see collectContinuouslyDrivenDeclarations.
+    std::list<hif::Port *> _valueDrivenPorts;
+
+    /// @brief Output ports whose initial value has to be re-emitted as an
+    /// `initial` assignment, in declaration order.
+    /// @details The complement of _valueDrivenPorts: these ports state an
+    /// initial value *and* are written by a process, so they are regs and a
+    /// continuous assign would be a second driver on them (hif-backend#36).
+    /// The value is what the port holds until that process first writes it.
+    std::list<hif::Port *> _initialValuePorts;
+
+    /// @brief The `timescale a file's `#N` delays are expressed in.
+    /// @details Verilog delays are plain numbers scaled by the enclosing
+    /// file's `timescale, so a delay cannot be emitted without also
+    /// establishing the unit it counts in (hif-backend#24).
+    struct Timescale {
+        double unitValue{1.0};                                          ///< 1, 10 or 100.
+        hif::TimeValue::TimeUnit unit{hif::TimeValue::time_ns};         ///< The unit itself.
+        double precisionValue{1.0};                                     ///< 1, 10 or 100.
+        hif::TimeValue::TimeUnit precision{hif::TimeValue::time_ns};    ///< The unit itself.
+        bool valid{false};                                              ///< False when nothing needs one.
+    };
+
+    /// @brief The timescale of the design unit currently being printed.
+    Timescale _timescale;
+
+    /// @brief Fills _continuouslyDrivenDeclarations and _valueDrivenPorts for
+    /// @p view.
+    /// @details Takes the view rather than its contents because the last of
+    /// the three continuous drivers is a property of a *port*, and ports live
+    /// on the entity while everything that could drive them lives in the
+    /// contents. Deciding one needs both.
+    /// @param view The view being printed.
+    void collectContinuouslyDrivenDeclarations(hif::View *view);
+
+    /// @brief Resolves _timescale for the design unit rooted at @p view.
+    /// @details Left invalid when the design unit carries no delay, so a
+    /// design without delays regenerates exactly as before.
+    /// @param view The view being printed.
+    void resolveTimescale(hif::View *view);
+
+    /// @brief Prints the `timescale directive for _timescale, if it is valid.
+    void printTimescaleDirective();
+
+    /// @brief Names of the targets of delayed assignments reachable from a
+    /// process, including through the cone procedures it calls.
+    /// @details A delayed assignment schedules its target for later, so the
+    /// process has to be re-triggered when that target actually changes or the
+    /// reads that follow keep the pre-delay value forever (hif-backend#24).
+    /// @param stateTable The process to scan.
+    /// @param names Receives the target names.
+    void collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names);
+
+    /// @brief Whether a Procedure is a frontend-synthesized logic cone rather
+    /// than a user-written Verilog task.
+    /// @details Both are a Procedure carrying a StateTable, and a cone's lack of
+    /// parameters does not separate them because a task may be declared without
+    /// arguments either. hif-frontend records which it meant in the name: a cone
+    /// is named from the reserved stem "hif_cone_" (hif-backend#38).
+    /// @param procedure The declaration to classify.
+    /// @return True if the procedure is a cone, whose body is inlined at its
+    /// call sites.
+    static auto isConeProcedure(hif::Procedure *procedure) -> bool;
+
+    /// @brief Prints a user-written Verilog task declaration.
+    /// @param o The procedure to print as a task.
+    /// @return 0.
+    auto printTask(hif::Procedure &o) -> int;
+
+    /// @brief Whether a rendered Verilog literal is entirely unknown.
+    /// @details Both frontends give a port that stated no initial value one
+    /// anyway - 'U' from vhdl2hif, all-x from verilog2hif - and an all-unknown
+    /// value says nothing a declaration does not already say, since an
+    /// uninitialized reg and an undriven net both read x (hif-backend#36).
+    /// @param literal The rendered literal, which may carry a size prefix.
+    /// @return True if every digit is x or z.
+    static auto isUnknownLiteral(const std::string &literal) -> bool;
+
+    /// @brief Whether a process can be woken up again after it finishes.
+    /// @details A process is re-triggerable if it has a sensitivity list, or if
+    /// it suspends on a `wait`. One with neither runs exactly once, which is an
+    /// `initial` block rather than an `always` one (hif-backend#40).
+    /// @param stateTable The process to classify.
+    /// @return True if the process can run more than once.
+    static auto isRetriggerable(hif::StateTable &stateTable) -> bool;
+
+    /// @brief Renders an assignment delay as a Verilog delay expression.
+    /// @param delay The HIF delay value.
+    /// @return The text to print after '#', in _timescale units.
+    auto renderDelay(hif::Value *delay) -> std::string;
+
+    /// @brief Whether @p declaration must be emitted as a net rather than a
+    /// variable, because something drives it continuously.
+    /// @param declaration The declaration being printed.
+    /// @return True if it is bound to an instance's out/inout port, or is the
+    /// target of a global action emitted as a continuous assign.
+    auto isContinuouslyDriven(hif::Declaration *declaration) -> bool;
 
     std::string getDeclaration(hif::Declaration *declaration);
 
@@ -164,8 +284,11 @@ private:
         bool print_new_line       = false,
         bool print_last_separator = false);
 
-    /// @brief Calls the visitor on any Function inside the list.
+    /// @brief Calls the visitor on any Function or user-written task inside the
+    /// list.
+    /// @details Cone Procedures are skipped: their bodies belong at their call
+    /// sites rather than in a declaration (hif-backend#38).
     /// @param list The list of objects to be printed.
-    /// @return true if any function was found, false otherwise.
-    bool printFunctions(const hif::BList<hif::Object> &list);
+    /// @return true if anything was printed, false otherwise.
+    bool printSubprograms(const hif::BList<hif::Object> &list);
 };

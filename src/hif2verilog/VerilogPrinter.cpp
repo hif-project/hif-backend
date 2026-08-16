@@ -9,7 +9,9 @@
 
 #include <hif/semantics/declarationUtils.hpp>
 
+#include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <utility>
 
 // Namespace hifsuite
@@ -117,7 +119,14 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // contract, not a case seen in practice. messageAssert is deliberate:
     // it survives release builds, so a future change to that contract fails
     // loudly instead of quietly emitting wrong Verilog.
-    if (!_inliningCones.empty()) {
+    // A *delayed* assignment is the one case where the reads that follow must
+    // NOT see the new value: the whole point of the delay is that the target
+    // changes later, and visitStateTable makes the process re-run then by
+    // adding the target to its sensitivity list. So the reasoning above does
+    // not apply to it, and neither does the assert.
+    const std::string delay(this->renderDelay(o.getDelay()));
+
+    if (delay.empty() && !_inliningCones.empty()) {
         messageAssert(
             dynamic_cast<Variable *>(dd) != nullptr,
             "Inlined cone assigns to a non-Variable target, which would be emitted with "
@@ -126,11 +135,28 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
             &o, _sem);
     }
 
-    if (dynamic_cast<Variable *>(dd) != nullptr) {
+    if (delay.empty() && dynamic_cast<Variable *>(dd) != nullptr) {
         (*_stream) << " = ";
     } else {
         (*_stream) << " <= ";
     }
+
+    // A delayed assignment carries its delay in the HIF; it used to be read by
+    // nobody, so the regenerated design responded immediately where its source
+    // waited - silently, since the output parses and reparses either way
+    // (hif-backend#24).
+    //
+    // Emitted as an *intra-assignment* delay ("t <= #2 a & b") rather than as a
+    // leading one ("#2 t = a & b"): the right-hand side is evaluated when the
+    // process runs and the target updated after the delay, which is what a HIF
+    // delay on an Assign means, and what the source's `assign #2` meant. A
+    // leading delay would instead suspend the process, so every other path
+    // through it - including a reader's own direct dependence on a primary
+    // input - would be delayed too, which the source did not say.
+    if (!delay.empty()) {
+        (*_stream) << "#" << delay << " ";
+    }
+
     o.getRightHandSide()->acceptVisitor(*this);
     (*_stream) << ";\n";
     return 0;
@@ -303,6 +329,20 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // Get the view content.
     auto content = view->getContents();
 
+    // Which of this module's nets and outputs are driven continuously - by a
+    // child instance's output port, by a global action printed below as a
+    // continuous "assign", or by an output port's own initial value written
+    // back out as one - has to be known before anything is printed: it decides
+    // wire-vs-reg for both the port list and the body declarations
+    // (hif-backend#26, #32, #30).
+    this->collectContinuouslyDrivenDeclarations(view);
+
+    // Delays are emitted as plain numbers, so the unit they count in has to be
+    // declared before the module that uses them (hif-backend#24). Only designs
+    // that carry a delay get a directive.
+    this->resolveTimescale(view);
+    this->printTimescaleDirective();
+
     // Print the module header.
     (*_stream) << "module " << name;
 
@@ -368,10 +408,10 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
 
     bool has_functions = false;
 
-    has_functions |= this->printFunctions(view->declarations);
-    has_functions |= this->printFunctions(content->declarations);
+    has_functions |= this->printSubprograms(view->declarations);
+    has_functions |= this->printSubprograms(content->declarations);
     for (auto stateTable : content->stateTables) {
-        has_functions |= this->printFunctions(stateTable->declarations);
+        has_functions |= this->printSubprograms(stateTable->declarations);
     }
 
     if (has_functions) {
@@ -381,6 +421,54 @@ auto VerilogPrinter::visitDesignUnit(DesignUnit &o) -> int
     // ========================================================================
     // PRINT THE REST
     // ========================================================================
+
+    // The view's concurrent statements. vhdl2hif puts every VHDL concurrent
+    // signal assignment here, and nothing printed them, so a VHDL design
+    // regenerated as a module with the right ports and an empty body - valid
+    // Verilog that drives nothing, produced with exit code 0 and no
+    // diagnostic (hif-backend#32). Designs that came through verilog2hif are
+    // unaffected either way: that frontend rewrites continuous assignments
+    // into processes, which is why every existing test still passes.
+    if (content->getGlobalAction() != nullptr) {
+        content->getGlobalAction()->acceptVisitor(*this);
+        if (!content->getGlobalAction()->actions.empty()) {
+            (*_stream) << "\n";
+        }
+    }
+
+    // An output port's initial value, written back out as the continuous
+    // assignment the frontend folded into it. verilog2hif does that folding
+    // for any constant right-hand side, and the value was then printed
+    // nowhere - Verilog-2001 has no place for an initializer in an ANSI port
+    // list - so "assign c = 32'd7;" regenerated as an empty module with an
+    // undriven output (hif-backend#30). collectContinuouslyDrivenDeclarations
+    // has already established that nothing else drives these.
+    for (auto *port : _valueDrivenPorts) {
+        (*_stream) << "assign " << port->getName() << " = ";
+        port->getValue()->acceptVisitor(*this);
+        (*_stream) << ";\n";
+    }
+    if (!_valueDrivenPorts.empty()) {
+        (*_stream) << "\n";
+    }
+
+    // The other half of the same field: an output port that states an initial
+    // value and is written by a process. That port is a reg, so a continuous
+    // assign would be a second driver on it - the value is what it holds until
+    // the process first writes it, which is an `initial` assignment
+    // (hif-backend#36). Blocking, and in one block, so the ports are
+    // initialized before any process that reads them can run.
+    if (!_initialValuePorts.empty()) {
+        (*_stream) << "initial begin\n";
+        _stream->indent();
+        for (auto *port : _initialValuePorts) {
+            (*_stream) << port->getName() << " = ";
+            port->getValue()->acceptVisitor(*this);
+            (*_stream) << ";\n";
+        }
+        _stream->unindent();
+        (*_stream) << "end\n\n";
+    }
 
     for (auto instance : content->instances) {
         instance->acceptVisitor(*this);
@@ -613,6 +701,59 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
     return 0;
 }
 
+namespace
+{
+
+/// @brief Recovers the Verilog spelling of a call to a system function or
+/// system task.
+/// @details Verilog spells these with a leading '$'. verilog2hif renames
+/// "$name" to "_system_name" (FixDescription_1::_fixSystemTaskCalls) and
+/// standardization then prefixes standard-library symbols with
+/// "hif_<semantics>_", so "$clog2" reaches this printer named
+/// "hif_verilog__system_clog2". Printing that name verbatim is not valid
+/// Verilog - there is no such callable function, and nothing declares it on
+/// the way back in, so the round trip breaks (hif-backend#19).
+///
+/// The renaming is the same for tasks as for functions - one frontend pass
+/// does both - so recovering the name is too. Templated on the call type
+/// rather than duplicated: a FunctionCall and a ProcedureCall differ in how
+/// they are *printed* (an expression versus a statement), not in how their
+/// name got mangled. hif-backend#29 was the task half going unprinted
+/// entirely.
+/// @param call The call to inspect.
+/// @param sem The semantics used to resolve @p call's declaration.
+/// @return The system call's name without its '$', or an empty string if
+/// @p call is not a call to a Verilog system function or task.
+template <typename TCall>
+auto getSystemCallName(TCall &call, hif::semantics::ILanguageSemantics *sem) -> std::string
+{
+    const std::string standardPrefix("hif_" + sem->getName() + "_");
+    const std::string systemPrefix("_system_");
+
+    std::string name(call.getName());
+    if (name.compare(0, standardPrefix.size(), standardPrefix) == 0) {
+        name.erase(0, standardPrefix.size());
+    }
+    if (name.compare(0, systemPrefix.size(), systemPrefix) != 0) {
+        return "";
+    }
+
+    // "_system_" is a legal identifier prefix in Verilog, so a user subprogram
+    // could carry this name of its own accord. Only the standard library's
+    // ones are the renamed '$' ones; anything a design declares itself keeps
+    // the name it has. A call whose declaration cannot be resolved is treated
+    // as a system call: the name says it came from '$', and printing it
+    // unchanged is known to be wrong.
+    auto *decl = hif::semantics::getDeclaration(&call, sem);
+    if (decl != nullptr && !hif::declarationIsPartOfStandard(decl)) {
+        return "";
+    }
+
+    return name.substr(systemPrefix.size());
+}
+
+} // namespace
+
 auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
 {
     if (o.getName() == "hif_verilog_iterated_concat") {
@@ -648,7 +789,19 @@ auto VerilogPrinter::visitFunctionCall(FunctionCall &o) -> int
         return 0;
     }
 
-    (*_stream) << o.getName() << "(";
+    const std::string systemName(getSystemCallName(o, _sem));
+    if (!systemName.empty()) {
+        (*_stream) << "$" << systemName;
+        // Verilog's argument-less system functions ($time, $realtime, ...)
+        // are spelled without parentheses; "$time()" is not accepted.
+        if (o.parameterAssigns.empty()) {
+            return 0;
+        }
+    } else {
+        (*_stream) << o.getName();
+    }
+
+    (*_stream) << "(";
     for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
         o.parameterAssigns.at(i)->acceptVisitor(*this);
         if (i < o.parameterAssigns.size() - 1) {
@@ -813,7 +966,58 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     // return GuideVisitor::visitFunction(o);
 }
 
-auto VerilogPrinter::visitGlobalAction(GlobalAction &o) -> int { return GuideVisitor::visitGlobalAction(o); }
+auto VerilogPrinter::visitGlobalAction(GlobalAction &o) -> int
+{
+    // A global action is a *concurrent* statement, so it cannot be printed by
+    // falling through to the Assign visitor: that one emits the procedural
+    // form ("t <= rhs;"), which is only legal inside a process and would
+    // assign to a reg. The concurrent equivalent is a continuous assignment,
+    // which is also exactly what the VHDL this comes from means
+    // (hif-backend#32).
+    //
+    // The targets were registered as nets by collectContinuouslyDrivenDeclarations,
+    // so what is declared and what is driven agree.
+    for (auto *action : o.actions) {
+        auto *assign = dynamic_cast<Assign *>(action);
+
+        // Anything else has no continuous form to be emitted as. Dropping it
+        // is what this issue was about, so this fails loudly and names the
+        // construct instead of producing a module that quietly does less than
+        // its source. Neither frontend can currently produce one: vhdl2hif
+        // puts only concurrent signal assignments here (its parser types the
+        // list as BList<Assign>), and verilog2hif rewrites global actions into
+        // processes before the backend sees them.
+        messageAssert(
+            assign != nullptr,
+            "Unsupported global action: only a concurrent signal assignment has a Verilog continuous-assignment "
+            "equivalent, and emitting nothing would silently drop a driver (hif-backend#32).",
+            action, _sem);
+
+        (*_stream) << "assign ";
+
+        // A continuous assignment states its delay right after the keyword
+        // ("assign #2 t = ...;"). It cannot use the intra-assignment position
+        // visitAssign emits ("t <= #2 ...") - that form is procedural-only.
+        // This is the first path on which a VHDL "after" delay reaches the
+        // output at all: it was already carried in the HIF and already
+        // handled by renderDelay/resolveTimescale (hif-backend#24), but no
+        // VHDL-derived assignment was being printed to carry it
+        // (hif-backend#32).
+        const std::string delay(this->renderDelay(assign->getDelay()));
+        if (!delay.empty()) {
+            (*_stream) << "#" << delay << " ";
+        }
+
+        assign->getLeftHandSide()->acceptVisitor(*this);
+
+        // Always "=". A continuous assignment has no blocking/non-blocking
+        // distinction - "<=" here would parse as less-than-or-equal.
+        (*_stream) << " = ";
+        assign->getRightHandSide()->acceptVisitor(*this);
+        (*_stream) << ";\n";
+    }
+    return 0;
+}
 
 auto VerilogPrinter::visitEntity(Entity &o) -> int
 {
@@ -918,13 +1122,24 @@ auto VerilogPrinter::visitParameterAssign(ParameterAssign &o) -> int
 
 auto VerilogPrinter::visitProcedure(Procedure &o) -> int
 {
-    // Procedures reaching this printer are frontend-synthesized "cone
-    // functions" (hif-frontend's generateConeFunctions/fixLogicCones,
-    // FixDescription_3.cpp) wrapping a shared combinational
-    // sub-expression - e.g. the logic a primitive gate instance or a
-    // flattened combinational submodule instance lowers to. Verilog has
-    // no user-declarable procedure construct, so nothing else reaches
-    // here today.
+    // A user-written Verilog task. It is a Procedure with a StateTable, just
+    // as a cone is, and it used to take the cone path below: inlined at its
+    // call site, where the hif-backend#16 assert then fired because a task
+    // assigns to the signals and ports it was written to drive rather than to
+    // the "_sig_var" Variables a cone uses. The tool exited 1 and left a
+    // zero-byte file, reporting a cone invariant about a design containing no
+    // cone (hif-backend#38).
+    //
+    // Verilog does have a user-declarable procedure construct after all - a
+    // task - so a task is emitted as one, and called rather than expanded.
+    if (!isConeProcedure(&o)) {
+        return this->printTask(o);
+    }
+
+    // Cones are frontend-synthesized "cone functions" (hif-frontend's
+    // generateConeFunctions/fixLogicCones, FixDescription_3.cpp) wrapping a
+    // shared combinational sub-expression - e.g. the logic a primitive gate
+    // instance or a flattened combinational submodule instance lowers to.
     //
     // A cone is *not* an independent process: the frontend inserts an
     // explicit call to it into the body of every process that reads its
@@ -948,6 +1163,45 @@ auto VerilogPrinter::visitParameter(Parameter &o) -> int { return hif::GuideVisi
 
 auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
 {
+    // A Verilog system task ($display, $monitor, $finish, ...). Handled before
+    // anything else below, and returning immediately, so that the
+    // cone-inlining logic and the hif-backend#16 contract it carries are left
+    // exactly as they were: a system task is not a cone, has no body to
+    // inline, and must not participate in any of that reasoning.
+    //
+    // It used to fall through to the "no StateTable" early return further
+    // down. hif-core declares these as subprograms with no return type and no
+    // body (ILanguageSemantics::_addMultiparamFunction, called with a null
+    // return type), so the call resolved to a Procedure whose getStateTable()
+    // is null, and "return 0" dropped it without a word. Verified by
+    // instrumenting this function: a $display call reports
+    // PROCEDURE_NO_STATETABLE with declarationIsPartOfStandard true
+    // (hif-backend#29).
+    //
+    // Dropping it regenerates a design that compiles and simulates and prints
+    // nothing, which is how a round trip silently discards a testbench's or an
+    // instrumented model's entire observable output.
+    const std::string systemName(getSystemCallName(o, _sem));
+    if (!systemName.empty()) {
+        (*_stream) << "$" << systemName;
+        // Argument-less system tasks are spelled without parentheses, as the
+        // argument-less system *functions* are in visitFunctionCall: "$finish"
+        // rather than "$finish()".
+        if (!o.parameterAssigns.empty()) {
+            (*_stream) << "(";
+            for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
+                o.parameterAssigns.at(i)->acceptVisitor(*this);
+                if (i < o.parameterAssigns.size() - 1) {
+                    (*_stream) << ", ";
+                }
+            }
+            (*_stream) << ")";
+        }
+        // A task call is a statement, not an expression: it terminates itself.
+        (*_stream) << ";\n";
+        return 0;
+    }
+
     // Expand the callee's body here. See visitProcedure for why cones are
     // inlined at their call sites rather than hoisted into a process of
     // their own.
@@ -971,6 +1225,27 @@ auto VerilogPrinter::visitProcedureCall(ProcedureCall &o) -> int
 
     auto *stateTable = procedure->getStateTable();
     if (stateTable == nullptr) {
+        return 0;
+    }
+
+    // A user-written task is called, not expanded. Inlining one hit the
+    // hif-backend#16 assert - a task assigns to the signals and ports it was
+    // written to drive, not to a cone's "_sig_var" Variable - and aborted with
+    // a zero-byte output file (hif-backend#38). The cone contract below is
+    // untouched: this returns before reaching it.
+    if (!isConeProcedure(procedure)) {
+        (*_stream) << o.getName();
+        if (!o.parameterAssigns.empty()) {
+            (*_stream) << "(";
+            for (std::size_t i = 0; i < o.parameterAssigns.size(); ++i) {
+                o.parameterAssigns.at(i)->acceptVisitor(*this);
+                if (i < o.parameterAssigns.size() - 1) {
+                    (*_stream) << ", ";
+                }
+            }
+            (*_stream) << ")";
+        }
+        (*_stream) << ";\n";
         return 0;
     }
 
@@ -1044,6 +1319,21 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         _stream->unindent();
         (*_stream) << "\n";
         (*_stream) << "end\n";
+    } else if (!isRetriggerable(o)) {
+        // A process with nothing to wake it up runs exactly once, at time
+        // zero. `always` would make it a zero-delay infinite loop, which no
+        // source ever meant and which Icarus rejects at elaboration
+        // (hif-backend#40). Verilog spells "run once at startup" `initial`.
+        (*_stream) << "initial begin" << '\n';
+        _stream->indent();
+
+        for (auto state : o.states) {
+            state->acceptVisitor(*this);
+        }
+
+        _stream->unindent();
+        (*_stream) << "\n";
+        (*_stream) << "end\n";
     } else {
         (*_stream) << "always";
 
@@ -1073,6 +1363,37 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
             printSensitivity(o.sensitivity, "");
             printSensitivity(o.sensitivityPos, "posedge");
             printSensitivity(o.sensitivityNeg, "negedge");
+
+            // A delayed assignment in this process schedules its target for
+            // later instead of writing it now, so the statements after it -
+            // and the whole process on its next run - would keep reading the
+            // pre-delay value unless the target itself re-triggers the process
+            // (hif-backend#24). The HIF sensitivity list names the delayed
+            // net's *inputs*, which is correct for an immediate assignment and
+            // one event too early for a delayed one.
+            //
+            // Only level-sensitive processes are extended. Adding a plain
+            // entry to an edge-sensitive list would make a register update
+            // between clock edges, which is a worse error than the one being
+            // fixed.
+            if (o.sensitivityPos.empty() && o.sensitivityNeg.empty()) {
+                std::set<std::string> alreadySensitive;
+                for (auto *signal : o.sensitivity) {
+                    auto *identifier = dynamic_cast<hif::Identifier *>(signal);
+                    if (identifier != nullptr) {
+                        alreadySensitive.insert(identifier->getName());
+                    }
+                }
+                std::set<std::string> delayedTargets;
+                this->collectDelayedTargets(&o, delayedTargets);
+                for (const auto &name : delayedTargets) {
+                    if (alreadySensitive.count(name) != 0) {
+                        continue;
+                    }
+                    (*_stream) << ", " << name;
+                }
+            }
+
             (*_stream) << " )";
         }
         (*_stream) << " begin" << '\n';
@@ -1124,7 +1445,37 @@ auto VerilogPrinter::visitSwitch(Switch &o) -> int
     return 0;
 }
 
-auto VerilogPrinter::visitStringValue(StringValue &o) -> int { return GuideVisitor::visitStringValue(o); }
+auto VerilogPrinter::visitStringValue(StringValue &o) -> int
+{
+    // String literals were printed nowhere at all: this delegated to
+    // GuideVisitor, which visits children and writes nothing.
+    //
+    // This is fixed here rather than filed separately because restoring
+    // $display without it does not actually restore anything (hif-backend#29).
+    // A "$display(, a)" - which is what emitting the call alone produces - has
+    // lost the format string that carries the message, so the regenerated
+    // design still prints nothing useful, and verilog2hif rejects it on the
+    // way back in (exit 1). A fix that re-emits system task calls has to own
+    // how their arguments are written, and the first argument of the task this
+    // issue is about is always a string.
+    //
+    // A "plain" StringValue is an opaque passthrough - text that is already
+    // target-language source and must not be quoted at all.
+    if (o.isPlain()) {
+        (*_stream) << o.getValue();
+        return 0;
+    }
+
+    // Emitted verbatim between quotes, NOT re-escaped. verilog2hif stores the
+    // literal's text in source form, with its escape sequences left as they
+    // were written: `\"` is stored as backslash-quote and `\\` as
+    // backslash-backslash, as the XML shows. Escaping again would double every
+    // backslash and turn `"a\"b"` into `"a\\\"b"`, which says something
+    // different. Writing the stored text back out is what makes the literal
+    // round trip byte for byte.
+    (*_stream) << "\"" << o.getValue() << "\"";
+    return 0;
+}
 
 auto VerilogPrinter::visitTime(Time &o) -> int { return hif::GuideVisitor::visitTime(o); }
 
@@ -1152,7 +1503,123 @@ auto VerilogPrinter::visitView(View &o) -> int { return hif::GuideVisitor::visit
 
 auto VerilogPrinter::visitViewReference(ViewReference &o) -> int { return GuideVisitor::visitViewReference(o); }
 
-auto VerilogPrinter::visitWait(Wait &o) -> int { return GuideVisitor::visitWait(o); }
+auto VerilogPrinter::visitWait(Wait &o) -> int
+{
+    // This used to be a bare `return GuideVisitor::visitWait(o);`. That printed
+    // no `wait` keyword, but the guide visitor still descended into the node's
+    // children, so the wait's condition or sensitivity was printed *bare* and
+    // ran straight into the statement that followed it: `wait (en); o = 4'd7;`
+    // came back as `eno <= 4'b0111;`, inventing an undeclared identifier by
+    // concatenation while hif2verilog exited 0 (hif-backend#42).
+    //
+    // Nothing below delegates to GuideVisitor: every branch prints the whole
+    // statement itself, and falling through to the guide visitor afterwards
+    // would print the children a second time.
+    const bool hasCondition = o.getCondition() != nullptr;
+    const bool hasSensitivity =
+        !o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty();
+    const bool hasTime = o.getTime() != nullptr;
+
+    // Verilog spells each of the three suspension forms with a different
+    // construct - `wait (c)`, `@( ... )`, `#t` - and has no single statement
+    // meaning more than one at once. VHDL does: `wait on a until c for 10 ns;`
+    // sets all three, because its three clauses are independently optional
+    // (vhdl2hif's parse_WaitStatement). Such a wait needs a lowering rather
+    // than a keyword, which this printer does not do, so it is refused here.
+    //
+    // Refusing is the point. The alternative is not "emit something slightly
+    // wrong", it is the silent splicing above: a shape this printer cannot
+    // spell has to stop the tool rather than corrupt the output.
+    const int forms = static_cast<int>(hasCondition) + static_cast<int>(hasSensitivity) + static_cast<int>(hasTime);
+    if (forms > 1) {
+        messageError(
+            "Unsupported Wait combination: a wait that sets more than one of condition, sensitivity and "
+            "timeout has no single Verilog construct and is not lowered by this printer (hif-backend#45).",
+            &o, _sem);
+    }
+    if (o.getRepetitions() != nullptr) {
+        messageError(
+            "Unsupported Wait shape: a repeated wait is not emitted by this printer (hif-backend#45). "
+            "verilog2hif lowers `repeat (n) @( ... )` to a For around a plain wait instead of setting "
+            "this field, so reaching here means the HIF came from somewhere else.",
+            &o, _sem);
+    }
+    if (!o.actions.empty()) {
+        messageError(
+            "Unsupported Wait shape: a wait carrying its own actions is not emitted by this printer "
+            "(hif-backend#45). verilog2hif's _manageWaitActions lifts those actions out to be following "
+            "siblings for every RTL process, leaving this list empty.",
+            &o, _sem);
+    }
+
+    if (forms == 0) {
+        // A wait that says nothing. Two different producers make one, and the
+        // node records nothing that tells them apart:
+        //
+        //  - verilog2hif appends an empty Wait to the end of every non-initial
+        //    process that contains a wait (_fixProcessesWithWait,
+        //    FixDescription_1.cpp). It is a marker for the SystemC lowering,
+        //    where the process becomes an SC_THREAD wrapped in `while (true)`
+        //    and this becomes the loop-tail `wait()` that reapplies the static
+        //    sensitivity. An `always` block already loops, so in Verilog the
+        //    marker has no syntax of its own.
+        //
+        //  - vhdl2hif emits one for VHDL `wait;`, which suspends the process
+        //    permanently.
+        //
+        // Printing nothing is right for the first and loses the second. It is
+        // the only choice available here, because the two are indistinguishable
+        // at this point - and it is what this printer already did before
+        // hif-backend#42, so nothing regresses. hif-backend#46 tracks removing
+        // the ambiguity at its source.
+        return 0;
+    }
+
+    if (hasCondition) {
+        // Verilog's `wait (c)` is level-sensitive: it falls through at once
+        // when c already holds. That is exactly what verilog2hif recorded from
+        // a source `wait (c)`. It is *not* what vhdl2hif's `wait until c`
+        // meant - VHDL suspends until an event makes the condition true, even
+        // if it is true on arrival - but the two land in the same field with
+        // nothing to separate them, and hif2sc collapses them the same way.
+        // hif-core#16 tracks that divergence.
+        (*_stream) << "wait ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " );\n";
+        return 0;
+    }
+
+    if (hasTime) {
+        // renderDelay rather than visiting the value: it maps both shapes a
+        // timeout arrives in - verilog2hif's "n * hif_verilog_timescale_unit"
+        // count and vhdl2hif's absolute TimeValue - onto a count of the unit
+        // the emitted `timescale declares. Visiting a TimeValue directly
+        // prints nothing at all.
+        (*_stream) << "#" << this->renderDelay(o.getTime()) << ";\n";
+        return 0;
+    }
+
+    // An event control. Each signal is qualified individually, for the reason
+    // visitStateTable qualifies its sensitivity individually (hif-backend#21):
+    // one leading `posedge` ahead of a comma-separated list silently applies to
+    // the first entry only.
+    bool isFirst = true;
+    auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
+        for (auto *signal : list) {
+            (*_stream) << (isFirst ? "@( " : ", ");
+            isFirst = false;
+            if (!edge.empty()) {
+                (*_stream) << edge << " ";
+            }
+            signal->acceptVisitor(*this);
+        }
+    };
+    printSensitivity(o.sensitivity, "");
+    printSensitivity(o.sensitivityPos, "posedge");
+    printSensitivity(o.sensitivityNeg, "negedge");
+    (*_stream) << " );\n";
+    return 0;
+}
 
 auto VerilogPrinter::visitWhen(When &o) -> int
 {
@@ -1235,9 +1702,566 @@ inline auto is_integer(hif::Type *type) -> bool
     return false;
 }
 
+namespace
+{
+
+/// @brief Name verilog2hif gives the constant holding a file's timescale unit.
+const char *const timescaleUnitName = "hif_verilog_timescale_unit";
+/// @brief ... and its precision.
+const char *const timescalePrecisionName = "hif_verilog_timescale_precision";
+
+/// @brief Looks up a Time-valued constant by name.
+/// @param declarations The declaration list to search.
+/// @param name The constant's name.
+/// @return Its TimeValue, or nullptr if there is no such constant.
+auto findTimeConstant(hif::BList<hif::Declaration> &declarations, const std::string &name) -> hif::TimeValue *
+{
+    for (auto *declaration : declarations) {
+        auto *constant = dynamic_cast<hif::Const *>(declaration);
+        if (constant == nullptr || constant->getName() != name) {
+            continue;
+        }
+        return dynamic_cast<hif::TimeValue *>(constant->getValue());
+    }
+    return nullptr;
+}
+
+/// @brief The Verilog spelling of a time unit.
+/// @param unit The HIF time unit.
+/// @return "fs", "ps", ... or an empty string for a unit Verilog cannot
+/// express (minutes and hours have no `timescale spelling).
+auto timeUnitToVerilog(hif::TimeValue::TimeUnit unit) -> std::string
+{
+    switch (unit) {
+    case hif::TimeValue::time_fs:
+        return "fs";
+    case hif::TimeValue::time_ps:
+        return "ps";
+    case hif::TimeValue::time_ns:
+        return "ns";
+    case hif::TimeValue::time_us:
+        return "us";
+    case hif::TimeValue::time_ms:
+        return "ms";
+    case hif::TimeValue::time_sec:
+        return "s";
+    default:
+        return "";
+    }
+}
+
+/// @brief Prints a delay count without a trailing ".000000".
+/// @param value The count, in timescale units.
+/// @return Its shortest exact decimal spelling.
+auto formatDelayCount(double value) -> std::string
+{
+    std::stringstream ss;
+    ss << std::setprecision(17) << value;
+    return ss.str();
+}
+
+/// @brief The factor of @p value that a Verilog timescale can name.
+/// @details Verilog only accepts 1, 10 or 100 there, so anything else is
+/// folded into the value printed at each delay instead.
+/// @param value The constant's numeric value.
+/// @return 1, 10 or 100.
+auto timescaleFactor(double value) -> double
+{
+    if (value >= 100.0) {
+        return 100.0;
+    }
+    if (value >= 10.0) {
+        return 10.0;
+    }
+    return 1.0;
+}
+
+/// @brief Converts a TimeValue into a number of timescale units.
+/// @param time The absolute time.
+/// @param unit The timescale unit.
+/// @param unitValue The timescale unit's factor.
+/// @return How many timescale units @p time is.
+auto toTimescaleUnits(const hif::TimeValue &time, hif::TimeValue::TimeUnit unit, double unitValue) -> double
+{
+    // changeUnit mutates, so work on a copy: the delay stays in the tree.
+    auto *converted = hif::copy(&time);
+    converted->changeUnit(unit);
+    const double result = converted->getValue() / unitValue;
+    delete converted;
+    return result;
+}
+
+/// @brief The unit-scaled operand of a "<count> * hif_verilog_timescale_unit"
+/// delay, which is how verilog2hif records "#<count>".
+/// @param delay The HIF delay value.
+/// @return The count operand, or nullptr if @p delay is not of that shape.
+auto getTimescaleScaledCount(hif::Value *delay) -> hif::Value *
+{
+    auto *expression = dynamic_cast<hif::Expression *>(delay);
+    if (expression == nullptr || expression->getOperator() != hif::op_mult) {
+        return nullptr;
+    }
+
+    auto *value1 = dynamic_cast<hif::Identifier *>(expression->getValue1());
+    auto *value2 = dynamic_cast<hif::Identifier *>(expression->getValue2());
+    if (value1 != nullptr && value1->getName() == timescaleUnitName) {
+        return expression->getValue2();
+    }
+    if (value2 != nullptr && value2->getName() == timescaleUnitName) {
+        return expression->getValue1();
+    }
+    return nullptr;
+}
+
+} // namespace
+
+void VerilogPrinter::resolveTimescale(hif::View *view)
+{
+    _timescale = Timescale();
+    if (view == nullptr) {
+        return;
+    }
+
+    // Only designs that actually carry a delay get a `timescale directive, so
+    // everything else regenerates byte-for-byte as before.
+    std::list<hif::Value *> delays;
+
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, view, assignQuery);
+    for (auto *assign : assigns) {
+        if (assign->getDelay() != nullptr) {
+            delays.push_back(assign->getDelay());
+        }
+    }
+
+    // A timed wait - Verilog `#5;`, VHDL `wait for 10 ns;` - is a delay too,
+    // and visitWait emits it as a count of the unit this directive declares
+    // (hif-backend#42). Scanning only Assign delays left a design whose only
+    // delay was a wait with no `timescale at all, so that count was measured
+    // in whatever the simulator defaults to rather than in the source's unit.
+    std::list<hif::Wait *> waits;
+    hif::HifTypedQuery<hif::Wait> waitQuery;
+    hif::search(waits, view, waitQuery);
+    for (auto *wait : waits) {
+        if (wait->getTime() != nullptr) {
+            delays.push_back(wait->getTime());
+        }
+    }
+
+    if (delays.empty()) {
+        return;
+    }
+
+    // A delay that is an absolute time rather than a count of timescale units
+    // has to be converted, and the unit it converts into must be fine enough
+    // for every such delay in the file.
+    std::list<hif::TimeValue *> absoluteDelays;
+    for (auto *delay : delays) {
+        auto *absolute = dynamic_cast<hif::TimeValue *>(delay);
+        if (absolute != nullptr) {
+            absoluteDelays.push_back(absolute);
+        }
+    }
+
+    // verilog2hif records the source's own `timescale (or its 1ns/10ps
+    // default) as two constants, on the view when the source declared one and
+    // on the System when it did not.
+    hif::TimeValue *unit      = findTimeConstant(view->declarations, timescaleUnitName);
+    hif::TimeValue *precision = findTimeConstant(view->declarations, timescalePrecisionName);
+    auto *system              = hif::getNearestParent<hif::System>(view);
+    if (unit == nullptr && system != nullptr) {
+        unit      = findTimeConstant(system->declarations, timescaleUnitName);
+        precision = findTimeConstant(system->declarations, timescalePrecisionName);
+    }
+
+    if (unit != nullptr && !timeUnitToVerilog(unit->getUnit()).empty()) {
+        _timescale.unit      = unit->getUnit();
+        _timescale.unitValue = timescaleFactor(unit->getValue());
+    } else if (!absoluteDelays.empty()) {
+        // No usable timescale on record, so take the finest unit any absolute
+        // delay in this file uses. Every delay is then a whole number of it.
+        auto finest = (*absoluteDelays.begin())->getUnit();
+        for (auto *absolute : absoluteDelays) {
+            finest = std::min(finest, absolute->getUnit());
+        }
+        _timescale.unit      = finest;
+        _timescale.unitValue = 1.0;
+    } else {
+        // A count of timescale units with no timescale to count in: there is
+        // nothing to derive one from, so fall back to what verilog2hif uses
+        // when a source declares none.
+        _timescale.unit      = hif::TimeValue::time_ns;
+        _timescale.unitValue = 1.0;
+    }
+
+    if (precision != nullptr && !timeUnitToVerilog(precision->getUnit()).empty()) {
+        _timescale.precision      = precision->getUnit();
+        _timescale.precisionValue = timescaleFactor(precision->getValue());
+    } else {
+        _timescale.precision      = _timescale.unit;
+        _timescale.precisionValue = _timescale.unitValue;
+    }
+
+    _timescale.valid = true;
+}
+
+auto VerilogPrinter::isConeProcedure(hif::Procedure *procedure) -> bool
+{
+    if (procedure == nullptr) {
+        return false;
+    }
+    // hif-frontend names every cone it synthesizes from a reserved stem -
+    // getFreshName("hif_cone_" + the driven declaration's name) - and gives the
+    // cone's StateTable the literal name "hif_cone" (generateConeFunctions,
+    // FixDescription_3.cpp). A user-written task keeps the name the source gave
+    // it.
+    //
+    // The distinction cannot be drawn from shape instead. A cone takes no
+    // parameters, but so does a task declared without arguments, and both are a
+    // Procedure carrying a StateTable of states. The name is the only thing
+    // that records which of the two the frontend meant, and it is reserved
+    // rather than incidental.
+    static const std::string conePrefix("hif_cone_");
+    const std::string name(procedure->getName());
+    return name.rfind(conePrefix, 0) == 0;
+}
+
+auto VerilogPrinter::printTask(hif::Procedure &o) -> int
+{
+    auto *stateTable = o.getStateTable();
+    if (stateTable == nullptr) {
+        // Nothing to declare. A bodiless procedure that is not a system task
+        // reaches here; visitProcedureCall drops its calls the same way.
+        return 0;
+    }
+
+    (*_stream) << "task " << o.getName() << ";\n";
+    _stream->indent();
+
+    // A task's arguments are declared inside its body in Verilog, as a
+    // function's are, and carry their own direction.
+    bool hasDeclarations = false;
+    for (auto parameter : o.parameters) {
+        (*_stream) << this->getDeclaration(parameter) << ";\n";
+        hasDeclarations = true;
+    }
+    for (auto declaration : stateTable->declarations) {
+        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        hasDeclarations = true;
+    }
+    if (hasDeclarations) {
+        (*_stream) << "\n";
+    }
+
+    (*_stream) << "begin\n";
+    _stream->indent();
+
+    for (auto state : stateTable->states) {
+        state->acceptVisitor(*this);
+    }
+
+    _stream->unindent();
+    (*_stream) << "end\n";
+    _stream->unindent();
+    (*_stream) << "endtask\n";
+
+    return 0;
+}
+
+auto VerilogPrinter::isUnknownLiteral(const std::string &literal) -> bool
+{
+    // Skip a sized-literal prefix, so that the "4" and the "b" of 4'bxxxx are
+    // not mistaken for known digits.
+    auto start = literal.find('\'');
+    start      = (start == std::string::npos) ? 0 : start + 2;
+
+    bool sawDigit = false;
+    for (auto index = start; index < literal.size(); ++index) {
+        const char character = literal[index];
+        if (character == '_') {
+            continue;
+        }
+        sawDigit = true;
+        if (character != 'x' && character != 'X' && character != 'z' && character != 'Z') {
+            return false;
+        }
+    }
+    return sawDigit;
+}
+
+auto VerilogPrinter::isRetriggerable(hif::StateTable &stateTable) -> bool
+{
+    if (!stateTable.sensitivity.empty() || !stateTable.sensitivityPos.empty() ||
+        !stateTable.sensitivityNeg.empty()) {
+        return true;
+    }
+
+    // A VHDL process may carry no sensitivity list and suspend on an explicit
+    // `wait` instead. That process does run repeatedly, so it stays an
+    // `always`: the sensitivity lives on the Wait rather than on the
+    // StateTable, and reading only the StateTable's own lists would silently
+    // demote it to a run-once `initial`.
+    std::list<hif::Wait *> waits;
+    hif::HifTypedQuery<hif::Wait> waitQuery;
+    hif::search(waits, &stateTable, waitQuery);
+    return !waits.empty();
+}
+
+void VerilogPrinter::collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names)
+{
+    if (stateTable == nullptr) {
+        return;
+    }
+
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers   = true;
+    prefixOptions.recurseIntoSlices    = true;
+    prefixOptions.recurseIntoFieldRefs = true;
+
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, stateTable, assignQuery);
+    for (auto *assign : assigns) {
+        if (assign->getDelay() == nullptr) {
+            continue;
+        }
+        auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+        auto *identifier = dynamic_cast<hif::Identifier *>(target);
+        if (identifier != nullptr) {
+            names.insert(identifier->getName());
+        }
+    }
+
+    // Cone procedures are expanded at their call sites (visitProcedureCall),
+    // so a delayed assignment inside one lands in this process's body and
+    // needs the same treatment as one written here directly.
+    std::list<hif::ProcedureCall *> calls;
+    hif::HifTypedQuery<hif::ProcedureCall> callQuery;
+    hif::search(calls, stateTable, callQuery);
+    for (auto *call : calls) {
+        auto *procedure = dynamic_cast<hif::Procedure *>(hif::semantics::getDeclaration(call, _sem));
+        if (procedure == nullptr || procedure->getStateTable() == nullptr) {
+            continue;
+        }
+        if (!_inliningCones.insert(procedure).second) {
+            continue;
+        }
+        this->collectDelayedTargets(procedure->getStateTable(), names);
+        _inliningCones.erase(procedure);
+    }
+}
+
+void VerilogPrinter::printTimescaleDirective()
+{
+    if (!_timescale.valid) {
+        return;
+    }
+    (*_stream) << "`timescale " << formatDelayCount(_timescale.unitValue) << timeUnitToVerilog(_timescale.unit) << " / "
+               << formatDelayCount(_timescale.precisionValue) << timeUnitToVerilog(_timescale.precision) << "\n\n";
+}
+
+auto VerilogPrinter::renderDelay(hif::Value *delay) -> std::string
+{
+    if (delay == nullptr) {
+        return "";
+    }
+
+    // "#2" reaches HIF as "2 * hif_verilog_timescale_unit", and the emitted
+    // `timescale re-establishes that unit, so the count goes back out as it
+    // came in - including when it is a parameter rather than a literal.
+    if (auto *count = getTimescaleScaledCount(delay)) {
+        return this->renderToString(count);
+    }
+
+    // An absolute time - what vhdl2hif produces for "after 2 ns" - has to be
+    // expressed as a count of the unit the directive declares.
+    if (auto *absolute = dynamic_cast<hif::TimeValue *>(delay)) {
+        return formatDelayCount(toTimescaleUnits(*absolute, _timescale.unit, _timescale.unitValue));
+    }
+
+    // Any other shape is printed as-is, parenthesised. Verilog accepts an
+    // expression here, and printing what the HIF says beats dropping it.
+    return "(" + this->renderToString(delay) + ")";
+}
+
+void VerilogPrinter::collectContinuouslyDrivenDeclarations(hif::View *view)
+{
+    _continuouslyDrivenDeclarations.clear();
+    _valueDrivenPorts.clear();
+    _initialValuePorts.clear();
+    if (view == nullptr) {
+        return;
+    }
+    hif::Contents *contents = view->getContents();
+    if (contents == nullptr) {
+        return;
+    }
+
+    hif::TerminalPrefixOptions prefixOptions;
+    prefixOptions.recurseIntoMembers   = true;
+    prefixOptions.recurseIntoSlices    = true;
+    prefixOptions.recurseIntoFieldRefs = true;
+
+    // ------------------------------------------------------------------
+    // Driver 1: a global action, emitted as a continuous "assign".
+    // ------------------------------------------------------------------
+    // These are collected first because visitGlobalAction is what makes them
+    // continuous drivers: if that ever stops emitting an "assign" for an
+    // action, this has to stop claiming its target is a net.
+    if (contents->getGlobalAction() != nullptr) {
+        for (auto *action : contents->getGlobalAction()->actions) {
+            auto *assign = dynamic_cast<hif::Assign *>(action);
+            if (assign == nullptr) {
+                continue;
+            }
+            auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+            if (dynamic_cast<hif::Identifier *>(target) == nullptr) {
+                continue;
+            }
+            auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(target, _sem));
+            if (decl != nullptr) {
+                _continuouslyDrivenDeclarations.insert(decl);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Driver 2: a child instance's output or inout port.
+    // ------------------------------------------------------------------
+    // Search the whole contents rather than only contents->instances, so an
+    // instance inside a generate block is covered too - it is bound to the
+    // enclosing module's nets exactly the same way.
+    //
+    // The search also turns up the Instance nodes that carry a call's library
+    // scope (the "standard" instance on a standard-library FunctionCall).
+    // Those have no portAssigns, so they contribute nothing.
+    std::list<hif::Instance *> instances;
+    hif::HifTypedQuery<hif::Instance> query;
+    hif::search(instances, contents, query);
+
+    for (auto *instance : instances) {
+        for (auto *portAssign : instance->portAssigns) {
+            // An unresolvable formal is left alone: the direction is what
+            // decides here, and guessing it would be worse than keeping the
+            // previous emission.
+            auto *formal = dynamic_cast<hif::Port *>(hif::semantics::getDeclaration(portAssign, _sem));
+            if (formal == nullptr) {
+                continue;
+            }
+            if (formal->getDirection() != PortDirection::dir_out &&
+                formal->getDirection() != PortDirection::dir_inout) {
+                continue;
+            }
+            if (portAssign->getValue() == nullptr) {
+                continue;
+            }
+            // The actual may be a bit-select or part-select of the net rather
+            // than the net itself; it is still that net that gets driven.
+            auto *actual = hif::getTerminalPrefix(portAssign->getValue(), prefixOptions);
+            if (dynamic_cast<hif::Identifier *>(actual) == nullptr) {
+                continue;
+            }
+            auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(actual, _sem));
+            if (decl != nullptr) {
+                _continuouslyDrivenDeclarations.insert(decl);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Driver 3: an output port's own initial value (hif-backend#30).
+    // ------------------------------------------------------------------
+    // verilog2hif folds a constant continuous assignment into the value of the
+    // port it drives, and Verilog-2001 does not accept an initializer inside
+    // an ANSI port list, so the only way that assignment survives is to be
+    // written back out as the continuous assignment it came from.
+    //
+    // Strictly gated on the port having no driver of its own, and that gate is
+    // load-bearing rather than defensive: vhdl2hif gives EVERY out port a
+    // value - the 'U' default - whether the source wrote one or not. Without
+    // this check every VHDL output would get a second continuous driver on top
+    // of the one it already has, which resolves to x. The check has to cover
+    // procedural drivers too, not just the two continuous kinds above: a port
+    // a process writes is a reg, and a continuous assign cannot drive a reg.
+    if (view->getEntity() == nullptr) {
+        return;
+    }
+
+    std::set<hif::DataDeclaration *> assignedAnywhere;
+    std::list<hif::Assign *> assigns;
+    hif::HifTypedQuery<hif::Assign> assignQuery;
+    hif::search(assigns, contents, assignQuery);
+    for (auto *assign : assigns) {
+        auto *target = hif::getTerminalPrefix(assign->getLeftHandSide(), prefixOptions);
+        if (dynamic_cast<hif::Identifier *>(target) == nullptr) {
+            continue;
+        }
+        auto *decl = dynamic_cast<hif::DataDeclaration *>(hif::semantics::getDeclaration(target, _sem));
+        if (decl != nullptr) {
+            assignedAnywhere.insert(decl);
+        }
+    }
+
+    for (auto *port : view->getEntity()->ports) {
+        // Outputs only. An inout with a value must not be permanently driven:
+        // that would defeat the direction it was declared with.
+        if (port->getDirection() != PortDirection::dir_out || port->getValue() == nullptr) {
+            continue;
+        }
+        // Tell a value the source actually wrote from one a frontend supplied
+        // for a port that stated none. Both frontends supply one: vhdl2hif
+        // gives every out port the 'U' default, which has no Verilog literal
+        // and renders empty, and verilog2hif gives a reg port an all-x value.
+        // Neither says anything a declaration does not already say - an
+        // uninitialized reg and an undriven net both read x - and emitting the
+        // first would produce "assign q = ;".
+        const std::string rendered = this->renderToString(port->getValue());
+        if (rendered.empty() || isUnknownLiteral(rendered)) {
+            continue;
+        }
+        if (_continuouslyDrivenDeclarations.count(port) != 0) {
+            // Something already drives it continuously, so it is a net and its
+            // value is not ours to restate.
+            continue;
+        }
+        if (assignedAnywhere.count(port) != 0) {
+            // Driven procedurally, so the port is a reg. A continuous assign
+            // would be a second driver on it; the value is what it holds until
+            // that process first writes it, which is an `initial` assignment
+            // (hif-backend#36). Deliberately does NOT mark the port as
+            // continuously driven: it stays a reg.
+            _initialValuePorts.push_back(port);
+            continue;
+        }
+        _valueDrivenPorts.push_back(port);
+        _continuouslyDrivenDeclarations.insert(port);
+    }
+}
+
+auto VerilogPrinter::isContinuouslyDriven(hif::Declaration *declaration) -> bool
+{
+    auto *dataDeclaration = dynamic_cast<hif::DataDeclaration *>(declaration);
+    return dataDeclaration != nullptr && _continuouslyDrivenDeclarations.count(dataDeclaration) != 0;
+}
+
 std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
 {
     std::stringstream ss;
+    // The timescale constants are verilog2hif's record of the source's
+    // `timescale, not declarations the design made. Verilog spells that as a
+    // directive, which printTimescaleDirective now emits, so printing them
+    // here would state the timescale twice - and state it invalidly: their
+    // value is a Time, which has no Verilog literal, so they came out as
+    // "localparam hif_verilog_timescale_unit;" and Icarus rejected the file
+    // ("localparam must have a value"). Reparsing failed on them too, so every
+    // design carrying an explicit `timescale regenerated unusable (part of
+    // hif-backend#24: emitting a delay means owning how its unit is written).
+    if (declaration != nullptr &&
+        (declaration->getName() == timescaleUnitName || declaration->getName() == timescalePrecisionName)) {
+        return "";
+    }
+
     if (auto variable = dynamic_cast<hif::Variable *>(declaration)) {
         if (is_integer(variable->getType())) {
             ss << "integer ";
@@ -1251,7 +2275,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << " = " << value;
         }
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
-        ss << "reg ";
+        // A continuously driven net must be a wire; everything else is written
+        // by a process, which needs a reg (hif-backend#26, #32).
+        ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
         ss << this->getBitwidth(signal->getType());
         ss << signal->getName();
         auto value = this->getValue(signal->getValue());
@@ -1264,7 +2290,9 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << "input wire ";
             break;
         case PortDirection::dir_out:
-            ss << "output reg ";
+            // Same rule as for signals: a continuously driven output is a
+            // wire, one a process drives is a reg (hif-backend#26, #32).
+            ss << (this->isContinuouslyDriven(declaration) ? "output wire " : "output reg ");
             break;
         case PortDirection::dir_inout:
             ss << "inout ";
@@ -1537,12 +2565,13 @@ void VerilogPrinter::printList(
             } else {
                 continue;
             }
-        } else if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
-            // Cone-function procedures (see visitProcedure) print
-            // themselves as complete, self-terminated always-blocks -
-            // skip the shared separator/newline logic below, which
-            // assumes a single-line, separator-terminated item.
-            procedure->acceptVisitor(*this);
+        } else if (dynamic_cast<hif::Procedure *>(list.at(i))) {
+            // Skip procedures for the same reason as functions above: they are
+            // printed by printSubprograms, in the section after the variable
+            // declarations. Visiting one here used to be harmless because
+            // visitProcedure printed nothing at all - a cone's body belongs at
+            // its call sites - but a user-written task does print, and printing
+            // it here as well declared it twice (hif-backend#38).
             continue;
         }
         if (i < (list.size() - 1)) {
@@ -1565,14 +2594,26 @@ void VerilogPrinter::printList(
     }
 }
 
-bool VerilogPrinter::printFunctions(const hif::BList<hif::Object> &list)
+bool VerilogPrinter::printSubprograms(const hif::BList<hif::Object> &list)
 {
-    bool has_functions = false;
+    bool printed = false;
     for (std::size_t i = 0; i < list.size(); ++i) {
         if (auto function = dynamic_cast<hif::Function *>(list.at(i))) {
             function->acceptVisitor(*this);
-            has_functions = true;
+            printed = true;
+            continue;
+        }
+        // Procedures too, since a user-written task is one and has to be
+        // declared before it can be called (hif-backend#38). A cone is a
+        // Procedure as well, but visitProcedure prints nothing for it: its body
+        // belongs at its call sites, not here.
+        if (auto procedure = dynamic_cast<hif::Procedure *>(list.at(i))) {
+            if (isConeProcedure(procedure)) {
+                continue;
+            }
+            procedure->acceptVisitor(*this);
+            printed = true;
         }
     }
-    return has_functions;
+    return printed;
 }
