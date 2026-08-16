@@ -2387,8 +2387,11 @@ std::string VerilogPrinter::getValue(hif::Value *value)
         if (bit_value->is01()) {
             ss << bit_value->toString();
         }
-    }
-    if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
+        // Deliberately no else: a non-0/1 bit (X/Z/U) has no Verilog spelling
+        // in the positions this function serves, and visitBitValue tolerates
+        // the empty result. What matters is that this stays part of the chain
+        // below - see the terminal case at the end.
+    } else if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
         ss << int_value->getValue();
     } else if (auto bitvector_value = dynamic_cast<BitvectorValue *>(value)) {
         if (bitvector_value->is01()) {
@@ -2495,6 +2498,34 @@ std::string VerilogPrinter::getValue(hif::Value *value)
         ss << this->renderToString(expression);
     } else if (auto cast = dynamic_cast<hif::Cast *>(value)) {
         ss << this->getValue(cast->getValue());
+    } else if (value != nullptr) {
+        // Terminal case. Without it, a value whose kind is absent from the
+        // chain above returned the empty string, and every caller of this
+        // function renders a position where nothing is not a legal spelling:
+        // an if/else-if condition, a case selector, a case label, a for
+        // condition. A FunctionCall took that path, so `if rising_edge(clk)`
+        // - the most common sequential VHDL idiom there is - regenerated as
+        // `if (  )` at exit code 0, which no simulator parses (hif-backend#50).
+        //
+        // Delegating to the full printer is what the Expression branch above
+        // already does; the two now agree instead of the same construct
+        // rendering differently depending on whether something wrapped it.
+        //
+        // This is reachable only for kinds absent from the chain above, which
+        // is why the BitValue branch had to join that chain rather than stand
+        // as its own `if`. While it stood apart, every BitValue fell through
+        // to here, and the delegation below re-entered visitBitValue, which
+        // calls this function again: unbounded recursion, SIGSEGV on any
+        // design containing a bit literal.
+        //
+        // Deliberately not a hard failure when the printer renders nothing
+        // either. An empty result is legitimate for some callers - a port or
+        // signal whose initial value is an all-'Z'/'X' Aggregate reaches here,
+        // and rendering it as nothing is what correctly leaves the initializer
+        // out of an ANSI port list, which Verilog-2001 has no place for. A
+        // value kind the printer cannot spell is a gap in the printer, not
+        // something this function can decide to abort on.
+        ss << this->renderToString(value);
     }
     return ss.str();
 }

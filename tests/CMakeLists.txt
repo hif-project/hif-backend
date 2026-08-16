@@ -326,6 +326,22 @@ if(VHDL2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
 
+    # Regression (hif-backend#50): VerilogPrinter::getValue had no terminal
+    # case, so a value kind absent from its dynamic_cast chain rendered as the
+    # empty string. A FunctionCall took that path, so `if rising_edge(clk)`
+    # regenerated as `if (  )` at exit code 0. Needs vhdl2hif only: the check
+    # is that the condition survives into the output, and the result does not
+    # yet compile for an unrelated reason (hif-backend#51).
+    add_test(
+        NAME condition_rendering
+        COMMAND ${CMAKE_COMMAND}
+            -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/condition_rendering.vhd
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/condition_rendering_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/condition_rendering_test.cmake
+    )
+
     # Regression (hif-backend#48): hif2vhdl aborted with "Unsupported scope" on
     # every verilog2hif output, because When lowering descended into the
     # standard Verilog library and found a When in a SubProgram signature -
