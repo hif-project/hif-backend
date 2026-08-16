@@ -2,39 +2,64 @@
 --
 -- Both branch conditions are bare function calls, which is the shape that
 -- reached VerilogPrinter::getValue's missing terminal case and rendered as the
--- empty string. rising_edge is not incidental: it is the most common condition
--- in synthesisable VHDL, so the defect landed on ordinary designs rather than
--- on an exotic construct.
+-- empty string.
 --
 -- The elsif is here to cover the second call site. visitIf renders the first
 -- alternative and the subsequent ones through separate getValue calls
 -- (VerilogPrinter.cpp:1049 and :1052), and a fix that only reached one of them
 -- would still regenerate half the branches with an empty condition.
 --
--- falling_edge(rst) rather than a reset level test, so that both conditions are
--- FunctionCalls. A plain `rst = '1'` would be an Expression, which getValue
--- already handled - it would still pass against the unfixed printer and would
--- weaken the test.
+-- The conditions were originally rising_edge/falling_edge, which is how the
+-- defect was reported. They cannot stay: hif2verilog now rebuilds a clocked
+-- process's edge test into Verilog edge sensitivity (hif-backend#51), so an
+-- edge call is consumed before the printer sees it and would no longer
+-- exercise this path at all. User-defined functions keep a bare FunctionCall
+-- in a condition, which is what this test is about, and are untouched by that
+-- rebuild.
+--
+-- Deliberately *not* simulated. A user-defined function is currently emitted
+-- with an empty body (hif-backend#57), so the regenerated design compiles but
+-- computes nothing - checking behaviour here would be checking that unrelated
+-- defect. What this test asserts is that the condition text survives, which is
+-- what #50 was about and which is independent of what the function does.
 library ieee;
 use ieee.std_logic_1164.all;
 
 entity condition_rendering is
     port (
-        clk : in  std_logic;
-        rst : in  std_logic;
-        d   : in  std_logic;
-        q   : out std_logic
+        a : in  std_logic;
+        b : in  std_logic;
+        y : out std_logic;
+        z : out std_logic
     );
 end entity;
 
 architecture rtl of condition_rendering is
-begin
-    process (clk, rst)
+
+    function both_high(l : std_logic; r : std_logic) return boolean is
     begin
-        if rising_edge(clk) then
-            q <= d;
-        elsif falling_edge(rst) then
-            q <= '0';
+        return (l = '1') and (r = '1');
+    end function;
+
+    function either_high(l : std_logic; r : std_logic) return boolean is
+    begin
+        return (l = '1') or (r = '1');
+    end function;
+
+begin
+
+    process (a, b)
+    begin
+        if both_high(a, b) then
+            y <= '1';
+            z <= '0';
+        elsif either_high(a, b) then
+            y <= '0';
+            z <= '1';
+        else
+            y <= '0';
+            z <= '0';
         end if;
     end process;
+
 end architecture;
