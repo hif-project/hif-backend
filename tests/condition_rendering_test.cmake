@@ -16,20 +16,21 @@
 #
 #           What makes this worth a test beyond the one symptom is the
 #           asymmetry it came from. An Expression *was* handled, by delegating
-#           to renderToString, so `clk'event and clk = '1'` printed its call
-#           while a bare `rising_edge(clk)` printed nothing - the same
-#           construct behaving differently depending on whether something else
-#           wrapped it. The fix gives the chain a terminal case that delegates
-#           the same way, so the default for a new value kind is "render it"
-#           rather than "drop it".
+#           to renderToString, so an expression printed its call while a bare
+#           FunctionCall printed nothing - the same construct behaving
+#           differently depending on whether something else wrapped it. The fix
+#           gives the chain a terminal case that delegates the same way, so the
+#           default for a new value kind is "render it" rather than "drop it".
 #
-#           Scope: this asserts the condition survives, NOT that the result
-#           compiles. It does not - `hif_vhdl_rising_edge` is not a Verilog
-#           function, which is hif-backend#51, a separate defect on the same
-#           reproducer. Before this fix the condition was gone entirely; after
-#           it, the condition is present and names what it calls. Asserting
-#           compilation here would be asserting #51, and this test would then
-#           fail for a reason it is not about.
+#           The conditions are user-defined functions rather than the reported
+#           rising_edge/falling_edge, because hif2verilog now rebuilds a clocked
+#           process's edge test into Verilog edge sensitivity (hif-backend#51)
+#           and an edge call no longer reaches the printer at all.
+#
+#           Scope: this asserts the condition text survives, NOT that the design
+#           computes. A user-defined function is currently emitted with an empty
+#           body (hif-backend#57), so simulating here would be measuring that
+#           defect instead of this one.
 # @author : Enrico Fraccaroli
 # -----------------------------------------------------------------------------
 
@@ -63,11 +64,11 @@ endif()
 # them would be reported as itself, rather than silently turning this into a
 # test that proves nothing.
 file(READ ${hif_file} hif_content)
-string(REGEX MATCHALL "<FCALL[^>]*name=\"hif_vhdl_(rising|falling)_edge\"" hif_calls "${hif_content}")
+string(REGEX MATCHALL "<FCALL[^>]*name=\"(both_high|either_high)\"" hif_calls "${hif_content}")
 list(LENGTH hif_calls hif_call_count)
 if(hif_call_count LESS 2)
     message(FATAL_ERROR
-        "HIF carries ${hif_call_count} edge-function call(s); expected 2. "
+        "HIF carries ${hif_call_count} function call(s) in conditions; expected 2. "
         "This test no longer exercises hif-backend#50.")
 endif()
 
@@ -107,7 +108,7 @@ endif()
 # Counting matters: visitIf renders the first alternative and the later ones
 # through separate getValue calls, so a fix reaching only the first would leave
 # the elsif empty and still satisfy a check that just looked for "clk".
-foreach(expected "rising_edge" "falling_edge")
+foreach(expected "both_high" "either_high")
     string(FIND "${verilog_content}" "${expected}" found_at)
     if(found_at EQUAL -1)
         message(FATAL_ERROR
@@ -118,7 +119,7 @@ endforeach()
 
 # And that each condition carries its own operand, so that rendering the call
 # but losing its argument does not pass.
-foreach(expected_pair "rising_edge(clk)" "falling_edge(rst)")
+foreach(expected_pair "both_high(a, b)" "either_high(a, b)")
     string(FIND "${verilog_content}" "${expected_pair}" found_at)
     if(found_at EQUAL -1)
         message(FATAL_ERROR

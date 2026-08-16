@@ -326,6 +326,29 @@ if(VHDL2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
 
+    # Regression (hif-backend#51): a VHDL clocked process regenerated as a call
+    # to the undeclared hif_vhdl_event/hif_vhdl_rising_edge, because VHDL keeps
+    # its clock edge in the body while Verilog keeps it in the sensitivity
+    # list. Needs a simulator: a rebuild that produced `always @(clk, rst)`
+    # instead of edges would still compile and still reparse, and only the
+    # timing of the outputs tells a flip-flop from a level-sensitive process.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME clocked_process
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/clocked_process.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/clocked_process_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/clocked_process_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/clocked_process_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping clocked_process test.")
+    endif()
+
     # Regression (hif-backend#50): VerilogPrinter::getValue had no terminal
     # case, so a value kind absent from its dynamic_cast chain rendered as the
     # empty string. A FunctionCall took that path, so `if rising_edge(clk)`
