@@ -300,8 +300,27 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/user_task_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/user_task_test.cmake
         )
+        # Regression (hif-backend#47): visitFor printed a For's initValues but
+        # never its initDeclarations, so `repeat (n) @( ... )` - which
+        # verilog2hif lowers into a loop that declares its own index -
+        # regenerated with an undeclared, uninitialised index and an empty init
+        # clause. Needs a simulator: the fixture is Verilog, so the source can
+        # be simulated as a reference and the two traces compared, which also
+        # catches an index that is declared but starts from the wrong value.
+        add_test(
+            NAME for_init_declaration
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/for_init_declaration.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/for_init_declaration_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/for_init_declaration_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/for_init_declaration_test.cmake
+        )
     else()
-        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay/for_init_declaration tests.")
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")
