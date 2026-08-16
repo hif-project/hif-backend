@@ -326,6 +326,28 @@ if(VHDL2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
 
+    # Regression (hif-backend#48): hif2vhdl aborted with "Unsupported scope" on
+    # every verilog2hif output, because When lowering descended into the
+    # standard Verilog library and found a When in a SubProgram signature -
+    # a scope that is neither a Function nor a Contents. Verilog->VHDL was
+    # unavailable for every input. Needs verilog2hif to produce the input and
+    # vhdl2hif to reparse the result; no simulator, since the failure was a
+    # non-zero exit and an empty output directory rather than a wrong value.
+    if(VERILOG2HIF_EXECUTABLE)
+        add_test(
+            NAME verilog_to_vhdl
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/verilog_to_vhdl.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/verilog_to_vhdl_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/verilog_to_vhdl_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif not found; skipping verilog_to_vhdl test.")
+    endif()
+
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
     # produced a module with the right ports and an empty body. Needs both

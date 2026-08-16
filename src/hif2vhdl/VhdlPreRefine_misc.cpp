@@ -34,6 +34,7 @@ public:
     auto visitArray(Array &o) -> int override;
     auto visitFor(For &o) -> int override;
     //int visitForGenerate(ForGenerate &o);
+    auto visitLibraryDef(LibraryDef &o) -> int override;
     auto visitStateTable(StateTable &o) -> int override;
     auto visitSystem(System &o) -> int override;
     auto visitWhen(When &o) -> int override;
@@ -297,6 +298,23 @@ auto PreRefine_misc::visitFor(For &o) -> int
         forRange->setRightBound(c);
     }
 
+    return 0;
+}
+
+auto PreRefine_misc::visitLibraryDef(LibraryDef &o) -> int
+{
+    // Standard library definitions are supplied by the semantics and are never
+    // emitted as VHDL, so none of this visitor's rewrites apply to them. They
+    // must also not be descended into: the standard Verilog library declares
+    // subprograms whose parameter defaults contain a When (for instance
+    // hif_verilog__system_readmemb), and a When in a SubProgram signature has
+    // neither an enclosing Function nor an enclosing Contents to receive the
+    // lowered when_function, so visitWhen would abort with "Unsupported scope".
+    // Mirrors hif2sc's WhenSplitter, which already guards the same way.
+    if (o.isStandard()) {
+        return 0;
+    }
+    GuideVisitor::visitLibraryDef(o);
     return 0;
 }
 
