@@ -22,3 +22,16 @@
 /// @param o The system object.
 /// @param sem The semantics.
 void fixSynchronousProcesses(hif::System *o, hif::semantics::ILanguageSemantics *sem);
+
+/// @brief Moves a `For`'s `initDeclarations` out of the loop header.
+///
+/// HIF lets a `For` declare its own index, and `verilog2hif` uses that when it
+/// lowers `repeat (n) ...`. Verilog before SystemVerilog has no C-style
+/// declaration inside a `for` header, so the declaration has to live somewhere
+/// the printer already emits - the enclosing process's declaration list, which
+/// it hoists to the module body - and the index's initial value has to become
+/// the loop's init assignment.
+///
+/// @param o The system object.
+/// @param sem The semantics.
+void hoistForInitDeclarations(hif::System *o, hif::semantics::ILanguageSemantics *sem);
