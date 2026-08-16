@@ -345,6 +345,27 @@ if(VHDL2HIF_EXECUTABLE)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
 
+    # Regression (hif-backend#46): a VHDL process ending in `wait;` regenerated
+    # as a zero-delay `always begin ... end`. Needs a simulator: the stimulus
+    # changes an input after both processes have suspended, and a process that
+    # looped instead of stopping would pick that change up.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME permanent_suspension
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/permanent_suspension.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/permanent_suspension_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/permanent_suspension_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/permanent_suspension_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping permanent_suspension test.")
+    endif()
+
     # Regression (hif-backend#51): a VHDL clocked process regenerated as a call
     # to the undeclared hif_vhdl_event/hif_vhdl_rising_edge, because VHDL keeps
     # its clock edge in the body while Verilog keeps it in the sensitivity

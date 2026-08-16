@@ -17,6 +17,18 @@
 // Namespace hifsuite
 using namespace hif;
 
+namespace
+{
+/// @brief Marks the empty Wait verilog2hif appends to a process that suspends,
+/// recording that the process loops back round rather than that it stops.
+///
+/// Declared by value rather than shared through a header: hif-frontend defines
+/// the same string in verilog2hif/support.hpp, but that is a sibling tool's
+/// private header and this project does not build against it. The literal is
+/// the contract between them, and hif-backend#46 is where it is written down.
+const char *const PROPERTY_PROCESS_LOOP_TAIL = "PROPERTY_PROCESS_LOOP_TAIL";
+} // namespace
+
 VerilogPrinter::VerilogPrinter(hif::backends::IndentedStream *stream)
     : _sem(hif::semantics::VerilogSemantics::getInstance())
     , _stream(stream)
@@ -1562,16 +1574,17 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
         //    where the process becomes an SC_THREAD wrapped in `while (true)`
         //    and this becomes the loop-tail `wait()` that reapplies the static
         //    sensitivity. An `always` block already loops, so in Verilog the
-        //    marker has no syntax of its own.
+        //    marker has no syntax of its own. It now says so: verilog2hif tags
+        //    it PROPERTY_PROCESS_LOOP_TAIL (hif-backend#46).
         //
         //  - vhdl2hif emits one for VHDL `wait;`, which suspends the process
-        //    permanently.
+        //    permanently. That one carries no such tag.
         //
-        // Printing nothing is right for the first and loses the second. It is
-        // the only choice available here, because the two are indistinguishable
-        // at this point - and it is what this printer already did before
-        // hif-backend#42, so nothing regresses. hif-backend#46 tracks removing
-        // the ambiguity at its source.
+        // Neither prints a statement here, and for opposite reasons: an
+        // `always` block already loops, so the marker has nothing to add, and a
+        // process that suspends permanently is emitted as `initial`, where
+        // reaching the end of the block is what stops it. isRetriggerable is
+        // where the distinction has an effect.
         return 0;
     }
 
@@ -2005,7 +2018,36 @@ auto VerilogPrinter::isRetriggerable(hif::StateTable &stateTable) -> bool
     std::list<hif::Wait *> waits;
     hif::HifTypedQuery<hif::Wait> waitQuery;
     hif::search(waits, &stateTable, waitQuery);
-    return !waits.empty();
+
+    bool hasResumableWait = false;
+    for (hif::Wait *wait : waits) {
+        // The loop-tail marker verilog2hif appends is not a suspension the
+        // source wrote - it records that the process goes back round - so it
+        // says nothing about whether this process can be woken.
+        if (wait->checkProperty(PROPERTY_PROCESS_LOOP_TAIL)) {
+            continue;
+        }
+
+        // An untagged wait with nothing set is VHDL's `wait;`: suspend and
+        // never resume. A process containing one cannot loop, whatever else it
+        // waits on along the way, so it is decided here rather than weighed
+        // against the others. Emitting `always` for it produces a zero-delay
+        // infinite loop that no source meant and that Icarus rejects at
+        // elaboration (hif-backend#46) - the same failure hif-backend#40 fixed
+        // for a process with no wait at all, which survived that fix because
+        // this function counted every Wait as a way to be woken up, including
+        // one that by definition is not.
+        const bool saysNothing =
+            wait->getCondition() == nullptr && wait->getTime() == nullptr && wait->getRepetitions() == nullptr &&
+            wait->sensitivity.empty() && wait->sensitivityPos.empty() && wait->sensitivityNeg.empty();
+        if (saysNothing) {
+            return false;
+        }
+
+        hasResumableWait = true;
+    }
+
+    return hasResumableWait;
 }
 
 void VerilogPrinter::collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names)
