@@ -423,6 +423,22 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/verilog_to_vhdl_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/verilog_to_vhdl_test.cmake
         )
+        # Regression (hif-backend#54): lowering a Verilog ternary for VHDL left
+        # the If condition bit-typed, which VHDL does not allow, so hif-core's
+        # checker rejected the tree and hif2vhdl aborted. Conditional assignment
+        # is ordinary RTL, so this blocked Verilog->VHDL for most real designs.
+        # No simulator: no VHDL analyzer is available locally or in CI, so the
+        # gate is the exit code, the emitted condition form, and a reparse.
+        add_test(
+            NAME when_boolean_condition
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/when_boolean_condition.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/when_boolean_condition_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/when_boolean_condition_test.cmake
+        )
     else()
         message(STATUS "verilog2hif not found; skipping verilog_to_vhdl test.")
     endif()

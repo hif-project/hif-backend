@@ -20,19 +20,12 @@
 #           input whatsoever, because the offending When is in the library
 #           rather than in the design.
 #
-#           What this test would ideally also assert is that the fix did not
-#           suppress legitimate When lowering along with the standard-library
-#           traversal it skips - otherwise disabling When lowering outright
-#           would pass here. It cannot: the natural way to express that is a
-#           conditional assignment, and a Verilog ternary translated to VHDL
-#           produces an If whose condition is still bit-typed, which VHDL does
-#           not allow and hif-core's checker rejects (hif-backend#54). That is
-#           a separate defect, only reachable once #48 stops aborting first.
-#
-#           So the guard is structural rather than behavioural: the fix keys on
-#           LibraryDef::isStandard(), which by construction cannot affect user
-#           code, and mirrors hif2sc's WhenSplitter. When #54 is fixed, the
-#           ternary belongs back in this fixture and this note should go.
+#           The fixture also carries a conditional assignment, so that
+#           suppressing When lowering outright cannot pass this test: the fix
+#           has to skip the standard library *and* still lower user code. That
+#           was impossible while hif-backend#54 stood - a Verilog ternary
+#           produced an If whose condition was still bit-typed, which VHDL does
+#           not allow - and is asserted again now that #54 is fixed.
 # @author : Enrico Fraccaroli
 # -----------------------------------------------------------------------------
 
@@ -106,6 +99,15 @@ foreach(expected "ENTITY verilog_to_vhdl" "ARCHITECTURE" "y <= a and b")
             "Regenerated VHDL is missing '${expected}'.\nFull content:\n${vhdl_content}")
     endif()
 endforeach()
+
+# User-code When lowering still happens. Without this, a "fix" for hif-backend#48
+# that skipped every When rather than only the standard library's would pass
+# everything above.
+if(NOT vhdl_content MATCHES "when_function")
+    message(FATAL_ERROR
+        "The conditional assignment was not lowered into a when_function: the hif-backend#48 fix must skip "
+        "the standard library without suppressing legitimate When lowering.\nFull content:\n${vhdl_content}")
+endif()
 
 # --- The output is real VHDL, not plausible text ------------------------
 

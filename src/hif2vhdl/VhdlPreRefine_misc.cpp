@@ -52,6 +52,7 @@ private:
         bool isRising) -> Value *;
     static void _moveSensitivities(StateTable *o);
     void _fixSynchronousProcess(StateTable *o, hif::analysis::ProcessInfos &infos);
+    void _makeIfConditionsBoolean(If *ifStm);
 
     using RefsSet  = std::set<Object *>;
     using RefsMap  = std::map<Declaration *, RefsSet>;
@@ -405,6 +406,42 @@ auto PreRefine_misc::visitSystem(System &o) -> int
     return 0;
 }
 
+void PreRefine_misc::_makeIfConditionsBoolean(If *ifStm)
+{
+    // transformWhenToIf carries each alternative's condition across unchanged,
+    // so a condition typed by the *source* semantics ends up in a tree being
+    // refined for VHDL. Verilog's `sel ? a : b` yields a one-bit condition, and
+    // VHDL's IF accepts only boolean - checkHif rejects it in visitIfAlt and
+    // hif2vhdl aborts (hif-backend#54).
+    //
+    // The cast is the same shape verilog2hif already emits for a plain
+    // `if (rst)`, which is why that path has always translated: the later
+    // refinement renders a boolean cast of a bit as `rst = '1'`, so this
+    // produces legal VHDL rather than the illegal `boolean(rst)` a literal
+    // reading of visitCast would suggest. It is also the idiom this file
+    // already uses in _buildSensitivityCondition.
+    //
+    // Deliberately not fixed inside hif::manipulation::transformWhenToIf:
+    // requiring a boolean condition is a VHDL rule, not a HIF one, and that
+    // manipulation is shared. A Verilog-targeted caller would be wrong to get
+    // this coercion.
+    for (auto *alt : ifStm->alts) {
+        Value *condition = alt->getCondition();
+        if (condition == nullptr) {
+            continue;
+        }
+        Type *semanticType  = hif::semantics::getSemanticType(condition, _sem);
+        Type *conditionType = hif::semantics::getBaseType(semanticType, false, _sem);
+        if (dynamic_cast<Bool *>(conditionType) != nullptr) {
+            continue;
+        }
+        auto *cast = new Cast();
+        cast->setType(_factory.boolean());
+        condition->replace(cast);
+        cast->setValue(condition);
+    }
+}
+
 auto PreRefine_misc::visitWhen(When &o) -> int
 {
     GuideVisitor::visitWhen(o);
@@ -460,6 +497,7 @@ auto PreRefine_misc::visitWhen(When &o) -> int
     // 3
     if (parent != nullptr) {
         If *ifStm = hif::manipulation::transformWhenToIf(&o, _sem);
+        _makeIfConditionsBoolean(ifStm);
         parent->replace(ifStm);
         _trash.insert(parent);
         return 0;
@@ -488,6 +526,7 @@ auto PreRefine_misc::visitWhen(When &o) -> int
 
         // Transforming When to If
         If *ifStm = hif::manipulation::transformWhenToIf(&o, _sem);
+        _makeIfConditionsBoolean(ifStm);
         ro->replace(ifStm);
         delete ro;
 
