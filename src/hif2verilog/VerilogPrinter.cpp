@@ -921,9 +921,14 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
                 named_object->setName(o.getName());
             }
         }
-    } else {
-        std::cerr << "Cannot find the return variable" << std::endl;
     }
+    // Deliberately no diagnostic when there is none. A function built by
+    // verilog2hif has a `<name>_return` variable that its body assigns, and the
+    // rename above turns those assignments into the Verilog form. A function
+    // built by vhdl2hif has no such variable: its body is a Return carrying the
+    // value directly, which visitReturn emits (hif-backend#57). Both are
+    // ordinary, so the absent variable is not an error - it used to print
+    // "Cannot find the return variable" on stderr for every VHDL function.
 
     // ========================================================================
     // PRINT VARIABLE DECLARATIONS
@@ -965,9 +970,17 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     (*_stream) << "begin\n";
     _stream->indent();
 
+    // Publish the name a Return inside this body has to assign to. Saved and
+    // restored rather than cleared, so a nested subprogram cannot strand the
+    // outer function's name.
+    const std::string enclosingFunctionName = _currentFunctionName;
+    _currentFunctionName                    = o.getName();
+
     for (auto state : state_table->states) {
         state->acceptVisitor(*this);
     }
+
+    _currentFunctionName = enclosingFunctionName;
 
     _stream->unindent();
     (*_stream) << "end\n";
@@ -1293,10 +1306,53 @@ auto VerilogPrinter::visitReference(Reference &o) -> int { return hif::GuideVisi
 
 auto VerilogPrinter::visitReturn(Return &o) -> int
 {
-    (void)o;
-    // Skip return statements.
+    // Verilog has no `return`. A function yields its value by assigning to its
+    // own name, so a Return carrying a value becomes that assignment
+    // (hif-backend#57). This used to be an unconditional skip, which dropped a
+    // VHDL function's entire body - the emitted function was well-formed,
+    // simulated, and returned x from every call.
+    hif::Value *returned = o.getValue();
+
+    if (_currentFunctionName.empty()) {
+        // A Procedure's Return. That is a control-flow exit, not a value, and
+        // Verilog-2001 has no equivalent - `return` in a task is
+        // SystemVerilog, and the alternative is a named block plus `disable`,
+        // which is a body transformation rather than something this visitor
+        // can do in place. Emitting nothing is what happens today; saying so
+        // is the difference between a tracked gap and a silent one.
+        messageWarning(
+            "A procedure's `return` has no Verilog-2001 equivalent and is not lowered by this printer, so "
+            "the statements after it will run unconditionally (hif-backend#63).",
+            &o, _sem);
+        return 0;
+    }
+
+    if (returned == nullptr) {
+        // A valueless Return inside a function is likewise an early exit
+        // rather than a result, and needs the same lowering as the procedure
+        // case above.
+        messageWarning(
+            "A function's valueless `return` has no Verilog-2001 equivalent and is not lowered by this "
+            "printer (hif-backend#63).",
+            &o, _sem);
+        return 0;
+    }
+
+    // A Return whose value is already the function's own name assigns nothing:
+    // verilog2hif builds a `<name>_return` variable that the body assigns and
+    // then returns, and the rename in visitFunction has by now turned both into
+    // the function name. Emitting it would produce `f = f;`. The value-carrying
+    // shape is what vhdl2hif produces, where the Return *is* the body.
+    if (auto *identifier = dynamic_cast<hif::Identifier *>(returned)) {
+        if (identifier->getName() == _currentFunctionName) {
+            return 0;
+        }
+    }
+
+    (*_stream) << _currentFunctionName << " = ";
+    returned->acceptVisitor(*this);
+    (*_stream) << ";\n";
     return 0;
-    // return hif::GuideVisitor::visitReturn(o);
 }
 
 auto VerilogPrinter::visitSignal(Signal &o) -> int { return hif::GuideVisitor::visitSignal(o); }

@@ -467,6 +467,23 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_process_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_process_test.cmake
         )
+        # Regression (hif-backend#57): a user-defined function was emitted with
+        # an empty body, so every call returned x and every condition built on
+        # one selected the wrong branch. Needs a simulator: the broken output
+        # compiles and reparses, and the only symptom is the value.
+        add_test(
+            NAME user_function_body
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_function_body.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_function_body_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/user_function_body_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/user_function_body_test.cmake
+        )
     else()
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping global_action_emission test.")
     endif()
