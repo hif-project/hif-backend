@@ -443,6 +443,30 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "verilog2hif not found; skipping verilog_to_vhdl test.")
     endif()
 
+    # Regression (hif-backend#61): a one-bit value was emitted as a bare digit,
+    # so `{1'b1, 1'b0}` regenerated as `{1, 0}` -- an unsized operand, which a
+    # concatenation rejects for having indefinite width -- and a four-state bit
+    # rendered as nothing, giving `{, }` and a syntax error. Exit 0 in both
+    # cases. Needs a simulator: the gate is that the regenerated design is
+    # behaviourally equivalent over an exhaustive sweep, not merely that it
+    # builds.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME replication_emission
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/replication_emission.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/replication_emission_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/replication_emission_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/replication_emission_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping replication_emission test.")
+    endif()
+
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
     # produced a module with the right ports and an empty body. Needs both

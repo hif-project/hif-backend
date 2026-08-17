@@ -2506,13 +2506,26 @@ std::string VerilogPrinter::getValue(hif::Value *value)
 {
     std::stringstream ss;
     if (auto bit_value = dynamic_cast<BitValue *>(value)) {
-        if (bit_value->is01()) {
-            ss << bit_value->toString();
+        // A one-bit value is emitted as a sized literal, `1'b<d>`, not as a
+        // bare digit. Verilog gives an unsized `1` a self-determined 32-bit
+        // width, which a concatenation rejects outright - "Concatenation
+        // operand has indefinite width" - so `{1'b1, 1'b0}` regenerated as
+        // `{1, 0}` and did not elaborate (hif-backend#61). Sizing it is also
+        // simply more exact everywhere else this function is used: `1'b1` is
+        // legal wherever a bare `1` was.
+        //
+        // Only for a digit Verilog defines. HIF stores bits in IEEE 1164 form
+        // (U/X/0/1/Z/W/L/H/-) and Verilog has only 0/1/x/z; the rest have no
+        // spelling and must render empty, exactly as the BitvectorValue branch
+        // below does. That emptiness is load-bearing: it is what keeps
+        // vhdl2hif's implicit 'U' port default out of the output
+        // (hif-backend#36/#55). An x/z bit now renders, but isUnknownLiteral
+        // still classifies `1'bx` as unknown, so verilog2hif's all-x reg
+        // default stays suppressed too.
+        const std::string bit_digit = bit_value->toString();
+        if (bit_digit.size() == 1 && isVerilogBinaryLiteral(bit_digit)) {
+            ss << "1'b" << static_cast<char>(std::tolower(static_cast<unsigned char>(bit_digit[0])));
         }
-        // Deliberately no else: a non-0/1 bit (X/Z/U) has no Verilog spelling
-        // in the positions this function serves, and visitBitValue tolerates
-        // the empty result. What matters is that this stays part of the chain
-        // below - see the terminal case at the end.
     } else if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
         ss << int_value->getValue();
     } else if (auto bitvector_value = dynamic_cast<BitvectorValue *>(value)) {
