@@ -1488,10 +1488,21 @@ auto VerilogPrinter::visitSwitch(Switch &o) -> int
     (*_stream) << "case ( " << this->getValue(o.getCondition()) << " )\n";
     _stream->indent();
     for (hif::SwitchAlt *alternative : o.alts) {
+        // A SwitchAlt can carry more than one condition: alternatives sharing
+        // the same body are merged into a single alt holding every matching
+        // value. Verilog requires those labels to be comma-separated
+        // ("STATE_2, FINAL :"); emitting them space-separated produces
+        // "STATE_2 FINAL :", which is a syntax error. The VHDL printer already
+        // joins them explicitly (with " |"), so only this printer was affected.
+        bool firstCondition = true;
         for (hif::Value *condition : alternative->conditions) {
-            (*_stream) << this->getValue(condition) << " ";
+            if (!firstCondition) {
+                (*_stream) << ", ";
+            }
+            (*_stream) << this->getValue(condition);
+            firstCondition = false;
         }
-        (*_stream) << ": begin\n";
+        (*_stream) << " : begin\n";
         _stream->indent();
         for (hif::Action *action : alternative->actions) {
             action->acceptVisitor(*this);
