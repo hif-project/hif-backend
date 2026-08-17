@@ -158,6 +158,15 @@ private:
     /// The value is what the port holds until that process first writes it.
     std::list<hif::Port *> _initialValuePorts;
 
+    /// @brief Name of the Function whose body is currently being printed, or
+    /// empty when the printer is not inside one.
+    /// @details Verilog has no `return`: a function yields its value by
+    /// assigning to its own name, so emitting a Return needs to know that name
+    /// (hif-backend#57). Empty means the Return belongs to a Procedure, which
+    /// is a control-flow exit with no Verilog-2001 equivalent - see
+    /// hif-backend#63.
+    std::string _currentFunctionName;
+
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
     /// file's `timescale, so a delay cannot be emitted without also
