@@ -470,6 +470,29 @@ if(VHDL2HIF_EXECUTABLE)
     else()
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping global_action_emission test.")
     endif()
+
+    # Regression (hif-backend#55): a VHDL vector output port with no stated
+    # initial value regenerated as `initial vec = 4'buuuu;`, and `u` is not a
+    # Verilog binary digit, so the output did not parse. The same rule as
+    # hif-backend#36 - the frontend's implicit 'U' default is not a value the
+    # source asked for - left unapplied on the vector path. Needs iverilog to
+    # show the reported symptom, but no simulator: the defect is that the
+    # output does not build, not that it computes the wrong thing.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE)
+        add_test(
+            NAME vector_unknown_default
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vector_unknown_default.vhd
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vector_unknown_default_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/vector_unknown_default_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog not both found; skipping vector_unknown_default test.")
+    endif()
 else()
     message(STATUS "vhdl2hif not found; skipping vhdl_output_flushed/global_action_emission tests.")
 endif()

@@ -2422,6 +2422,30 @@ std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
     return buf.str();
 }
 
+namespace
+{
+
+/// @brief Whether @p digits is spelled entirely with digits Verilog defines.
+/// @details HIF stores bit values in IEEE 1164 form, whose alphabet is
+/// U/X/0/1/Z/W/L/H/-. Verilog's binary literal syntax has only 0, 1, x and z,
+/// so a value containing any of the others has no Verilog spelling at all and
+/// must not be emitted as though it had one.
+auto isVerilogBinaryLiteral(const std::string &digits) -> bool
+{
+    for (char character : digits) {
+        if (character == '_') {
+            continue;
+        }
+        const char lowered = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+        if (lowered != '0' && lowered != '1' && lowered != 'x' && lowered != 'z') {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
 std::string VerilogPrinter::getValue(hif::Value *value)
 {
     std::stringstream ss;
@@ -2466,18 +2490,32 @@ std::string VerilogPrinter::getValue(hif::Value *value)
             // handles clean 0/1 values. Verilog literal syntax accepts
             // 0/1/x/z digits; HIF stores them uppercase (IEEE 1164
             // style), so lowercase them on the way out.
-            auto span = bitvector_type->getSpan();
-            if (span) {
-                auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
-                auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
-                if (left_bound && right_bound) {
-                    auto width = left_bound->getValue() - right_bound->getValue() + 1;
-                    ss << width << "'b";
-                }
-            }
+            //
+            // Only when every digit is one Verilog actually has. IEEE 1164
+            // also defines U/W/L/H/-, and vhdl2hif gives every signal and
+            // port the 'U' default whether the source stated one or not, so
+            // this branch was spelling that default 4'buuuu - not a Verilog
+            // literal, and the file no longer parsed (hif-backend#55).
+            // Rendering nothing instead is what the BitValue branch above
+            // already does for a non-0/1 bit, and it is why a scalar port's
+            // implicit 'U' has always been left out correctly: an empty
+            // result makes collectContinuouslyDrivenDeclarations skip the
+            // port, so no initializer is emitted at all. Same rule, same
+            // outcome, now regardless of width.
             std::string raw = bitvector_value->getValue();
-            for (char c : raw) {
-                ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (isVerilogBinaryLiteral(raw)) {
+                auto span = bitvector_type->getSpan();
+                if (span) {
+                    auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                    auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                    if (left_bound && right_bound) {
+                        auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                        ss << width << "'b";
+                    }
+                }
+                for (char c : raw) {
+                    ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                }
             }
         }
     } else if (auto identifier = dynamic_cast<hif::Identifier *>(value)) {
