@@ -883,6 +883,28 @@ auto VerilogPrinter::visitFor(For &o) -> int
 
 auto VerilogPrinter::visitForGenerate(ForGenerate &o) -> int { return GuideVisitor::visitForGenerate(o); }
 
+namespace
+{
+
+/// @brief The Return that leaves a subprogram body by falling off its end: the
+/// last action of the last state.
+/// @details Such a Return needs no `disable`, because reaching the end of the
+/// block already leaves it. Distinguishing it is what keeps the emitted output
+/// unchanged for the common single-Return function a VHDL source produces.
+auto getTrailingReturn(hif::StateTable *stateTable) -> hif::Return *
+{
+    if (stateTable == nullptr || stateTable->states.empty()) {
+        return nullptr;
+    }
+    hif::State *last = stateTable->states.back();
+    if (last->actions.empty()) {
+        return nullptr;
+    }
+    return dynamic_cast<hif::Return *>(last->actions.back());
+}
+
+} // namespace
+
 auto VerilogPrinter::visitFunction(Function &o) -> int
 {
     // Get the return type of the function.
@@ -967,20 +989,34 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     // PRINT FUNCTION CONTENT
     // ========================================================================
 
-    (*_stream) << "begin\n";
+    const std::string exitLabel = this->getSubprogramExitLabel(state_table, o.getName());
+    (*_stream) << "begin";
+    if (!exitLabel.empty()) {
+        (*_stream) << " : " << exitLabel;
+    }
+    (*_stream) << "\n";
     _stream->indent();
 
-    // Publish the name a Return inside this body has to assign to. Saved and
-    // restored rather than cleared, so a nested subprogram cannot strand the
-    // outer function's name.
+    // Publish the name a Return inside this body has to assign to, and the block
+    // an early one has to disable. Saved and restored rather than cleared, so a
+    // nested subprogram cannot strand the outer function's.
     const std::string enclosingFunctionName = _currentFunctionName;
+    const std::string enclosingLabel        = _subprogramExitLabel;
+    hif::Return *enclosingTrailingReturn    = _subprogramTrailingReturn;
+    const bool enclosingInsideSubprogram    = _insideSubprogramBody;
     _currentFunctionName                    = o.getName();
+    _subprogramExitLabel                    = exitLabel;
+    _subprogramTrailingReturn               = getTrailingReturn(state_table);
+    _insideSubprogramBody                   = true;
 
     for (auto state : state_table->states) {
         state->acceptVisitor(*this);
     }
 
-    _currentFunctionName = enclosingFunctionName;
+    _currentFunctionName      = enclosingFunctionName;
+    _subprogramExitLabel      = enclosingLabel;
+    _subprogramTrailingReturn = enclosingTrailingReturn;
+    _insideSubprogramBody     = enclosingInsideSubprogram;
 
     _stream->unindent();
     (*_stream) << "end\n";
@@ -1306,52 +1342,66 @@ auto VerilogPrinter::visitReference(Reference &o) -> int { return hif::GuideVisi
 
 auto VerilogPrinter::visitReturn(Return &o) -> int
 {
-    // Verilog has no `return`. A function yields its value by assigning to its
-    // own name, so a Return carrying a value becomes that assignment
-    // (hif-backend#57). This used to be an unconditional skip, which dropped a
-    // VHDL function's entire body - the emitted function was well-formed,
-    // simulated, and returned x from every call.
+    // Verilog has no `return`. A Return therefore lowers to two separate things,
+    // and this used to emit only ever one of them: the value a function yields,
+    // as an assignment to the function's own name (hif-backend#57), and the exit
+    // itself, as `disable` on the block wrapping the subprogram body
+    // (hif-backend#63, #73). A void subprogram needs only the second; a function
+    // whose Return is not its last statement needs both.
     hif::Value *returned = o.getValue();
 
-    if (_currentFunctionName.empty()) {
-        // A Procedure's Return. That is a control-flow exit, not a value, and
-        // Verilog-2001 has no equivalent - `return` in a task is
-        // SystemVerilog, and the alternative is a named block plus `disable`,
-        // which is a body transformation rather than something this visitor
-        // can do in place. Emitting nothing is what happens today; saying so
-        // is the difference between a tracked gap and a silent one.
-        messageWarning(
-            "A procedure's `return` has no Verilog-2001 equivalent and is not lowered by this printer, so "
-            "the statements after it will run unconditionally (hif-backend#63).",
-            &o, _sem);
-        return 0;
-    }
-
-    if (returned == nullptr) {
-        // A valueless Return inside a function is likewise an early exit
-        // rather than a result, and needs the same lowering as the procedure
-        // case above.
-        messageWarning(
-            "A function's valueless `return` has no Verilog-2001 equivalent and is not lowered by this "
-            "printer (hif-backend#63).",
-            &o, _sem);
-        return 0;
-    }
-
-    // A Return whose value is already the function's own name assigns nothing:
-    // verilog2hif builds a `<name>_return` variable that the body assigns and
-    // then returns, and the rename in visitFunction has by now turned both into
-    // the function name. Emitting it would produce `f = f;`. The value-carrying
-    // shape is what vhdl2hif produces, where the Return *is* the body.
-    if (auto *identifier = dynamic_cast<hif::Identifier *>(returned)) {
-        if (identifier->getName() == _currentFunctionName) {
-            return 0;
+    // ---- The value, if there is one. ---------------------------------------
+    if (!_currentFunctionName.empty() && returned != nullptr) {
+        // A Return whose value is already the function's own name assigns
+        // nothing: verilog2hif builds a `<name>_return` variable that the body
+        // assigns and then returns, and the rename in visitFunction has by now
+        // turned both into the function name. Emitting it would produce
+        // `f = f;`. The value-carrying shape is what vhdl2hif produces, where
+        // the Return *is* the body.
+        auto *identifier = dynamic_cast<hif::Identifier *>(returned);
+        if (identifier == nullptr || identifier->getName() != _currentFunctionName) {
+            (*_stream) << _currentFunctionName << " = ";
+            returned->acceptVisitor(*this);
+            (*_stream) << ";\n";
         }
     }
 
-    (*_stream) << _currentFunctionName << " = ";
-    returned->acceptVisitor(*this);
-    (*_stream) << ";\n";
+    // ---- The exit. ---------------------------------------------------------
+    if (!_insideSubprogramBody) {
+        // A Return reached outside any subprogram body has no block to leave.
+        // Nothing produces this today; warning rather than asserting keeps a
+        // future frontend change from costing the whole design.
+        messageWarning(
+            "A `return` was reached outside a subprogram body, where there is no block to disable, so the "
+            "exit is not emitted (hif-backend#63).",
+            &o, _sem);
+        return 0;
+    }
+
+    if (&o == _subprogramTrailingReturn) {
+        // Falling off the end of the body already leaves it, so the common
+        // single-Return function keeps the output it has always had.
+        return 0;
+    }
+
+    // An early exit is `disable` naming the block that wraps the body (IEEE Std
+    // 1364-2005, 9.8.1 for the named block, 9.6.4 for disable). `return` inside
+    // a task is SystemVerilog, and the project's regressions build with
+    // `iverilog -g2005`, so it is not available.
+    //
+    // The alternative lowering - restructuring the body into guarded branches -
+    // preserves re-entrancy, which `disable` does not: a Verilog-2001 named
+    // block is static, so disabling it affects any concurrent activation of the
+    // same subprogram. That is this form's known limit, and it is not a new
+    // one - a Verilog-2001 task's locals are static too, so a task called
+    // concurrently from two processes already does not behave as two
+    // independent calls. Nothing correct today is lost by choosing it.
+    messageAssert(
+        !_subprogramExitLabel.empty(),
+        "A non-trailing Return is being printed with no named body block to disable, so the early exit "
+        "would be dropped silently (hif-backend#63).",
+        &o, _sem);
+    (*_stream) << "disable " << _subprogramExitLabel << ";\n";
     return 0;
 }
 
@@ -2007,6 +2057,34 @@ auto VerilogPrinter::isConeProcedure(hif::Procedure *procedure) -> bool
     return name.rfind(conePrefix, 0) == 0;
 }
 
+auto VerilogPrinter::getSubprogramExitLabel(hif::StateTable *stateTable, const std::string &subprogramName)
+    -> std::string
+{
+    if (stateTable == nullptr) {
+        return "";
+    }
+
+    // Only the states, deliberately not the declarations: a Return belonging to
+    // a subprogram nested in this one is that subprogram's business, and would
+    // otherwise name a block this body has no early exit from.
+    std::list<hif::Return *> returns;
+    hif::HifTypedQuery<hif::Return> returnQuery;
+    for (auto *state : stateTable->states) {
+        hif::search(returns, state, returnQuery);
+    }
+
+    hif::Return *trailing = getTrailingReturn(stateTable);
+    for (auto *ret : returns) {
+        if (ret != trailing) {
+            // Fresh rather than a fixed suffix: the label shares Verilog's
+            // scope with the subprogram's own declarations, so a body that
+            // happens to declare `<name>_body` must not collide with it.
+            return hif::NameTable::getInstance()->getFreshName(subprogramName + "_body");
+        }
+    }
+    return "";
+}
+
 auto VerilogPrinter::printTask(hif::Procedure &o) -> int
 {
     auto *stateTable = o.getStateTable();
@@ -2034,12 +2112,32 @@ auto VerilogPrinter::printTask(hif::Procedure &o) -> int
         (*_stream) << "\n";
     }
 
-    (*_stream) << "begin\n";
+    // The body block carries a label only when something inside it exits early,
+    // so a task without an early Return is emitted exactly as before.
+    const std::string exitLabel = this->getSubprogramExitLabel(stateTable, o.getName());
+    (*_stream) << "begin";
+    if (!exitLabel.empty()) {
+        (*_stream) << " : " << exitLabel;
+    }
+    (*_stream) << "\n";
     _stream->indent();
+
+    // Saved and restored rather than cleared, so a subprogram nested in this
+    // one cannot strand the outer body's label.
+    const std::string enclosingLabel     = _subprogramExitLabel;
+    hif::Return *enclosingTrailingReturn = _subprogramTrailingReturn;
+    const bool enclosingInsideSubprogram = _insideSubprogramBody;
+    _subprogramExitLabel                 = exitLabel;
+    _subprogramTrailingReturn            = getTrailingReturn(stateTable);
+    _insideSubprogramBody                = true;
 
     for (auto state : stateTable->states) {
         state->acceptVisitor(*this);
     }
+
+    _subprogramExitLabel      = enclosingLabel;
+    _subprogramTrailingReturn = enclosingTrailingReturn;
+    _insideSubprogramBody     = enclosingInsideSubprogram;
 
     _stream->unindent();
     (*_stream) << "end\n";

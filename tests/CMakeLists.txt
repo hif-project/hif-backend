@@ -519,10 +519,6 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_process_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_process_test.cmake
         )
-        # Regression (hif-backend#57): a user-defined function was emitted with
-        # an empty body, so every call returned x and every condition built on
-        # one selected the wrong branch. Needs a simulator: the broken output
-        # compiles and reparses, and the only symptom is the value.
         # Regression (hif-backend#64): a procedure parameter whose direction is
         # not `in` was emitted as a bare `;`, so the task referenced names it
         # never declared and the file did not parse while hif2verilog exited 0.
@@ -541,6 +537,28 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_test.cmake
         )
+        # Regression (hif-backend#63, #73): a subprogram's early `return` was not
+        # an exit, so a void procedure ran the statements it should skip and a
+        # function collapsed to its trailing return's value. Needs a simulator:
+        # both produce output that compiles, reparses and exits 0, and the only
+        # symptom is the value for the input the guard was written for.
+        add_test(
+            NAME subprogram_early_return
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_early_return.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_early_return_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/subprogram_early_return_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/subprogram_early_return_test.cmake
+        )
+        # Regression (hif-backend#57): a user-defined function was emitted with
+        # an empty body, so every call returned x and every condition built on
+        # one selected the wrong branch. Needs a simulator: the broken output
+        # compiles and reparses, and the only symptom is the value.
         add_test(
             NAME user_function_body
             COMMAND ${CMAKE_COMMAND}

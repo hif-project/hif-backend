@@ -167,6 +167,23 @@ private:
     /// hif-backend#63.
     std::string _currentFunctionName;
 
+    /// @brief Label of the named block wrapping the subprogram body currently
+    /// being printed, or empty when that block is unnamed.
+    /// @details Verilog-2001 leaves a subprogram early with `disable` on a named
+    /// block, so an early Return needs a label to name (hif-backend#63). Bodies
+    /// with no early Return are left unnamed, so nothing that used to be emitted
+    /// changes shape.
+    std::string _subprogramExitLabel;
+
+    /// @brief The Return that leaves the current subprogram body by falling off
+    /// its end, and therefore needs no explicit exit. Null when there is none.
+    hif::Return *_subprogramTrailingReturn{nullptr};
+
+    /// @brief Whether the printer is inside a subprogram body at all.
+    /// @details Distinguishes a Return this printer is responsible for from one
+    /// reached outside any subprogram, which has no block to disable.
+    bool _insideSubprogramBody{false};
+
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
     /// file's `timescale, so a delay cannot be emitted without also
@@ -224,6 +241,15 @@ private:
     /// @param o The procedure to print as a task.
     /// @return 0.
     auto printTask(hif::Procedure &o) -> int;
+
+    /// @brief The label the body block of @p stateTable has to carry, if any.
+    /// @details Empty unless the body holds a Return that needs an explicit
+    /// exit, i.e. one that is not the trailing one. Fresh, so it cannot collide
+    /// with a declaration the subprogram already has.
+    /// @param stateTable The subprogram's state table.
+    /// @param subprogramName The subprogram's name, used to build the label.
+    /// @return The label, or the empty string when the body needs none.
+    auto getSubprogramExitLabel(hif::StateTable *stateTable, const std::string &subprogramName) -> std::string;
 
     /// @brief Whether a rendered Verilog literal is entirely unknown.
     /// @details Both frontends give a port that stated no initial value one
