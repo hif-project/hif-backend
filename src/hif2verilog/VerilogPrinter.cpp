@@ -2412,11 +2412,27 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
         ss << this->getBitwidth(port->getType());
         ss << port->getName();
     } else if (auto parameter = dynamic_cast<hif::Parameter *>(declaration)) {
-        if (parameter->getDirection() == PortDirection::dir_in) {
+        // A task's arguments carry a direction, exactly as a module's ports do,
+        // and Verilog spells all three. Only dir_in used to be handled, so an
+        // `out` or `inout` parameter - VHDL's ordinary way for a procedure to
+        // drive its actual - rendered as the empty string. printTask writes the
+        // terminator unconditionally, so that surfaced as a bare `;` and the
+        // task referenced a name it never declared (hif-backend#64).
+        switch (parameter->getDirection()) {
+        case PortDirection::dir_in:
             ss << "input ";
-            ss << this->getBitwidth(parameter->getType());
-            ss << parameter->getName();
+            break;
+        case PortDirection::dir_out:
+            ss << "output ";
+            break;
+        case PortDirection::dir_inout:
+            ss << "inout ";
+            break;
+        default:
+            messageError("Unexpected PortDirection", declaration, _sem);
         }
+        ss << this->getBitwidth(parameter->getType());
+        ss << parameter->getName();
     } else if (auto valueTP = dynamic_cast<hif::ValueTP *>(declaration)) {
         // Module-level generic/template parameter (e.g. `parameter WIDTH = 8`).
         // Printed as a plain (non-ANSI) body declaration, matching how
