@@ -90,6 +90,18 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/concat_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/concat_emission_test.cmake
     )
+    # Regression: case alternatives merged into one SwitchAlt were emitted
+    # with space-separated labels ("STATE_2 FINAL :") instead of
+    # comma-separated ones, producing invalid Verilog.
+    add_test(
+        NAME merged_case_alternatives
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/merged_case_alternatives.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/merged_case_alternatives_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/merged_case_alternatives_test.cmake
+    )
     # Regression: `localparam` declarations (HIF Const) were silently
     # dropped from regenerated Verilog.
     add_test(
