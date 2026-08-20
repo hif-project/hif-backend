@@ -242,6 +242,22 @@ private:
     /// @return 0.
     auto printTask(hif::Procedure &o) -> int;
 
+    /// @brief Prints a VHDL wait that sets more than one of condition,
+    /// sensitivity and timeout.
+    /// @details Verilog has no single statement meaning more than one at once,
+    /// so the clauses are lowered into a named block whose concurrent branches
+    /// each disable it (hif-backend#45).
+    /// @param o The wait to lower.
+    /// @param hasCondition Whether the wait states a condition.
+    /// @param hasSensitivity Whether the wait states any sensitivity.
+    /// @param hasTime Whether the wait states a timeout.
+    /// @return 0.
+    auto printMultiClauseWait(hif::Wait &o, bool hasCondition, bool hasSensitivity, bool hasTime) -> int;
+
+    /// @brief Prints a wait's sensitivity lists as a Verilog event control.
+    /// @param o The wait whose sensitivity to print.
+    void printEventControl(hif::Wait &o);
+
     /// @brief The label the body block of @p stateTable has to carry, if any.
     /// @details Empty unless the body holds a Return that needs an explicit
     /// exit, i.e. one that is not the trailing one. Fresh, so it cannot collide

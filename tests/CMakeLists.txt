@@ -537,6 +537,24 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_test.cmake
         )
+        # Regression (hif-backend#45): a VHDL wait setting more than one of
+        # condition, sensitivity and timeout had no Verilog emission and was
+        # refused. Needs a simulator: what distinguishes a correct lowering is
+        # the time each wait resumes at, and the output compiles either way.
+        add_test(
+            NAME multi_clause_wait
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait.vhd
+                -DNO_TIMEOUT_FIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait_no_timeout.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/multi_clause_wait_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/multi_clause_wait_test.cmake
+        )
         # Regression (hif-backend#63, #73): a subprogram's early `return` was not
         # an exit, so a void procedure ran the statements it should skip and a
         # function collapsed to its trailing return's value. Needs a simulator:
