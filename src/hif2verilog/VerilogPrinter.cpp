@@ -1654,18 +1654,9 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
     // meaning more than one at once. VHDL does: `wait on a until c for 10 ns;`
     // sets all three, because its three clauses are independently optional
     // (vhdl2hif's parse_WaitStatement). Such a wait needs a lowering rather
-    // than a keyword, which this printer does not do, so it is refused here.
-    //
-    // Refusing is the point. The alternative is not "emit something slightly
-    // wrong", it is the silent splicing above: a shape this printer cannot
-    // spell has to stop the tool rather than corrupt the output.
+    // than a keyword, which is what printMultiClauseWait does (hif-backend#45).
+    // It used to be refused outright here.
     const int forms = static_cast<int>(hasCondition) + static_cast<int>(hasSensitivity) + static_cast<int>(hasTime);
-    if (forms > 1) {
-        messageError(
-            "Unsupported Wait combination: a wait that sets more than one of condition, sensitivity and "
-            "timeout has no single Verilog construct and is not lowered by this printer (hif-backend#45).",
-            &o, _sem);
-    }
     if (o.getRepetitions() != nullptr) {
         messageError(
             "Unsupported Wait shape: a repeated wait is not emitted by this printer (hif-backend#45). "
@@ -1679,6 +1670,10 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
             "(hif-backend#45). verilog2hif's _manageWaitActions lifts those actions out to be following "
             "siblings for every RTL process, leaving this list empty.",
             &o, _sem);
+    }
+
+    if (forms > 1) {
+        return this->printMultiClauseWait(o, hasCondition, hasSensitivity, hasTime);
     }
 
     if (forms == 0) {
@@ -1729,10 +1724,16 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
         return 0;
     }
 
-    // An event control. Each signal is qualified individually, for the reason
-    // visitStateTable qualifies its sensitivity individually (hif-backend#21):
-    // one leading `posedge` ahead of a comma-separated list silently applies to
-    // the first entry only.
+    this->printEventControl(o);
+    return 0;
+}
+
+void VerilogPrinter::printEventControl(Wait &o)
+{
+    // Each signal is qualified individually, for the reason visitStateTable
+    // qualifies its sensitivity individually (hif-backend#21): one leading
+    // `posedge` ahead of a comma-separated list silently applies to the first
+    // entry only.
     bool isFirst = true;
     auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
         for (auto *signal : list) {
@@ -1748,6 +1749,88 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
     printSensitivity(o.sensitivityPos, "posedge");
     printSensitivity(o.sensitivityNeg, "negedge");
     (*_stream) << " );\n";
+}
+
+auto VerilogPrinter::printMultiClauseWait(Wait &o, bool hasCondition, bool hasSensitivity, bool hasTime) -> int
+{
+    // The block has to be named so that whatever resumes the process can leave
+    // it. Fresh, for the same reason getSubprogramExitLabel is: a Verilog block
+    // label shares its scope with the declarations around it.
+    const std::string label = hif::NameTable::getInstance()->getFreshName("hif_wait");
+
+    (*_stream) << "begin : " << label << "\n";
+    _stream->indent();
+
+    // A timeout has to be able to fire while nothing at all is happening on the
+    // sensitivity list. A single sequential block cannot do that - it sits in
+    // the event control and never reaches the deadline test, so the wait never
+    // resumes. Measured, on the shape this issue originally proposed: with `a`
+    // idle and the condition false, `wait on a until b for 10 ns` never
+    // resumed. So the reasons to resume are concurrent branches, and whichever
+    // happens first disables this block, which terminates the fork and its join
+    // along with it.
+    const bool needsFork = hasTime && (hasCondition || hasSensitivity);
+    if (needsFork) {
+        (*_stream) << "fork\n";
+        _stream->indent();
+    }
+
+    if (hasCondition && hasSensitivity) {
+        // `wait on a until c`: the condition *gates* the event rather than
+        // being a second way to resume, so the event control is re-armed until
+        // a wakeup finds the condition true. `forever` is already a single
+        // statement, so it needs no begin/end of its own to be a fork branch.
+        (*_stream) << "forever begin\n";
+        _stream->indent();
+        this->printEventControl(o);
+        (*_stream) << "if ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " ) disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    } else if (hasCondition) {
+        // `wait until c for T`: no sensitivity was stated, so the signals to
+        // wake on are the ones the condition reads. Verilog's own `wait`
+        // derives that set for itself, which is why it is used here rather than
+        // an event control this printer would have to compute - and it keeps
+        // this path spelling the condition exactly as the single-condition path
+        // does, including its level-sensitive reading (hif-core#16). That
+        // divergence is neither introduced nor widened here.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        (*_stream) << "wait ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " );\n";
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    } else {
+        // `wait on a for T`: the first event on the sensitivity list resumes,
+        // with no condition to satisfy, so the event control fires once.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        this->printEventControl(o);
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    }
+
+    if (needsFork) {
+        // renderDelay rather than visiting the value, for the reason the
+        // timeout-only path gives: it maps both shapes a timeout arrives in
+        // onto a count of the unit the emitted `timescale declares.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        (*_stream) << "#" << this->renderDelay(o.getTime()) << ";\n";
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+        _stream->unindent();
+        (*_stream) << "join\n";
+    }
+
+    _stream->unindent();
+    (*_stream) << "end\n";
     return 0;
 }
 
