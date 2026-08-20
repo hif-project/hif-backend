@@ -523,6 +523,24 @@ if(VHDL2HIF_EXECUTABLE)
         # an empty body, so every call returned x and every condition built on
         # one selected the wrong branch. Needs a simulator: the broken output
         # compiles and reparses, and the only symptom is the value.
+        # Regression (hif-backend#64): a procedure parameter whose direction is
+        # not `in` was emitted as a bare `;`, so the task referenced names it
+        # never declared and the file did not parse while hif2verilog exited 0.
+        # Needs a simulator: the point is not only that the output compiles now
+        # but that the out parameter is really connected to its actual.
+        add_test(
+            NAME task_out_parameter
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_test.cmake
+        )
         add_test(
             NAME user_function_body
             COMMAND ${CMAKE_COMMAND}
@@ -548,6 +566,20 @@ if(VHDL2HIF_EXECUTABLE)
     # show the reported symptom, but no simulator: the defect is that the
     # output does not build, not that it computes the wrong thing.
     if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE)
+        # Regression (hif-backend#64), dir_inout half. Registered separately from
+        # task_out_parameter because it cannot take the reparse or value legs:
+        # verilog2hif refuses a task `inout` argument (hif-frontend#25) and the
+        # value never converges under hif-backend#70. Declaration + compile only.
+        add_test(
+            NAME task_inout_parameter
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_inout_parameter.vhd
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_inout_parameter_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_inout_parameter_test.cmake
+        )
         add_test(
             NAME vector_unknown_default
             COMMAND ${CMAKE_COMMAND}
