@@ -22,6 +22,13 @@
 --   c    an inout driven by a *concurrent* assignment rather than a process.
 --        The control: a net is already the right declaration there, so it must
 --        come out untouched, with no driver reg of its own.
+--
+--   v    an inout *vector* whose bit 0 is driven by a process and whose bit 1
+--        is driven concurrently. The lowering drives the whole port from one
+--        reg, so the bits the process never writes must contribute nothing -
+--        VHDL creates a driver only for the subelements a process assigns.
+--        Left at the default they would contribute 'x' and beat the real
+--        driver, which is a silent wrong value on a design that elaborates.
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -32,7 +39,8 @@ entity inout_port_driver is
     b   : inout std_logic;
     mon : out   std_logic;
     src : in    std_logic;
-    c   : inout std_logic
+    c   : inout std_logic;
+    v   : inout std_logic_vector(1 downto 0)
   );
 end entity;
 
@@ -50,5 +58,13 @@ begin
   end process;
 
   c <= src;
+
+  -- Split drive on one port: bit 0 procedural, bit 1 concurrent.
+  process(en)
+  begin
+    v(0) <= en;
+  end process;
+
+  v(1) <= not en;
 
 end architecture;

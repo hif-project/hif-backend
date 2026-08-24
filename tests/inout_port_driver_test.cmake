@@ -32,6 +32,12 @@
 #               either way and only differs when someone else drives.
 #             - leaving a concurrently driven inout alone. A net is already
 #               right there, and a second driver would be a real defect.
+#             - contributing nothing on the bits a process does not write. The
+#               lowering drives the whole port from one reg, but VHDL creates a
+#               driver only for the subelements a process assigns, so a port
+#               with bit 0 procedural and bit 1 concurrent must keep bit 1.
+#               Left at the default the reg contributes 'x' there and beats the
+#               real driver - output that elaborates and reads x.
 #
 #           Observed against the pre-fix binary, which is what says this test
 #           discriminates. The shape check below fires first, since it is the
