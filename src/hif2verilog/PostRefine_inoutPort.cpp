@@ -107,6 +107,26 @@ auto PostRefine_inoutPort::visitView(View &o) -> int
         auto *driver = new Signal();
         driver->setName(driverName);
         driver->setType(hif::copy(port->getType()));
+        // High-impedance until the process writes it, and that initial value is
+        // load-bearing rather than tidiness.
+        //
+        // The continuous assignment below drives the *whole* port from this
+        // reg, but a process need not drive the whole port: it may assign only
+        // a bit-select or a slice, leaving the rest of the port to another
+        // driver. VHDL is precise about this - a process creates a driver only
+        // for the scalar subelements it assigns - so the bits this process
+        // never writes must contribute nothing.
+        //
+        // Left at the default they would contribute 'x' and win against the
+        // real driver, turning `b(1) <= not a;` alongside a process driving
+        // `b(0)` into a constant x on b(1). Starting at high impedance makes
+        // the unwritten bits release the net instead, which is exactly "no
+        // driver for this subelement".
+        //
+        // Doing it through the value rather than by emitting one continuous
+        // assign per target shape also covers the case a structural approach
+        // cannot: a target whose index is not statically known, `b(i) <= ...`.
+        driver->setValue(_sem->getTypeDefaultValue(port->getType(), driver));
         contents->declarations.push_back(driver);
 
         // Only the assignment *targets* move. Reads of the port stay on the

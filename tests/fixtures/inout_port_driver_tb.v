@@ -5,6 +5,12 @@
 // that drives it unconditionally - or that lets the process read back its own
 // driver reg instead of the net - compiles and looks right until somebody else
 // drives the same wire.
+//
+// `v` is the split-drive port: bit 0 comes from a process, bit 1 from a
+// concurrent assignment. Its checks are what catch a driver reg whose unwritten
+// bits contribute 'x' to the net instead of releasing it - the same "looks
+// right until another driver appears" failure, this time between two drivers
+// inside the one module.
 module inout_port_driver_tb;
     reg en;
     reg d;
@@ -14,10 +20,11 @@ module inout_port_driver_tb;
     wire b;
     wire c;
     wire mon;
+    wire [1:0] v;
     integer failures;
 
     inout_port_driver dut (
-        .en(en), .d(d), .b(b), .mon(mon), .src(src), .c(c)
+        .en(en), .d(d), .b(b), .mon(mon), .src(src), .c(c), .v(v)
     );
 
     // The other party on the bidirectional net.
@@ -72,6 +79,18 @@ module inout_port_driver_tb;
         // untouched by the lowering.
         ext_en = 1'b0; src = 1'b1; #1;
         check("c (concurrently driven inout)", c, 1'b1);
+
+        // Split drive on one port. The lowering drives the whole port from one
+        // reg, so bit 1 - which the process never writes - has to contribute
+        // nothing rather than 'x'. If it contributes 'x' it beats the
+        // concurrent driver and these read x instead of the real values.
+        en = 1'b1; #1;
+        check("v[0] process-driven, en=1", v[0], 1'b1);
+        check("v[1] concurrent,      en=1", v[1], 1'b0);
+
+        en = 1'b0; #1;
+        check("v[0] process-driven, en=0", v[0], 1'b0);
+        check("v[1] concurrent,      en=0", v[1], 1'b1);
 
         if (failures == 0) begin
             $display("ALL CHECKS PASSED");
