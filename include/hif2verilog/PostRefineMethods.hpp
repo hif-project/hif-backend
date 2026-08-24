@@ -35,3 +35,23 @@ void fixSynchronousProcesses(hif::System *o, hif::semantics::ILanguageSemantics 
 /// @param o The system object.
 /// @param sem The semantics.
 void hoistForInitDeclarations(hif::System *o, hif::semantics::ILanguageSemantics *sem);
+
+/// @brief Gives an `inout` port that a process drives a reg to be driven
+/// through, plus a continuous assignment from that reg onto the port.
+///
+/// A port a process drives has to be a reg and one that is continuously driven
+/// has to be a wire (hif-backend#26, #32). Verilog-2001 has no `inout reg`, so
+/// unlike the `dir_out` case this cannot be settled by choosing a keyword: an
+/// `inout` port is always a net, and a net is not a valid procedural l-value.
+/// Without this pass the regenerated design does not elaborate, while
+/// hif2verilog exits 0 and the output reparses (hif-backend#71).
+///
+/// The continuous driver is unconditional. VHDL spells the high-impedance
+/// state as a *value* of the resolved type, so a process releases the net by
+/// assigning 'Z', which reaches Verilog as the ordinary value `1'bz`; a
+/// separate enable would have to be derived from the same information and
+/// would model nothing the value does not already model.
+///
+/// @param o The system object.
+/// @param sem The semantics.
+void lowerProcedurallyDrivenInoutPorts(hif::System *o, hif::semantics::ILanguageSemantics *sem);
