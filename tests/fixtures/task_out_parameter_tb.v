@@ -1,14 +1,14 @@
 // Testbench for hif-backend#64. Self-checking, so a wrong value names itself.
 //
 // The design's driving procedures publish literals, so what is checked here does
-// not depend on the activation count - which matters, because hif-backend#70
-// makes a task's out parameter copy back one activation late. The process is
-// sensitive to `a` alone, so `a` is toggled enough times for that lag to have
-// drained before the values are read.
+// not depend on the activation count. The process is sensitive to `a` alone, so
+// `a` is toggled a few times before the values are read.
 //
-// y_copy mirrors `a`, so it is subject to that lag directly and its value is
-// deliberately not checked - only that it was driven at all, which is what says
-// the mixed in/out parameter pair was declared. Tighten it when #70 is fixed.
+// y_copy mirrors `a` rather than a literal, so it is the one value that used to
+// be left unchecked: hif-backend#70 made a task's out parameter copy back one
+// activation late, and asserting it would have been testing that defect rather
+// than this one. #70 is fixed, so it is asserted here now. The activation-timing
+// aspect of #70 has its own regression, task_out_parameter_blocking.
 module task_out_parameter_tb;
     reg a;
     wire y_high;
@@ -48,10 +48,10 @@ module task_out_parameter_tb;
         check("y_high (signal : out)",  y_high, 1'b1);
         check("y_var (variable : out)", y_var,  1'b1);
 
-        if (y_copy !== 1'b0 && y_copy !== 1'b1) begin
-            $display("FAIL: y_copy is %b - the mixed in/out procedure never drove it", y_copy);
-            failures = failures + 1;
-        end
+        // Mirrors `a` through a procedure taking one `in` and one `out` signal
+        // parameter, so this is both "the pair was declared" and "the copy-back
+        // carries the value of this activation, not the last one".
+        check("y_copy (in + out)", y_copy, a);
 
         if (failures == 0) begin
             $display("ALL CHECKS PASSED");

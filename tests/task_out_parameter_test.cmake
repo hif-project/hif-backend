@@ -18,13 +18,12 @@
 #           keyword, the file compiles under iverilog, verilog2hif reads it back,
 #           and the design actually publishes the values its procedures assign.
 #
-#           That last check is possible only because the fixture's procedures
-#           assign literals. hif-backend#70 - a task's out parameter is copied
-#           back one activation late, because the assignment to it is emitted
-#           non-blocking - would otherwise make any value assertion here a test
-#           of that defect rather than of this one. The testbench toggles the
-#           process's sensitivity input enough times for the lag to drain, and
-#           does not assert the one value that mirrors its input.
+#           The value leg used to stop short of the one output that mirrors an
+#           input, because hif-backend#70 - a task's out parameter copied back
+#           one activation late, the assignment to it being emitted non-blocking
+#           - would have made that assertion a test of #70 rather than of this
+#           defect. #70 is fixed, so it is asserted now; its own timing-sensitive
+#           regression is task_out_parameter_blocking.
 #
 #           The dir_inout case is covered by task_inout_parameter, separately,
 #           because it cannot pass the reparse leg (hif-frontend#25).

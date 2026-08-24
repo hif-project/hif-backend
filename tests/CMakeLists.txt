@@ -401,6 +401,30 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "iverilog/vvp not found; skipping clocked_process test.")
     endif()
 
+    # Regression (hif-backend#70): an assignment to a task's out or inout
+    # argument was emitted non-blocking, so the copy-back to the actual - which
+    # happens when the task returns - ran before the local was updated. The out
+    # case published the previous call's value, the inout case never converged.
+    # Needs a simulator, and needs to read the out value at the *first*
+    # activation: the output compiles, reparses and exits 0 either way, and the
+    # one-activation lag drains if you look later.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME task_out_parameter_blocking
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_blocking.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_blocking_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_blocking_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_blocking_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping task_out_parameter_blocking test.")
+    endif()
+
     # Regression (hif-backend#50): VerilogPrinter::getValue had no terminal
     # case, so a value kind absent from its dynamic_cast chain rendered as the
     # empty string. A FunctionCall took that path, so `if rising_edge(clk)`
