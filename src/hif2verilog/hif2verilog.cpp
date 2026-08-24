@@ -264,6 +264,7 @@ void perform_post_refinement(System &o, hif2verilogParseLine & /*cLine*/)
     hif::semantics::ILanguageSemantics *sem = hif::semantics::VerilogSemantics::getInstance();
     fixSynchronousProcesses(&o, sem);
     hoistForInitDeclarations(&o, sem);
+    lowerProcedurallyDrivenInoutPorts(&o, sem);
 }
 
 void perform_code_generation(System &o, hif2verilogParseLine &cLine)

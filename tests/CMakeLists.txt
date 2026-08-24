@@ -425,6 +425,31 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "iverilog/vvp not found; skipping task_out_parameter_blocking test.")
     endif()
 
+    # Regression (hif-backend#71): a VHDL `inout` port that a process drives was
+    # emitted as a bare net, which is not a valid procedural l-value, so the
+    # regenerated design did not elaborate while hif2verilog exited 0 and the
+    # output reparsed cleanly. Needs iverilog for the reported symptom, and a
+    # simulator for the three things a lowering can still get wrong while
+    # elaborating: releasing the net on 'Z', reading the net rather than the
+    # driver reg, and leaving a concurrently driven inout alone.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME inout_port_driver
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/inout_port_driver.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/inout_port_driver_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/inout_port_driver_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/inout_port_driver_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping inout_port_driver test.")
+    endif()
+
     # Regression (hif-backend#50): VerilogPrinter::getValue had no terminal
     # case, so a value kind absent from its dynamic_cast chain rendered as the
     # empty string. A FunctionCall took that path, so `if rising_edge(clk)`
