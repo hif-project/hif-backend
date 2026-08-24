@@ -19,9 +19,9 @@
 --
 -- The driving procedures assign a *literal* rather than their input. That is
 -- deliberate: it makes the value they publish independent of how many times the
--- process has run, so the behavioural checks stay valid under hif-backend#70
--- (a task's out parameter copies back one activation late) while still proving
--- the copy-back happens at all.
+-- process has run, so the behavioural checks say the copy-back happened without
+-- also depending on when it happened. The timing itself is hif-backend#70's,
+-- and is covered by task_out_parameter_blocking.
 library ieee;
 use ieee.std_logic_1164.all;
 

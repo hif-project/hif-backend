@@ -27,6 +27,33 @@ namespace
 /// private header and this project does not build against it. The literal is
 /// the contract between them, and hif-backend#46 is where it is written down.
 const char *const PROPERTY_PROCESS_LOOP_TAIL = "PROPERTY_PROCESS_LOOP_TAIL";
+
+/// @brief Whether a target's declaration is storage whose new value must be
+/// visible to the reads that follow it in the same activation, i.e. one that
+/// has to be assigned with Verilog's blocking "=".
+///
+/// Two declarations qualify, for the same underlying reason - the value is
+/// consumed before the current time step ends, so scheduling it for the end of
+/// the step publishes the *previous* one:
+///
+///   - a Variable, which visitProcedureCall's inlined cones read back
+///     immediately at the call site (hif-backend#16);
+///   - a Parameter with direction out or inout, which is task-local storage
+///     copied back to the actual when the task returns. The copy-back happens
+///     on return, so a non-blocking assignment updates the local only after
+///     the actual has already been written (hif-backend#70).
+///
+/// dir_in is deliberately excluded: assigning to an input argument is local
+/// scratch use with no copy-back, so it carries no such ordering requirement.
+auto isBlockingAssignmentTarget(hif::Declaration *dd) -> bool
+{
+    if (dynamic_cast<Variable *>(dd) != nullptr) {
+        return true;
+    }
+    auto *param = dynamic_cast<Parameter *>(dd);
+    return param != nullptr &&
+           (param->getDirection() == dir_out || param->getDirection() == dir_inout);
+}
 } // namespace
 
 VerilogPrinter::VerilogPrinter(hif::backends::IndentedStream *stream)
@@ -118,12 +145,12 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // Inside an inlined cone the choice below is load-bearing rather than
     // stylistic. visitProcedureCall expands a cone's body at its call site,
     // and the statements that follow - the reads of the cone's target that
-    // motivated the call - only observe the value just computed because a
-    // Variable target is assigned with blocking "=". A cone target that
-    // reached here as anything else would be emitted with "<=", and those
-    // reads would silently go back to seeing the previous value: exactly
-    // the staleness hif-backend#16 was about, moved inside a single process
-    // where it is harder to spot.
+    // motivated the call - only observe the value just computed because the
+    // target is one isBlockingAssignmentTarget accepts, so it is assigned
+    // with blocking "=". A cone target that reached here as anything else
+    // would be emitted with "<=", and those reads would silently go back to
+    // seeing the previous value: exactly the staleness hif-backend#16 was
+    // about, moved inside a single process where it is harder to spot.
     //
     // The frontend guarantees this today - refineToVariables shadows a
     // target that must stay a signal into a "_sig_var" Variable and drives
@@ -140,14 +167,13 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
 
     if (delay.empty() && !_inliningCones.empty()) {
         messageAssert(
-            dynamic_cast<Variable *>(dd) != nullptr,
-            "Inlined cone assigns to a non-Variable target, which would be emitted with "
-            "non-blocking '<=' and leave the reads after the call observing a stale value "
-            "(hif-backend#16).",
+            isBlockingAssignmentTarget(dd),
+            "Inlined cone assigns to a target that is emitted with non-blocking '<=', which "
+            "would leave the reads after the call observing a stale value (hif-backend#16).",
             &o, _sem);
     }
 
-    if (delay.empty() && dynamic_cast<Variable *>(dd) != nullptr) {
+    if (delay.empty() && isBlockingAssignmentTarget(dd)) {
         (*_stream) << " = ";
     } else {
         (*_stream) << " <= ";

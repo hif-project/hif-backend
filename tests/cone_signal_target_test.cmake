@@ -3,11 +3,16 @@
 #
 #           visitProcedureCall expands a cone's body at its call site. The
 #           reads that follow the call - the reads of the cone's target that
-#           motivated it - observe the value just computed only because a
-#           Variable target is assigned with blocking "=". A cone target that
-#           arrived as anything else would be emitted with "<=", and those
-#           reads would silently go back to the previous value: the staleness
-#           of #16 again, this time inside a single process.
+#           motivated it - observe the value just computed only because the
+#           target is assigned with blocking "=". A cone target that arrived as
+#           something emitted with "<=" would send those reads silently back to
+#           the previous value: the staleness of #16 again, this time inside a
+#           single process.
+#
+#           The set of blocking-assigned targets is isBlockingAssignmentTarget
+#           in VerilogPrinter.cpp: a Variable, or a Parameter with direction out
+#           or inout (hif-backend#70). A Signal is in neither group, which is
+#           what this fixture exercises.
 #
 #           hif-frontend guarantees Variable cone targets today
 #           (refineToVariables shadows a target that must stay a signal into
@@ -43,14 +48,14 @@ execute_process(
 
 if(result EQUAL 0)
     message(FATAL_ERROR
-        "hif2verilog accepted a cone whose target is not a Variable. It would be emitted "
-        "with non-blocking '<=', leaving the reads after the inlined call observing a stale "
-        "value (hif-backend#16). Expected a non-zero exit.\nTool output:\n${tool_output}")
+        "hif2verilog accepted a cone whose target is not assigned with blocking '='. It would "
+        "be emitted with non-blocking '<=', leaving the reads after the inlined call observing "
+        "a stale value (hif-backend#16). Expected a non-zero exit.\nTool output:\n${tool_output}")
 endif()
 
 # The diagnostic has to name the problem. A crash, or an assert from somewhere
 # unrelated, would also exit non-zero without telling anyone what broke.
-if(NOT tool_output MATCHES "non-Variable target")
+if(NOT tool_output MATCHES "Inlined cone assigns")
     message(FATAL_ERROR
         "hif2verilog rejected the fixture, but not with the cone-target diagnostic - so the "
         "non-zero exit may be incidental rather than this invariant firing.\nTool output:\n${tool_output}")
