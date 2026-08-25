@@ -18,13 +18,18 @@
 #           and printed nothing - right for the marker, wrong for `wait;`.
 #
 #           verilog2hif now tags the marker PROPERTY_PROCESS_LOOP_TAIL, so this
-#           side can tell them apart. That is why .ci/pinned-refs.env moves
-#           HIF_FRONTEND_REF: against a frontend that does not tag, the marker
-#           is indistinguishable from `wait;` again and every Verilog process
-#           containing a wait would be demoted to `initial` - silently stopping
-#           the design after its first pass, which is worse than the defect
-#           being fixed. The existing wait_emission and initial_process tests
-#           cover that direction.
+#           side can tell them apart. That imposes a requirement on which
+#           frontend this repository is built against: against a frontend that
+#           does not tag, the marker is indistinguishable from `wait;` again and
+#           every Verilog process containing a wait would be demoted to
+#           `initial` - silently stopping the design after its first pass, which
+#           is worse than the defect being fixed. The existing wait_emission and
+#           initial_process tests cover that direction.
+#
+#           .ci/pinned-refs.env used to encode that requirement by holding
+#           HIF_FRONTEND_REF at a commit known to tag. It now tracks develop,
+#           where the tagging change landed long ago, so the requirement is met
+#           by construction rather than by a pinned SHA.
 #
 #           Compiling is not the property under test: a process emitted as
 #           `always` fails to elaborate, which would be caught anyway. The
