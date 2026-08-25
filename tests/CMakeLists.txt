@@ -540,6 +540,28 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping replication_emission test.")
     endif()
 
+    # Regression (hif-backend#84): casez and casex were both regenerated as a
+    # plain `case`. Under `case` the comparison is exact, so a wildcard label
+    # matches nothing and control falls through to the default. Valid Verilog,
+    # exit 0, reparses -- only the values change, so the gate is simulation
+    # rather than inspection.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME casez_wildcards
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/casez_wildcards.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/casez_wildcards_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/casez_wildcards_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/casez_wildcards_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping casez_wildcards test.")
+    endif()
+
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
     # produced a module with the right ports and an empty body. Needs both
