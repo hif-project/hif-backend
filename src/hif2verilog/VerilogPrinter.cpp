@@ -685,7 +685,9 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "sla"; // TODO
         break;
     case op_sra:
-        (*_stream) << "sra"; // TODO
+        // Verilog's arithmetic right shift. The logical shifts above use
+        // ">>"/"<<"; ">>>" is the signed-aware form and is what op_sra means.
+        (*_stream) << ">>>";
         break;
     case op_mod:
         (*_stream) << "%";
