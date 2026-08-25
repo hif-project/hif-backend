@@ -1005,7 +1005,10 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
         if (declaration->getName() == (o.getName() + "_return")) {
             continue;
         }
-        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        // Without the initial value: Verilog allows a variable declaration
+        // assignment only at module level. It is re-emitted as the first
+        // statement of the body below (hif-backend#83).
+        (*_stream) << this->getDeclaration(declaration, false) << ";\n";
         has_variables = true;
     }
 
@@ -1036,6 +1039,10 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     _subprogramExitLabel                    = exitLabel;
     _subprogramTrailingReturn               = getTrailingReturn(state_table);
     _insideSubprogramBody                   = true;
+
+    if (this->printSubprogramLocalInitializations(state_table, o.getName() + "_return")) {
+        (*_stream) << "\n";
+    }
 
     for (auto state : state_table->states) {
         state->acceptVisitor(*this);
@@ -2216,7 +2223,11 @@ auto VerilogPrinter::printTask(hif::Procedure &o) -> int
         hasDeclarations = true;
     }
     for (auto declaration : stateTable->declarations) {
-        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        // Without the initial value, for the reason visitFunction gives: a
+        // variable declaration assignment is module-level-only in Verilog. A
+        // VHDL procedure reaches this with a local the source really did
+        // initialise (hif-backend#83).
+        (*_stream) << this->getDeclaration(declaration, false) << ";\n";
         hasDeclarations = true;
     }
     if (hasDeclarations) {
@@ -2241,6 +2252,10 @@ auto VerilogPrinter::printTask(hif::Procedure &o) -> int
     _subprogramExitLabel                 = exitLabel;
     _subprogramTrailingReturn            = getTrailingReturn(stateTable);
     _insideSubprogramBody                = true;
+
+    if (this->printSubprogramLocalInitializations(stateTable, "")) {
+        (*_stream) << "\n";
+    }
 
     for (auto state : stateTable->states) {
         state->acceptVisitor(*this);
@@ -2563,7 +2578,46 @@ auto VerilogPrinter::isContinuouslyDriven(hif::Declaration *declaration) -> bool
     return dataDeclaration != nullptr && _continuouslyDrivenDeclarations.count(dataDeclaration) != 0;
 }
 
-std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
+auto VerilogPrinter::printSubprogramLocalInitializations(
+    hif::StateTable *stateTable,
+    const std::string &returnVariableName) -> bool
+{
+    if (stateTable == nullptr) {
+        return false;
+    }
+
+    bool printed = false;
+    for (auto *declaration : stateTable->declarations) {
+        if (!returnVariableName.empty() && declaration->getName() == returnVariableName) {
+            continue;
+        }
+        // Only variables. A parameter or localparam keeps its value on its own
+        // declaration, where Verilog both allows and requires it, and cannot be
+        // assigned at all.
+        auto *variable = dynamic_cast<hif::Variable *>(declaration);
+        if (variable == nullptr || variable->getValue() == nullptr) {
+            continue;
+        }
+        const std::string value = this->getValue(variable->getValue());
+        // The same rule the port initial values use, in
+        // collectContinuouslyDrivenDeclarations:
+        // a value that renders empty, or renders as all x/z, is a default the
+        // frontend supplied for a declaration that stated none - vhdl2hif's
+        // 'U' and verilog2hif's all-x - and says nothing the declaration does
+        // not already say, since an uninitialized reg reads x regardless.
+        // Suppressing it also keeps a Verilog function's local static, rather
+        // than resetting it on every call, which is what emitting the default
+        // would silently turn it into.
+        if (value.empty() || isUnknownLiteral(value)) {
+            continue;
+        }
+        (*_stream) << variable->getName() << " = " << value << ";\n";
+        printed = true;
+    }
+    return printed;
+}
+
+std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool withInitialValue)
 {
     std::stringstream ss;
     // The timescale constants are verilog2hif's record of the source's
@@ -2588,9 +2642,11 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << this->getBitwidth(variable->getType());
         }
         ss << variable->getName();
-        auto value = this->getValue(variable->getValue());
-        if (!value.empty()) {
-            ss << " = " << value;
+        if (withInitialValue) {
+            auto value = this->getValue(variable->getValue());
+            if (!value.empty()) {
+                ss << " = " << value;
+            }
         }
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
         // A continuously driven net must be a wire; everything else is written
@@ -2598,9 +2654,11 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
         ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
         ss << this->getBitwidth(signal->getType());
         ss << signal->getName();
-        auto value = this->getValue(signal->getValue());
-        if (!value.empty()) {
-            ss << " = " << value;
+        if (withInitialValue) {
+            auto value = this->getValue(signal->getValue());
+            if (!value.empty()) {
+                ss << " = " << value;
+            }
         }
     } else if (auto port = dynamic_cast<hif::Port *>(declaration)) {
         switch (port->getDirection()) {
