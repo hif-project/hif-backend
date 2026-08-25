@@ -1569,8 +1569,31 @@ auto VerilogPrinter::visitSwitchAlt(SwitchAlt &o) -> int { return GuideVisitor::
 
 auto VerilogPrinter::visitSwitch(Switch &o) -> int
 {
+    // Verilog spells the three matching rules as three keywords, and the HIF
+    // records which one the source used. Printing "case" for all of them makes
+    // every wildcard alternative unreachable: under "case" the comparison is
+    // exact, so a label like 4'bzzz1 matches only a selector that is literally
+    // zzz1, and control falls through to the default (hif-backend#84).
+    //
+    // The alternatives themselves need no change. verilog2hif already stores a
+    // source "?" as a z bit, which is a wildcard under casez and under casex
+    // alike, so the labels are correct as soon as the keyword is.
+    std::string caseKeyword;
+    switch (o.getCaseSemantics()) {
+    case hif::CASE_LITERAL:
+        caseKeyword = "case";
+        break;
+    case hif::CASE_Z:
+        caseKeyword = "casez";
+        break;
+    case hif::CASE_X:
+        caseKeyword = "casex";
+        break;
+    default:
+        messageError("Unexpected CaseSemantics", &o, _sem);
+    }
 
-    (*_stream) << "case ( " << this->getValue(o.getCondition()) << " )\n";
+    (*_stream) << caseKeyword << " ( " << this->getValue(o.getCondition()) << " )\n";
     _stream->indent();
     for (hif::SwitchAlt *alternative : o.alts) {
         // A SwitchAlt can carry more than one condition: alternatives sharing
