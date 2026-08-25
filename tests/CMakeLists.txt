@@ -562,6 +562,30 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping casez_wildcards test.")
     endif()
 
+    # Regression (hif-backend#92): hif2vhdl aborted on every Verilog reduction
+    # operator, exit 134 with no VHDL written. Needs vhdl2hif to check the
+    # emitted VHDL is readable back, and the simulator to check the lowered
+    # chain still computes what the operator did - a chain built with the wrong
+    # bit operator produces valid VHDL that reparses.
+    if(VERILOG2HIF_EXECUTABLE AND VHDL2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME vhdl_reduction_operators
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_reduction_operators.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_reduction_operators_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vhdl_reduction_operators_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_reduction_operators_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/vhdl2hif/iverilog/vvp not all found; skipping vhdl_reduction_operators test.")
+    endif()
+
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
     # produced a module with the right ports and an empty body. Needs both
