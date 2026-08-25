@@ -677,6 +677,37 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_inout_parameter_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/task_inout_parameter_test.cmake
         )
+        # Regression (hif-backend#83), Verilog side: a function-local variable
+        # was emitted as `reg [4:0] wide_fn = 5'bxxxxx;` inside the function
+        # body, and Verilog allows a variable declaration assignment only at
+        # module level. Needs iverilog to show the reported symptom, but no
+        # simulator: the defect is that the output does not build.
+        add_test(
+            NAME function_local_declaration
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/function_local_declaration.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/function_local_declaration_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/function_local_declaration_test.cmake
+        )
+        # Regression (hif-backend#83), VHDL side: the same construct with an
+        # initial value the source actually wrote, in a function and in a
+        # procedure. Simulated rather than only compiled, because dropping the
+        # value would also make the output build.
+        add_test(
+            NAME subprogram_local_initialization
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_local_initialization.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_local_initialization_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/subprogram_local_initialization_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/subprogram_local_initialization_test.cmake
+        )
         add_test(
             NAME vector_unknown_default
             COMMAND ${CMAKE_COMMAND}

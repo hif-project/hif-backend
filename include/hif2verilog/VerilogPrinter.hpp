@@ -296,7 +296,30 @@ private:
     /// target of a global action emitted as a continuous assign.
     auto isContinuouslyDriven(hif::Declaration *declaration) -> bool;
 
-    std::string getDeclaration(hif::Declaration *declaration);
+    /// @brief Renders a declaration.
+    /// @param declaration The declaration to render.
+    /// @param withInitialValue Whether to append a *variable's* initial value.
+    /// False inside a subprogram body, where Verilog allows a variable
+    /// declaration assignment only at module level; the value is emitted there
+    /// by printSubprogramLocalInitializations instead. Deliberately does not
+    /// affect a parameter or localparam, whose value is legal - and mandatory -
+    /// where it is declared, in a subprogram body as much as at module level.
+    /// @return The declaration text, without the terminating semicolon.
+    std::string getDeclaration(hif::Declaration *declaration, bool withInitialValue = true);
+
+    /// @brief Assigns a subprogram's locals their initial values on entry.
+    /// @details Verilog allows a variable declaration assignment only at module
+    /// level, so a local that carries a value cannot state it where it is
+    /// declared - the file does not parse. The initialisation goes at the top
+    /// of the body instead, which is also what the value means when it came
+    /// from VHDL: a subprogram's local variable is initialised on every call,
+    /// not once at elaboration.
+    /// @param stateTable The subprogram's body.
+    /// @param returnVariableName The name of the function return variable to
+    /// skip, or an empty string for a task.
+    /// @return True if anything was printed.
+    auto printSubprogramLocalInitializations(hif::StateTable *stateTable, const std::string &returnVariableName)
+        -> bool;
 
     std::string getBitwidth(hif::Type *type);
 
