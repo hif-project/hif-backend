@@ -586,6 +586,30 @@ if(VHDL2HIF_EXECUTABLE)
         message(STATUS "verilog2hif/vhdl2hif/iverilog/vvp not all found; skipping vhdl_reduction_operators test.")
     endif()
 
+    # Regression (hif-backend#103): hif2vhdl aborted on any bit-select or
+    # part-select assignment target - "Unexpected target" from
+    # VHDLPrinter::visitAssign, exit 134, with the output file created and left
+    # at zero bytes. The cause was hif-core's TerminalPrefixOptions having no
+    # default member initializers, so the default options visitAssign passes
+    # were false for every flag against a header documenting three as true;
+    # hif-core#22 fixed it and this backend needed no change. Needs vhdl2hif to
+    # check the emitted VHDL reads back, but no simulator: the targets are
+    # asserted structurally, and there is no VHDL simulator here anyway.
+    if(VERILOG2HIF_EXECUTABLE AND VHDL2HIF_EXECUTABLE)
+        add_test(
+            NAME slice_assign_target
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/slice_assign_target.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/slice_assign_target_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/slice_assign_target_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/vhdl2hif not both found; skipping slice_assign_target test.")
+    endif()
+
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
     # produced a module with the right ports and an empty body. Needs both
