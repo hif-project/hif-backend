@@ -90,6 +90,30 @@ if(VERILOG2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/concat_emission_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/concat_emission_test.cmake
     )
+    # Regression: the arithmetic right shift printed as HIF's operator name
+    # ("a sra b") instead of Verilog's ">>>". Same class as concat_emission -
+    # an operator emitted as its internal token - so it sits next to it.
+    add_test(
+        NAME arithmetic_shift_right
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/arithmetic_shift_right.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/arithmetic_shift_right_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic_shift_right_test.cmake
+    )
+    # Regression: case alternatives merged into one SwitchAlt were emitted
+    # with space-separated labels ("STATE_2 FINAL :") instead of
+    # comma-separated ones, producing invalid Verilog.
+    add_test(
+        NAME merged_case_alternatives
+        COMMAND ${CMAKE_COMMAND}
+            -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/merged_case_alternatives.v
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/merged_case_alternatives_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/merged_case_alternatives_test.cmake
+    )
     # Regression: `localparam` declarations (HIF Const) were silently
     # dropped from regenerated Verilog.
     add_test(
@@ -300,8 +324,27 @@ if(VERILOG2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/user_task_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/user_task_test.cmake
         )
+        # Regression (hif-backend#47): visitFor printed a For's initValues but
+        # never its initDeclarations, so `repeat (n) @( ... )` - which
+        # verilog2hif lowers into a loop that declares its own index -
+        # regenerated with an undeclared, uninitialised index and an empty init
+        # clause. Needs a simulator: the fixture is Verilog, so the source can
+        # be simulated as a reference and the two traces compared, which also
+        # catches an index that is declared but starts from the wrong value.
+        add_test(
+            NAME for_init_declaration
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/for_init_declaration.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/for_init_declaration_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/for_init_declaration_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/for_init_declaration_test.cmake
+        )
     else()
-        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay tests.")
+        message(STATUS "iverilog/vvp not found; skipping sensitivity_equivalence/edge_sensitivity/preserved_hierarchy/assign_delay/for_init_declaration tests.")
     endif()
 else()
     message(STATUS "verilog2hif not found; skipping unresolved_parameter/reduction_operators/parametric_port_width/gate_primitives/module_instantiation/concat_emission/localparam_emission/bitselect_target/slice_emission/system_function_round_trip tests.")
@@ -325,6 +368,247 @@ if(VHDL2HIF_EXECUTABLE)
             -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vhdl_output_flushed_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_output_flushed_test.cmake
     )
+
+    # Regression (hif-backend#46): a VHDL process ending in `wait;` regenerated
+    # as a zero-delay `always begin ... end`. Needs a simulator: the stimulus
+    # changes an input after both processes have suspended, and a process that
+    # looped instead of stopping would pick that change up.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME permanent_suspension
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/permanent_suspension.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/permanent_suspension_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/permanent_suspension_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/permanent_suspension_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping permanent_suspension test.")
+    endif()
+
+    # Regression (hif-backend#51): a VHDL clocked process regenerated as a call
+    # to the undeclared hif_vhdl_event/hif_vhdl_rising_edge, because VHDL keeps
+    # its clock edge in the body while Verilog keeps it in the sensitivity
+    # list. Needs a simulator: a rebuild that produced `always @(clk, rst)`
+    # instead of edges would still compile and still reparse, and only the
+    # timing of the outputs tells a flip-flop from a level-sensitive process.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME clocked_process
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/clocked_process.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/clocked_process_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/clocked_process_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/clocked_process_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping clocked_process test.")
+    endif()
+
+    # Regression (hif-backend#70): an assignment to a task's out or inout
+    # argument was emitted non-blocking, so the copy-back to the actual - which
+    # happens when the task returns - ran before the local was updated. The out
+    # case published the previous call's value, the inout case never converged.
+    # Needs a simulator, and needs to read the out value at the *first*
+    # activation: the output compiles, reparses and exits 0 either way, and the
+    # one-activation lag drains if you look later.
+    if(IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME task_out_parameter_blocking
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_blocking.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_blocking_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_blocking_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_blocking_test.cmake
+        )
+    else()
+        message(STATUS "iverilog/vvp not found; skipping task_out_parameter_blocking test.")
+    endif()
+
+    # Regression (hif-backend#71): a VHDL `inout` port that a process drives was
+    # emitted as a bare net, which is not a valid procedural l-value, so the
+    # regenerated design did not elaborate while hif2verilog exited 0 and the
+    # output reparsed cleanly. Needs iverilog for the reported symptom, and a
+    # simulator for the three things a lowering can still get wrong while
+    # elaborating: releasing the net on 'Z', reading the net rather than the
+    # driver reg, and leaving a concurrently driven inout alone.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME inout_port_driver
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/inout_port_driver.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/inout_port_driver_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/inout_port_driver_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/inout_port_driver_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping inout_port_driver test.")
+    endif()
+
+    # Regression (hif-backend#50): VerilogPrinter::getValue had no terminal
+    # case, so a value kind absent from its dynamic_cast chain rendered as the
+    # empty string. A FunctionCall took that path, so `if rising_edge(clk)`
+    # regenerated as `if (  )` at exit code 0. Needs vhdl2hif only: the check
+    # is that the condition survives into the output, and the result does not
+    # yet compile for an unrelated reason (hif-backend#51).
+    add_test(
+        NAME condition_rendering
+        COMMAND ${CMAKE_COMMAND}
+            -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+            -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+            -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/condition_rendering.vhd
+            -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/condition_rendering_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/condition_rendering_test.cmake
+    )
+
+    # Regression (hif-backend#48): hif2vhdl aborted with "Unsupported scope" on
+    # every verilog2hif output, because When lowering descended into the
+    # standard Verilog library and found a When in a SubProgram signature -
+    # a scope that is neither a Function nor a Contents. Verilog->VHDL was
+    # unavailable for every input. Needs verilog2hif to produce the input and
+    # vhdl2hif to reparse the result; no simulator, since the failure was a
+    # non-zero exit and an empty output directory rather than a wrong value.
+    if(VERILOG2HIF_EXECUTABLE)
+        add_test(
+            NAME verilog_to_vhdl
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/verilog_to_vhdl.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/verilog_to_vhdl_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/verilog_to_vhdl_test.cmake
+        )
+        # Regression (hif-backend#54): lowering a Verilog ternary for VHDL left
+        # the If condition bit-typed, which VHDL does not allow, so hif-core's
+        # checker rejected the tree and hif2vhdl aborted. Conditional assignment
+        # is ordinary RTL, so this blocked Verilog->VHDL for most real designs.
+        # No simulator: no VHDL analyzer is available locally or in CI, so the
+        # gate is the exit code, the emitted condition form, and a reparse.
+        add_test(
+            NAME when_boolean_condition
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/when_boolean_condition.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/when_boolean_condition_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/when_boolean_condition_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif not found; skipping verilog_to_vhdl test.")
+    endif()
+
+    # Regression (hif-backend#61): a one-bit value was emitted as a bare digit,
+    # so `{1'b1, 1'b0}` regenerated as `{1, 0}` -- an unsized operand, which a
+    # concatenation rejects for having indefinite width -- and a four-state bit
+    # rendered as nothing, giving `{, }` and a syntax error. Exit 0 in both
+    # cases. Needs a simulator: the gate is that the regenerated design is
+    # behaviourally equivalent over an exhaustive sweep, not merely that it
+    # builds.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME replication_emission
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/replication_emission.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/replication_emission_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/replication_emission_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/replication_emission_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping replication_emission test.")
+    endif()
+
+    # Regression (hif-backend#84): casez and casex were both regenerated as a
+    # plain `case`. Under `case` the comparison is exact, so a wildcard label
+    # matches nothing and control falls through to the default. Valid Verilog,
+    # exit 0, reparses -- only the values change, so the gate is simulation
+    # rather than inspection.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME casez_wildcards
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/casez_wildcards.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/casez_wildcards_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/casez_wildcards_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/casez_wildcards_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog/vvp not all found; skipping casez_wildcards test.")
+    endif()
+
+    # Regression (hif-backend#92): hif2vhdl aborted on every Verilog reduction
+    # operator, exit 134 with no VHDL written. Needs vhdl2hif to check the
+    # emitted VHDL is readable back, and the simulator to check the lowered
+    # chain still computes what the operator did - a chain built with the wrong
+    # bit operator produces valid VHDL that reparses.
+    if(VERILOG2HIF_EXECUTABLE AND VHDL2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE AND VVP_EXECUTABLE)
+        add_test(
+            NAME vhdl_reduction_operators
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_reduction_operators.v
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vhdl_reduction_operators_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vhdl_reduction_operators_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/vhdl_reduction_operators_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/vhdl2hif/iverilog/vvp not all found; skipping vhdl_reduction_operators test.")
+    endif()
+
+    # Regression (hif-backend#103): hif2vhdl aborted on any bit-select or
+    # part-select assignment target - "Unexpected target" from
+    # VHDLPrinter::visitAssign, exit 134, with the output file created and left
+    # at zero bytes. The cause was hif-core's TerminalPrefixOptions having no
+    # default member initializers, so the default options visitAssign passes
+    # were false for every flag against a header documenting three as true;
+    # hif-core#22 fixed it and this backend needed no change. Needs vhdl2hif to
+    # check the emitted VHDL reads back, but no simulator: the targets are
+    # asserted structurally, and there is no VHDL simulator here anyway.
+    if(VERILOG2HIF_EXECUTABLE AND VHDL2HIF_EXECUTABLE)
+        add_test(
+            NAME slice_assign_target
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/slice_assign_target.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/slice_assign_target_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/slice_assign_target_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/vhdl2hif not both found; skipping slice_assign_target test.")
+    endif()
 
     # Regression (hif-backend#32): a view's GlobalAction was never printed, so
     # every VHDL concurrent signal assignment was dropped and VHDL->Verilog
@@ -366,8 +650,147 @@ if(VHDL2HIF_EXECUTABLE)
                 -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/port_initial_process_work
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/port_initial_process_test.cmake
         )
+        # Regression (hif-backend#64): a procedure parameter whose direction is
+        # not `in` was emitted as a bare `;`, so the task referenced names it
+        # never declared and the file did not parse while hif2verilog exited 0.
+        # Needs a simulator: the point is not only that the output compiles now
+        # but that the out parameter is really connected to its actual.
+        add_test(
+            NAME task_out_parameter
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_out_parameter_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_out_parameter_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_out_parameter_test.cmake
+        )
+        # Regression (hif-backend#45): a VHDL wait setting more than one of
+        # condition, sensitivity and timeout had no Verilog emission and was
+        # refused. Needs a simulator: what distinguishes a correct lowering is
+        # the time each wait resumes at, and the output compiles either way.
+        add_test(
+            NAME multi_clause_wait
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait.vhd
+                -DNO_TIMEOUT_FIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait_no_timeout.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/multi_clause_wait_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/multi_clause_wait_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/multi_clause_wait_test.cmake
+        )
+        # Regression (hif-backend#63, #73): a subprogram's early `return` was not
+        # an exit, so a void procedure ran the statements it should skip and a
+        # function collapsed to its trailing return's value. Needs a simulator:
+        # both produce output that compiles, reparses and exits 0, and the only
+        # symptom is the value for the input the guard was written for.
+        add_test(
+            NAME subprogram_early_return
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_early_return.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_early_return_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/subprogram_early_return_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/subprogram_early_return_test.cmake
+        )
+        # Regression (hif-backend#57): a user-defined function was emitted with
+        # an empty body, so every call returned x and every condition built on
+        # one selected the wrong branch. Needs a simulator: the broken output
+        # compiles and reparses, and the only symptom is the value.
+        add_test(
+            NAME user_function_body
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_function_body.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/user_function_body_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/user_function_body_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/user_function_body_test.cmake
+        )
     else()
         message(STATUS "verilog2hif/iverilog/vvp not all found; skipping global_action_emission test.")
+    endif()
+
+    # Regression (hif-backend#55): a VHDL vector output port with no stated
+    # initial value regenerated as `initial vec = 4'buuuu;`, and `u` is not a
+    # Verilog binary digit, so the output did not parse. The same rule as
+    # hif-backend#36 - the frontend's implicit 'U' default is not a value the
+    # source asked for - left unapplied on the vector path. Needs iverilog to
+    # show the reported symptom, but no simulator: the defect is that the
+    # output does not build, not that it computes the wrong thing.
+    if(VERILOG2HIF_EXECUTABLE AND IVERILOG_EXECUTABLE)
+        # Regression (hif-backend#64), dir_inout half. Registered separately from
+        # task_out_parameter because it cannot take the reparse or value legs:
+        # verilog2hif refuses a task `inout` argument (hif-frontend#25) and the
+        # value never converges under hif-backend#70. Declaration + compile only.
+        add_test(
+            NAME task_inout_parameter
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/task_inout_parameter.vhd
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/task_inout_parameter_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/task_inout_parameter_test.cmake
+        )
+        # Regression (hif-backend#83), Verilog side: a function-local variable
+        # was emitted as `reg [4:0] wide_fn = 5'bxxxxx;` inside the function
+        # body, and Verilog allows a variable declaration assignment only at
+        # module level. Needs iverilog to show the reported symptom, but no
+        # simulator: the defect is that the output does not build.
+        add_test(
+            NAME function_local_declaration
+            COMMAND ${CMAKE_COMMAND}
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/function_local_declaration.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/function_local_declaration_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/function_local_declaration_test.cmake
+        )
+        # Regression (hif-backend#83), VHDL side: the same construct with an
+        # initial value the source actually wrote, in a function and in a
+        # procedure. Simulated rather than only compiled, because dropping the
+        # value would also make the output build.
+        add_test(
+            NAME subprogram_local_initialization
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DVVP_EXECUTABLE=${VVP_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_local_initialization.vhd
+                -DTESTBENCH=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/subprogram_local_initialization_tb.v
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/subprogram_local_initialization_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/subprogram_local_initialization_test.cmake
+        )
+        add_test(
+            NAME vector_unknown_default
+            COMMAND ${CMAKE_COMMAND}
+                -DVHDL2HIF_EXECUTABLE=${VHDL2HIF_EXECUTABLE}
+                -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+                -DVERILOG2HIF_EXECUTABLE=${VERILOG2HIF_EXECUTABLE}
+                -DIVERILOG_EXECUTABLE=${IVERILOG_EXECUTABLE}
+                -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vector_unknown_default.vhd
+                -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/vector_unknown_default_work
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/vector_unknown_default_test.cmake
+        )
+    else()
+        message(STATUS "verilog2hif/iverilog not both found; skipping vector_unknown_default test.")
     endif()
 else()
     message(STATUS "vhdl2hif not found; skipping vhdl_output_flushed/global_action_emission tests.")

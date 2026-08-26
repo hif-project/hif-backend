@@ -17,6 +17,45 @@
 // Namespace hifsuite
 using namespace hif;
 
+namespace
+{
+/// @brief Marks the empty Wait verilog2hif appends to a process that suspends,
+/// recording that the process loops back round rather than that it stops.
+///
+/// Declared by value rather than shared through a header: hif-frontend defines
+/// the same string in verilog2hif/support.hpp, but that is a sibling tool's
+/// private header and this project does not build against it. The literal is
+/// the contract between them, and hif-backend#46 is where it is written down.
+const char *const PROPERTY_PROCESS_LOOP_TAIL = "PROPERTY_PROCESS_LOOP_TAIL";
+
+/// @brief Whether a target's declaration is storage whose new value must be
+/// visible to the reads that follow it in the same activation, i.e. one that
+/// has to be assigned with Verilog's blocking "=".
+///
+/// Two declarations qualify, for the same underlying reason - the value is
+/// consumed before the current time step ends, so scheduling it for the end of
+/// the step publishes the *previous* one:
+///
+///   - a Variable, which visitProcedureCall's inlined cones read back
+///     immediately at the call site (hif-backend#16);
+///   - a Parameter with direction out or inout, which is task-local storage
+///     copied back to the actual when the task returns. The copy-back happens
+///     on return, so a non-blocking assignment updates the local only after
+///     the actual has already been written (hif-backend#70).
+///
+/// dir_in is deliberately excluded: assigning to an input argument is local
+/// scratch use with no copy-back, so it carries no such ordering requirement.
+auto isBlockingAssignmentTarget(hif::Declaration *dd) -> bool
+{
+    if (dynamic_cast<Variable *>(dd) != nullptr) {
+        return true;
+    }
+    auto *param = dynamic_cast<Parameter *>(dd);
+    return param != nullptr &&
+           (param->getDirection() == dir_out || param->getDirection() == dir_inout);
+}
+} // namespace
+
 VerilogPrinter::VerilogPrinter(hif::backends::IndentedStream *stream)
     : _sem(hif::semantics::VerilogSemantics::getInstance())
     , _stream(stream)
@@ -106,12 +145,12 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
     // Inside an inlined cone the choice below is load-bearing rather than
     // stylistic. visitProcedureCall expands a cone's body at its call site,
     // and the statements that follow - the reads of the cone's target that
-    // motivated the call - only observe the value just computed because a
-    // Variable target is assigned with blocking "=". A cone target that
-    // reached here as anything else would be emitted with "<=", and those
-    // reads would silently go back to seeing the previous value: exactly
-    // the staleness hif-backend#16 was about, moved inside a single process
-    // where it is harder to spot.
+    // motivated the call - only observe the value just computed because the
+    // target is one isBlockingAssignmentTarget accepts, so it is assigned
+    // with blocking "=". A cone target that reached here as anything else
+    // would be emitted with "<=", and those reads would silently go back to
+    // seeing the previous value: exactly the staleness hif-backend#16 was
+    // about, moved inside a single process where it is harder to spot.
     //
     // The frontend guarantees this today - refineToVariables shadows a
     // target that must stay a signal into a "_sig_var" Variable and drives
@@ -128,14 +167,13 @@ auto VerilogPrinter::visitAssign(Assign &o) -> int
 
     if (delay.empty() && !_inliningCones.empty()) {
         messageAssert(
-            dynamic_cast<Variable *>(dd) != nullptr,
-            "Inlined cone assigns to a non-Variable target, which would be emitted with "
-            "non-blocking '<=' and leave the reads after the call observing a stale value "
-            "(hif-backend#16).",
+            isBlockingAssignmentTarget(dd),
+            "Inlined cone assigns to a target that is emitted with non-blocking '<=', which "
+            "would leave the reads after the call observing a stale value (hif-backend#16).",
             &o, _sem);
     }
 
-    if (delay.empty() && dynamic_cast<Variable *>(dd) != nullptr) {
+    if (delay.empty() && isBlockingAssignmentTarget(dd)) {
         (*_stream) << " = ";
     } else {
         (*_stream) << " <= ";
@@ -647,7 +685,9 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
         (*_stream) << "sla"; // TODO
         break;
     case op_sra:
-        (*_stream) << "sra"; // TODO
+        // Verilog's arithmetic right shift. The logical shifts above use
+        // ">>"/"<<"; ">>>" is the signed-aware form and is what op_sra means.
+        (*_stream) << ">>>";
         break;
     case op_mod:
         (*_stream) << "%";
@@ -871,6 +911,28 @@ auto VerilogPrinter::visitFor(For &o) -> int
 
 auto VerilogPrinter::visitForGenerate(ForGenerate &o) -> int { return GuideVisitor::visitForGenerate(o); }
 
+namespace
+{
+
+/// @brief The Return that leaves a subprogram body by falling off its end: the
+/// last action of the last state.
+/// @details Such a Return needs no `disable`, because reaching the end of the
+/// block already leaves it. Distinguishing it is what keeps the emitted output
+/// unchanged for the common single-Return function a VHDL source produces.
+auto getTrailingReturn(hif::StateTable *stateTable) -> hif::Return *
+{
+    if (stateTable == nullptr || stateTable->states.empty()) {
+        return nullptr;
+    }
+    hif::State *last = stateTable->states.back();
+    if (last->actions.empty()) {
+        return nullptr;
+    }
+    return dynamic_cast<hif::Return *>(last->actions.back());
+}
+
+} // namespace
+
 auto VerilogPrinter::visitFunction(Function &o) -> int
 {
     // Get the return type of the function.
@@ -909,9 +971,14 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
                 named_object->setName(o.getName());
             }
         }
-    } else {
-        std::cerr << "Cannot find the return variable" << std::endl;
     }
+    // Deliberately no diagnostic when there is none. A function built by
+    // verilog2hif has a `<name>_return` variable that its body assigns, and the
+    // rename above turns those assignments into the Verilog form. A function
+    // built by vhdl2hif has no such variable: its body is a Return carrying the
+    // value directly, which visitReturn emits (hif-backend#57). Both are
+    // ordinary, so the absent variable is not an error - it used to print
+    // "Cannot find the return variable" on stderr for every VHDL function.
 
     // ========================================================================
     // PRINT VARIABLE DECLARATIONS
@@ -938,7 +1005,10 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
         if (declaration->getName() == (o.getName() + "_return")) {
             continue;
         }
-        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        // Without the initial value: Verilog allows a variable declaration
+        // assignment only at module level. It is re-emitted as the first
+        // statement of the body below (hif-backend#83).
+        (*_stream) << this->getDeclaration(declaration, false) << ";\n";
         has_variables = true;
     }
 
@@ -950,12 +1020,38 @@ auto VerilogPrinter::visitFunction(Function &o) -> int
     // PRINT FUNCTION CONTENT
     // ========================================================================
 
-    (*_stream) << "begin\n";
+    const std::string exitLabel = this->getSubprogramExitLabel(state_table, o.getName());
+    (*_stream) << "begin";
+    if (!exitLabel.empty()) {
+        (*_stream) << " : " << exitLabel;
+    }
+    (*_stream) << "\n";
     _stream->indent();
+
+    // Publish the name a Return inside this body has to assign to, and the block
+    // an early one has to disable. Saved and restored rather than cleared, so a
+    // nested subprogram cannot strand the outer function's.
+    const std::string enclosingFunctionName = _currentFunctionName;
+    const std::string enclosingLabel        = _subprogramExitLabel;
+    hif::Return *enclosingTrailingReturn    = _subprogramTrailingReturn;
+    const bool enclosingInsideSubprogram    = _insideSubprogramBody;
+    _currentFunctionName                    = o.getName();
+    _subprogramExitLabel                    = exitLabel;
+    _subprogramTrailingReturn               = getTrailingReturn(state_table);
+    _insideSubprogramBody                   = true;
+
+    if (this->printSubprogramLocalInitializations(state_table, o.getName() + "_return")) {
+        (*_stream) << "\n";
+    }
 
     for (auto state : state_table->states) {
         state->acceptVisitor(*this);
     }
+
+    _currentFunctionName      = enclosingFunctionName;
+    _subprogramExitLabel      = enclosingLabel;
+    _subprogramTrailingReturn = enclosingTrailingReturn;
+    _insideSubprogramBody     = enclosingInsideSubprogram;
 
     _stream->unindent();
     (*_stream) << "end\n";
@@ -1281,10 +1377,67 @@ auto VerilogPrinter::visitReference(Reference &o) -> int { return hif::GuideVisi
 
 auto VerilogPrinter::visitReturn(Return &o) -> int
 {
-    (void)o;
-    // Skip return statements.
+    // Verilog has no `return`. A Return therefore lowers to two separate things,
+    // and this used to emit only ever one of them: the value a function yields,
+    // as an assignment to the function's own name (hif-backend#57), and the exit
+    // itself, as `disable` on the block wrapping the subprogram body
+    // (hif-backend#63, #73). A void subprogram needs only the second; a function
+    // whose Return is not its last statement needs both.
+    hif::Value *returned = o.getValue();
+
+    // ---- The value, if there is one. ---------------------------------------
+    if (!_currentFunctionName.empty() && returned != nullptr) {
+        // A Return whose value is already the function's own name assigns
+        // nothing: verilog2hif builds a `<name>_return` variable that the body
+        // assigns and then returns, and the rename in visitFunction has by now
+        // turned both into the function name. Emitting it would produce
+        // `f = f;`. The value-carrying shape is what vhdl2hif produces, where
+        // the Return *is* the body.
+        auto *identifier = dynamic_cast<hif::Identifier *>(returned);
+        if (identifier == nullptr || identifier->getName() != _currentFunctionName) {
+            (*_stream) << _currentFunctionName << " = ";
+            returned->acceptVisitor(*this);
+            (*_stream) << ";\n";
+        }
+    }
+
+    // ---- The exit. ---------------------------------------------------------
+    if (!_insideSubprogramBody) {
+        // A Return reached outside any subprogram body has no block to leave.
+        // Nothing produces this today; warning rather than asserting keeps a
+        // future frontend change from costing the whole design.
+        messageWarning(
+            "A `return` was reached outside a subprogram body, where there is no block to disable, so the "
+            "exit is not emitted (hif-backend#63).",
+            &o, _sem);
+        return 0;
+    }
+
+    if (&o == _subprogramTrailingReturn) {
+        // Falling off the end of the body already leaves it, so the common
+        // single-Return function keeps the output it has always had.
+        return 0;
+    }
+
+    // An early exit is `disable` naming the block that wraps the body (IEEE Std
+    // 1364-2005, 9.8.1 for the named block, 9.6.4 for disable). `return` inside
+    // a task is SystemVerilog, and the project's regressions build with
+    // `iverilog -g2005`, so it is not available.
+    //
+    // The alternative lowering - restructuring the body into guarded branches -
+    // preserves re-entrancy, which `disable` does not: a Verilog-2001 named
+    // block is static, so disabling it affects any concurrent activation of the
+    // same subprogram. That is this form's known limit, and it is not a new
+    // one - a Verilog-2001 task's locals are static too, so a task called
+    // concurrently from two processes already does not behave as two
+    // independent calls. Nothing correct today is lost by choosing it.
+    messageAssert(
+        !_subprogramExitLabel.empty(),
+        "A non-trailing Return is being printed with no named body block to disable, so the early exit "
+        "would be dropped silently (hif-backend#63).",
+        &o, _sem);
+    (*_stream) << "disable " << _subprogramExitLabel << ";\n";
     return 0;
-    // return hif::GuideVisitor::visitReturn(o);
 }
 
 auto VerilogPrinter::visitSignal(Signal &o) -> int { return hif::GuideVisitor::visitSignal(o); }
@@ -1416,14 +1569,48 @@ auto VerilogPrinter::visitSwitchAlt(SwitchAlt &o) -> int { return GuideVisitor::
 
 auto VerilogPrinter::visitSwitch(Switch &o) -> int
 {
+    // Verilog spells the three matching rules as three keywords, and the HIF
+    // records which one the source used. Printing "case" for all of them makes
+    // every wildcard alternative unreachable: under "case" the comparison is
+    // exact, so a label like 4'bzzz1 matches only a selector that is literally
+    // zzz1, and control falls through to the default (hif-backend#84).
+    //
+    // The alternatives themselves need no change. verilog2hif already stores a
+    // source "?" as a z bit, which is a wildcard under casez and under casex
+    // alike, so the labels are correct as soon as the keyword is.
+    std::string caseKeyword;
+    switch (o.getCaseSemantics()) {
+    case hif::CASE_LITERAL:
+        caseKeyword = "case";
+        break;
+    case hif::CASE_Z:
+        caseKeyword = "casez";
+        break;
+    case hif::CASE_X:
+        caseKeyword = "casex";
+        break;
+    default:
+        messageError("Unexpected CaseSemantics", &o, _sem);
+    }
 
-    (*_stream) << "case ( " << this->getValue(o.getCondition()) << " )\n";
+    (*_stream) << caseKeyword << " ( " << this->getValue(o.getCondition()) << " )\n";
     _stream->indent();
     for (hif::SwitchAlt *alternative : o.alts) {
+        // A SwitchAlt can carry more than one condition: alternatives sharing
+        // the same body are merged into a single alt holding every matching
+        // value. Verilog requires those labels to be comma-separated
+        // ("STATE_2, FINAL :"); emitting them space-separated produces
+        // "STATE_2 FINAL :", which is a syntax error. The VHDL printer already
+        // joins them explicitly (with " |"), so only this printer was affected.
+        bool firstCondition = true;
         for (hif::Value *condition : alternative->conditions) {
-            (*_stream) << this->getValue(condition) << " ";
+            if (!firstCondition) {
+                (*_stream) << ", ";
+            }
+            (*_stream) << this->getValue(condition);
+            firstCondition = false;
         }
-        (*_stream) << ": begin\n";
+        (*_stream) << " : begin\n";
         _stream->indent();
         for (hif::Action *action : alternative->actions) {
             action->acceptVisitor(*this);
@@ -1525,18 +1712,9 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
     // meaning more than one at once. VHDL does: `wait on a until c for 10 ns;`
     // sets all three, because its three clauses are independently optional
     // (vhdl2hif's parse_WaitStatement). Such a wait needs a lowering rather
-    // than a keyword, which this printer does not do, so it is refused here.
-    //
-    // Refusing is the point. The alternative is not "emit something slightly
-    // wrong", it is the silent splicing above: a shape this printer cannot
-    // spell has to stop the tool rather than corrupt the output.
+    // than a keyword, which is what printMultiClauseWait does (hif-backend#45).
+    // It used to be refused outright here.
     const int forms = static_cast<int>(hasCondition) + static_cast<int>(hasSensitivity) + static_cast<int>(hasTime);
-    if (forms > 1) {
-        messageError(
-            "Unsupported Wait combination: a wait that sets more than one of condition, sensitivity and "
-            "timeout has no single Verilog construct and is not lowered by this printer (hif-backend#45).",
-            &o, _sem);
-    }
     if (o.getRepetitions() != nullptr) {
         messageError(
             "Unsupported Wait shape: a repeated wait is not emitted by this printer (hif-backend#45). "
@@ -1552,6 +1730,10 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
             &o, _sem);
     }
 
+    if (forms > 1) {
+        return this->printMultiClauseWait(o, hasCondition, hasSensitivity, hasTime);
+    }
+
     if (forms == 0) {
         // A wait that says nothing. Two different producers make one, and the
         // node records nothing that tells them apart:
@@ -1562,16 +1744,17 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
         //    where the process becomes an SC_THREAD wrapped in `while (true)`
         //    and this becomes the loop-tail `wait()` that reapplies the static
         //    sensitivity. An `always` block already loops, so in Verilog the
-        //    marker has no syntax of its own.
+        //    marker has no syntax of its own. It now says so: verilog2hif tags
+        //    it PROPERTY_PROCESS_LOOP_TAIL (hif-backend#46).
         //
         //  - vhdl2hif emits one for VHDL `wait;`, which suspends the process
-        //    permanently.
+        //    permanently. That one carries no such tag.
         //
-        // Printing nothing is right for the first and loses the second. It is
-        // the only choice available here, because the two are indistinguishable
-        // at this point - and it is what this printer already did before
-        // hif-backend#42, so nothing regresses. hif-backend#46 tracks removing
-        // the ambiguity at its source.
+        // Neither prints a statement here, and for opposite reasons: an
+        // `always` block already loops, so the marker has nothing to add, and a
+        // process that suspends permanently is emitted as `initial`, where
+        // reaching the end of the block is what stops it. isRetriggerable is
+        // where the distinction has an effect.
         return 0;
     }
 
@@ -1599,10 +1782,16 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
         return 0;
     }
 
-    // An event control. Each signal is qualified individually, for the reason
-    // visitStateTable qualifies its sensitivity individually (hif-backend#21):
-    // one leading `posedge` ahead of a comma-separated list silently applies to
-    // the first entry only.
+    this->printEventControl(o);
+    return 0;
+}
+
+void VerilogPrinter::printEventControl(Wait &o)
+{
+    // Each signal is qualified individually, for the reason visitStateTable
+    // qualifies its sensitivity individually (hif-backend#21): one leading
+    // `posedge` ahead of a comma-separated list silently applies to the first
+    // entry only.
     bool isFirst = true;
     auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
         for (auto *signal : list) {
@@ -1618,6 +1807,88 @@ auto VerilogPrinter::visitWait(Wait &o) -> int
     printSensitivity(o.sensitivityPos, "posedge");
     printSensitivity(o.sensitivityNeg, "negedge");
     (*_stream) << " );\n";
+}
+
+auto VerilogPrinter::printMultiClauseWait(Wait &o, bool hasCondition, bool hasSensitivity, bool hasTime) -> int
+{
+    // The block has to be named so that whatever resumes the process can leave
+    // it. Fresh, for the same reason getSubprogramExitLabel is: a Verilog block
+    // label shares its scope with the declarations around it.
+    const std::string label = hif::NameTable::getInstance()->getFreshName("hif_wait");
+
+    (*_stream) << "begin : " << label << "\n";
+    _stream->indent();
+
+    // A timeout has to be able to fire while nothing at all is happening on the
+    // sensitivity list. A single sequential block cannot do that - it sits in
+    // the event control and never reaches the deadline test, so the wait never
+    // resumes. Measured, on the shape this issue originally proposed: with `a`
+    // idle and the condition false, `wait on a until b for 10 ns` never
+    // resumed. So the reasons to resume are concurrent branches, and whichever
+    // happens first disables this block, which terminates the fork and its join
+    // along with it.
+    const bool needsFork = hasTime && (hasCondition || hasSensitivity);
+    if (needsFork) {
+        (*_stream) << "fork\n";
+        _stream->indent();
+    }
+
+    if (hasCondition && hasSensitivity) {
+        // `wait on a until c`: the condition *gates* the event rather than
+        // being a second way to resume, so the event control is re-armed until
+        // a wakeup finds the condition true. `forever` is already a single
+        // statement, so it needs no begin/end of its own to be a fork branch.
+        (*_stream) << "forever begin\n";
+        _stream->indent();
+        this->printEventControl(o);
+        (*_stream) << "if ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " ) disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    } else if (hasCondition) {
+        // `wait until c for T`: no sensitivity was stated, so the signals to
+        // wake on are the ones the condition reads. Verilog's own `wait`
+        // derives that set for itself, which is why it is used here rather than
+        // an event control this printer would have to compute - and it keeps
+        // this path spelling the condition exactly as the single-condition path
+        // does, including its level-sensitive reading (hif-core#16). That
+        // divergence is neither introduced nor widened here.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        (*_stream) << "wait ( ";
+        o.getCondition()->acceptVisitor(*this);
+        (*_stream) << " );\n";
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    } else {
+        // `wait on a for T`: the first event on the sensitivity list resumes,
+        // with no condition to satisfy, so the event control fires once.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        this->printEventControl(o);
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+    }
+
+    if (needsFork) {
+        // renderDelay rather than visiting the value, for the reason the
+        // timeout-only path gives: it maps both shapes a timeout arrives in
+        // onto a count of the unit the emitted `timescale declares.
+        (*_stream) << "begin\n";
+        _stream->indent();
+        (*_stream) << "#" << this->renderDelay(o.getTime()) << ";\n";
+        (*_stream) << "disable " << label << ";\n";
+        _stream->unindent();
+        (*_stream) << "end\n";
+        _stream->unindent();
+        (*_stream) << "join\n";
+    }
+
+    _stream->unindent();
+    (*_stream) << "end\n";
     return 0;
 }
 
@@ -1927,6 +2198,34 @@ auto VerilogPrinter::isConeProcedure(hif::Procedure *procedure) -> bool
     return name.rfind(conePrefix, 0) == 0;
 }
 
+auto VerilogPrinter::getSubprogramExitLabel(hif::StateTable *stateTable, const std::string &subprogramName)
+    -> std::string
+{
+    if (stateTable == nullptr) {
+        return "";
+    }
+
+    // Only the states, deliberately not the declarations: a Return belonging to
+    // a subprogram nested in this one is that subprogram's business, and would
+    // otherwise name a block this body has no early exit from.
+    std::list<hif::Return *> returns;
+    hif::HifTypedQuery<hif::Return> returnQuery;
+    for (auto *state : stateTable->states) {
+        hif::search(returns, state, returnQuery);
+    }
+
+    hif::Return *trailing = getTrailingReturn(stateTable);
+    for (auto *ret : returns) {
+        if (ret != trailing) {
+            // Fresh rather than a fixed suffix: the label shares Verilog's
+            // scope with the subprogram's own declarations, so a body that
+            // happens to declare `<name>_body` must not collide with it.
+            return hif::NameTable::getInstance()->getFreshName(subprogramName + "_body");
+        }
+    }
+    return "";
+}
+
 auto VerilogPrinter::printTask(hif::Procedure &o) -> int
 {
     auto *stateTable = o.getStateTable();
@@ -1947,19 +2246,47 @@ auto VerilogPrinter::printTask(hif::Procedure &o) -> int
         hasDeclarations = true;
     }
     for (auto declaration : stateTable->declarations) {
-        (*_stream) << this->getDeclaration(declaration) << ";\n";
+        // Without the initial value, for the reason visitFunction gives: a
+        // variable declaration assignment is module-level-only in Verilog. A
+        // VHDL procedure reaches this with a local the source really did
+        // initialise (hif-backend#83).
+        (*_stream) << this->getDeclaration(declaration, false) << ";\n";
         hasDeclarations = true;
     }
     if (hasDeclarations) {
         (*_stream) << "\n";
     }
 
-    (*_stream) << "begin\n";
+    // The body block carries a label only when something inside it exits early,
+    // so a task without an early Return is emitted exactly as before.
+    const std::string exitLabel = this->getSubprogramExitLabel(stateTable, o.getName());
+    (*_stream) << "begin";
+    if (!exitLabel.empty()) {
+        (*_stream) << " : " << exitLabel;
+    }
+    (*_stream) << "\n";
     _stream->indent();
+
+    // Saved and restored rather than cleared, so a subprogram nested in this
+    // one cannot strand the outer body's label.
+    const std::string enclosingLabel     = _subprogramExitLabel;
+    hif::Return *enclosingTrailingReturn = _subprogramTrailingReturn;
+    const bool enclosingInsideSubprogram = _insideSubprogramBody;
+    _subprogramExitLabel                 = exitLabel;
+    _subprogramTrailingReturn            = getTrailingReturn(stateTable);
+    _insideSubprogramBody                = true;
+
+    if (this->printSubprogramLocalInitializations(stateTable, "")) {
+        (*_stream) << "\n";
+    }
 
     for (auto state : stateTable->states) {
         state->acceptVisitor(*this);
     }
+
+    _subprogramExitLabel      = enclosingLabel;
+    _subprogramTrailingReturn = enclosingTrailingReturn;
+    _insideSubprogramBody     = enclosingInsideSubprogram;
 
     _stream->unindent();
     (*_stream) << "end\n";
@@ -2005,7 +2332,36 @@ auto VerilogPrinter::isRetriggerable(hif::StateTable &stateTable) -> bool
     std::list<hif::Wait *> waits;
     hif::HifTypedQuery<hif::Wait> waitQuery;
     hif::search(waits, &stateTable, waitQuery);
-    return !waits.empty();
+
+    bool hasResumableWait = false;
+    for (hif::Wait *wait : waits) {
+        // The loop-tail marker verilog2hif appends is not a suspension the
+        // source wrote - it records that the process goes back round - so it
+        // says nothing about whether this process can be woken.
+        if (wait->checkProperty(PROPERTY_PROCESS_LOOP_TAIL)) {
+            continue;
+        }
+
+        // An untagged wait with nothing set is VHDL's `wait;`: suspend and
+        // never resume. A process containing one cannot loop, whatever else it
+        // waits on along the way, so it is decided here rather than weighed
+        // against the others. Emitting `always` for it produces a zero-delay
+        // infinite loop that no source meant and that Icarus rejects at
+        // elaboration (hif-backend#46) - the same failure hif-backend#40 fixed
+        // for a process with no wait at all, which survived that fix because
+        // this function counted every Wait as a way to be woken up, including
+        // one that by definition is not.
+        const bool saysNothing =
+            wait->getCondition() == nullptr && wait->getTime() == nullptr && wait->getRepetitions() == nullptr &&
+            wait->sensitivity.empty() && wait->sensitivityPos.empty() && wait->sensitivityNeg.empty();
+        if (saysNothing) {
+            return false;
+        }
+
+        hasResumableWait = true;
+    }
+
+    return hasResumableWait;
 }
 
 void VerilogPrinter::collectDelayedTargets(hif::StateTable *stateTable, std::set<std::string> &names)
@@ -2245,7 +2601,46 @@ auto VerilogPrinter::isContinuouslyDriven(hif::Declaration *declaration) -> bool
     return dataDeclaration != nullptr && _continuouslyDrivenDeclarations.count(dataDeclaration) != 0;
 }
 
-std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
+auto VerilogPrinter::printSubprogramLocalInitializations(
+    hif::StateTable *stateTable,
+    const std::string &returnVariableName) -> bool
+{
+    if (stateTable == nullptr) {
+        return false;
+    }
+
+    bool printed = false;
+    for (auto *declaration : stateTable->declarations) {
+        if (!returnVariableName.empty() && declaration->getName() == returnVariableName) {
+            continue;
+        }
+        // Only variables. A parameter or localparam keeps its value on its own
+        // declaration, where Verilog both allows and requires it, and cannot be
+        // assigned at all.
+        auto *variable = dynamic_cast<hif::Variable *>(declaration);
+        if (variable == nullptr || variable->getValue() == nullptr) {
+            continue;
+        }
+        const std::string value = this->getValue(variable->getValue());
+        // The same rule the port initial values use, in
+        // collectContinuouslyDrivenDeclarations:
+        // a value that renders empty, or renders as all x/z, is a default the
+        // frontend supplied for a declaration that stated none - vhdl2hif's
+        // 'U' and verilog2hif's all-x - and says nothing the declaration does
+        // not already say, since an uninitialized reg reads x regardless.
+        // Suppressing it also keeps a Verilog function's local static, rather
+        // than resetting it on every call, which is what emitting the default
+        // would silently turn it into.
+        if (value.empty() || isUnknownLiteral(value)) {
+            continue;
+        }
+        (*_stream) << variable->getName() << " = " << value << ";\n";
+        printed = true;
+    }
+    return printed;
+}
+
+std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool withInitialValue)
 {
     std::stringstream ss;
     // The timescale constants are verilog2hif's record of the source's
@@ -2270,9 +2665,11 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
             ss << this->getBitwidth(variable->getType());
         }
         ss << variable->getName();
-        auto value = this->getValue(variable->getValue());
-        if (!value.empty()) {
-            ss << " = " << value;
+        if (withInitialValue) {
+            auto value = this->getValue(variable->getValue());
+            if (!value.empty()) {
+                ss << " = " << value;
+            }
         }
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
         // A continuously driven net must be a wire; everything else is written
@@ -2280,9 +2677,11 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
         ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
         ss << this->getBitwidth(signal->getType());
         ss << signal->getName();
-        auto value = this->getValue(signal->getValue());
-        if (!value.empty()) {
-            ss << " = " << value;
+        if (withInitialValue) {
+            auto value = this->getValue(signal->getValue());
+            if (!value.empty()) {
+                ss << " = " << value;
+            }
         }
     } else if (auto port = dynamic_cast<hif::Port *>(declaration)) {
         switch (port->getDirection()) {
@@ -2303,11 +2702,27 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration)
         ss << this->getBitwidth(port->getType());
         ss << port->getName();
     } else if (auto parameter = dynamic_cast<hif::Parameter *>(declaration)) {
-        if (parameter->getDirection() == PortDirection::dir_in) {
+        // A task's arguments carry a direction, exactly as a module's ports do,
+        // and Verilog spells all three. Only dir_in used to be handled, so an
+        // `out` or `inout` parameter - VHDL's ordinary way for a procedure to
+        // drive its actual - rendered as the empty string. printTask writes the
+        // terminator unconditionally, so that surfaced as a bare `;` and the
+        // task referenced a name it never declared (hif-backend#64).
+        switch (parameter->getDirection()) {
+        case PortDirection::dir_in:
             ss << "input ";
-            ss << this->getBitwidth(parameter->getType());
-            ss << parameter->getName();
+            break;
+        case PortDirection::dir_out:
+            ss << "output ";
+            break;
+        case PortDirection::dir_inout:
+            ss << "inout ";
+            break;
+        default:
+            messageError("Unexpected PortDirection", declaration, _sem);
         }
+        ss << this->getBitwidth(parameter->getType());
+        ss << parameter->getName();
     } else if (auto valueTP = dynamic_cast<hif::ValueTP *>(declaration)) {
         // Module-level generic/template parameter (e.g. `parameter WIDTH = 8`).
         // Printed as a plain (non-ANSI) body declaration, matching how
@@ -2380,15 +2795,55 @@ std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
     return buf.str();
 }
 
+namespace
+{
+
+/// @brief Whether @p digits is spelled entirely with digits Verilog defines.
+/// @details HIF stores bit values in IEEE 1164 form, whose alphabet is
+/// U/X/0/1/Z/W/L/H/-. Verilog's binary literal syntax has only 0, 1, x and z,
+/// so a value containing any of the others has no Verilog spelling at all and
+/// must not be emitted as though it had one.
+auto isVerilogBinaryLiteral(const std::string &digits) -> bool
+{
+    for (char character : digits) {
+        if (character == '_') {
+            continue;
+        }
+        const char lowered = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+        if (lowered != '0' && lowered != '1' && lowered != 'x' && lowered != 'z') {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
 std::string VerilogPrinter::getValue(hif::Value *value)
 {
     std::stringstream ss;
     if (auto bit_value = dynamic_cast<BitValue *>(value)) {
-        if (bit_value->is01()) {
-            ss << bit_value->toString();
+        // A one-bit value is emitted as a sized literal, `1'b<d>`, not as a
+        // bare digit. Verilog gives an unsized `1` a self-determined 32-bit
+        // width, which a concatenation rejects outright - "Concatenation
+        // operand has indefinite width" - so `{1'b1, 1'b0}` regenerated as
+        // `{1, 0}` and did not elaborate (hif-backend#61). Sizing it is also
+        // simply more exact everywhere else this function is used: `1'b1` is
+        // legal wherever a bare `1` was.
+        //
+        // Only for a digit Verilog defines. HIF stores bits in IEEE 1164 form
+        // (U/X/0/1/Z/W/L/H/-) and Verilog has only 0/1/x/z; the rest have no
+        // spelling and must render empty, exactly as the BitvectorValue branch
+        // below does. That emptiness is load-bearing: it is what keeps
+        // vhdl2hif's implicit 'U' port default out of the output
+        // (hif-backend#36/#55). An x/z bit now renders, but isUnknownLiteral
+        // still classifies `1'bx` as unknown, so verilog2hif's all-x reg
+        // default stays suppressed too.
+        const std::string bit_digit = bit_value->toString();
+        if (bit_digit.size() == 1 && isVerilogBinaryLiteral(bit_digit)) {
+            ss << "1'b" << static_cast<char>(std::tolower(static_cast<unsigned char>(bit_digit[0])));
         }
-    }
-    if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
+    } else if (auto int_value = dynamic_cast<hif::IntValue *>(value)) {
         ss << int_value->getValue();
     } else if (auto bitvector_value = dynamic_cast<BitvectorValue *>(value)) {
         if (bitvector_value->is01()) {
@@ -2421,18 +2876,32 @@ std::string VerilogPrinter::getValue(hif::Value *value)
             // handles clean 0/1 values. Verilog literal syntax accepts
             // 0/1/x/z digits; HIF stores them uppercase (IEEE 1164
             // style), so lowercase them on the way out.
-            auto span = bitvector_type->getSpan();
-            if (span) {
-                auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
-                auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
-                if (left_bound && right_bound) {
-                    auto width = left_bound->getValue() - right_bound->getValue() + 1;
-                    ss << width << "'b";
-                }
-            }
+            //
+            // Only when every digit is one Verilog actually has. IEEE 1164
+            // also defines U/W/L/H/-, and vhdl2hif gives every signal and
+            // port the 'U' default whether the source stated one or not, so
+            // this branch was spelling that default 4'buuuu - not a Verilog
+            // literal, and the file no longer parsed (hif-backend#55).
+            // Rendering nothing instead is what the BitValue branch above
+            // already does for a non-0/1 bit, and it is why a scalar port's
+            // implicit 'U' has always been left out correctly: an empty
+            // result makes collectContinuouslyDrivenDeclarations skip the
+            // port, so no initializer is emitted at all. Same rule, same
+            // outcome, now regardless of width.
             std::string raw = bitvector_value->getValue();
-            for (char c : raw) {
-                ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (isVerilogBinaryLiteral(raw)) {
+                auto span = bitvector_type->getSpan();
+                if (span) {
+                    auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
+                    auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
+                    if (left_bound && right_bound) {
+                        auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                        ss << width << "'b";
+                    }
+                }
+                for (char c : raw) {
+                    ss << static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                }
             }
         }
     } else if (auto identifier = dynamic_cast<hif::Identifier *>(value)) {
@@ -2495,6 +2964,34 @@ std::string VerilogPrinter::getValue(hif::Value *value)
         ss << this->renderToString(expression);
     } else if (auto cast = dynamic_cast<hif::Cast *>(value)) {
         ss << this->getValue(cast->getValue());
+    } else if (value != nullptr) {
+        // Terminal case. Without it, a value whose kind is absent from the
+        // chain above returned the empty string, and every caller of this
+        // function renders a position where nothing is not a legal spelling:
+        // an if/else-if condition, a case selector, a case label, a for
+        // condition. A FunctionCall took that path, so `if rising_edge(clk)`
+        // - the most common sequential VHDL idiom there is - regenerated as
+        // `if (  )` at exit code 0, which no simulator parses (hif-backend#50).
+        //
+        // Delegating to the full printer is what the Expression branch above
+        // already does; the two now agree instead of the same construct
+        // rendering differently depending on whether something wrapped it.
+        //
+        // This is reachable only for kinds absent from the chain above, which
+        // is why the BitValue branch had to join that chain rather than stand
+        // as its own `if`. While it stood apart, every BitValue fell through
+        // to here, and the delegation below re-entered visitBitValue, which
+        // calls this function again: unbounded recursion, SIGSEGV on any
+        // design containing a bit literal.
+        //
+        // Deliberately not a hard failure when the printer renders nothing
+        // either. An empty result is legitimate for some callers - a port or
+        // signal whose initial value is an all-'Z'/'X' Aggregate reaches here,
+        // and rendering it as nothing is what correctly leaves the initializer
+        // out of an ANSI port list, which Verilog-2001 has no place for. A
+        // value kind the printer cannot spell is a gap in the printer, not
+        // something this function can decide to abort on.
+        ss << this->renderToString(value);
     }
     return ss.str();
 }

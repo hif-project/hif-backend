@@ -145,6 +145,9 @@ add_executable(
     hif2verilog
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/hif2verilog.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/hif2verilogParseLine.cpp
+    ${CMAKE_SOURCE_DIR}/src/hif2verilog/PostRefine_forIndex.cpp
+    ${CMAKE_SOURCE_DIR}/src/hif2verilog/PostRefine_inoutPort.cpp
+    ${CMAKE_SOURCE_DIR}/src/hif2verilog/PostRefine_process.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/PrintVerilogMethods.cpp
     ${CMAKE_SOURCE_DIR}/src/hif2verilog/VerilogPrinter.cpp
 )

@@ -158,6 +158,32 @@ private:
     /// The value is what the port holds until that process first writes it.
     std::list<hif::Port *> _initialValuePorts;
 
+    /// @brief Name of the Function whose body is currently being printed, or
+    /// empty when the printer is not inside one.
+    /// @details Verilog has no `return`: a function yields its value by
+    /// assigning to its own name, so emitting a Return needs to know that name
+    /// (hif-backend#57). Empty means the Return belongs to a Procedure, which
+    /// is a control-flow exit with no Verilog-2001 equivalent - see
+    /// hif-backend#63.
+    std::string _currentFunctionName;
+
+    /// @brief Label of the named block wrapping the subprogram body currently
+    /// being printed, or empty when that block is unnamed.
+    /// @details Verilog-2001 leaves a subprogram early with `disable` on a named
+    /// block, so an early Return needs a label to name (hif-backend#63). Bodies
+    /// with no early Return are left unnamed, so nothing that used to be emitted
+    /// changes shape.
+    std::string _subprogramExitLabel;
+
+    /// @brief The Return that leaves the current subprogram body by falling off
+    /// its end, and therefore needs no explicit exit. Null when there is none.
+    hif::Return *_subprogramTrailingReturn{nullptr};
+
+    /// @brief Whether the printer is inside a subprogram body at all.
+    /// @details Distinguishes a Return this printer is responsible for from one
+    /// reached outside any subprogram, which has no block to disable.
+    bool _insideSubprogramBody{false};
+
     /// @brief The `timescale a file's `#N` delays are expressed in.
     /// @details Verilog delays are plain numbers scaled by the enclosing
     /// file's `timescale, so a delay cannot be emitted without also
@@ -216,6 +242,31 @@ private:
     /// @return 0.
     auto printTask(hif::Procedure &o) -> int;
 
+    /// @brief Prints a VHDL wait that sets more than one of condition,
+    /// sensitivity and timeout.
+    /// @details Verilog has no single statement meaning more than one at once,
+    /// so the clauses are lowered into a named block whose concurrent branches
+    /// each disable it (hif-backend#45).
+    /// @param o The wait to lower.
+    /// @param hasCondition Whether the wait states a condition.
+    /// @param hasSensitivity Whether the wait states any sensitivity.
+    /// @param hasTime Whether the wait states a timeout.
+    /// @return 0.
+    auto printMultiClauseWait(hif::Wait &o, bool hasCondition, bool hasSensitivity, bool hasTime) -> int;
+
+    /// @brief Prints a wait's sensitivity lists as a Verilog event control.
+    /// @param o The wait whose sensitivity to print.
+    void printEventControl(hif::Wait &o);
+
+    /// @brief The label the body block of @p stateTable has to carry, if any.
+    /// @details Empty unless the body holds a Return that needs an explicit
+    /// exit, i.e. one that is not the trailing one. Fresh, so it cannot collide
+    /// with a declaration the subprogram already has.
+    /// @param stateTable The subprogram's state table.
+    /// @param subprogramName The subprogram's name, used to build the label.
+    /// @return The label, or the empty string when the body needs none.
+    auto getSubprogramExitLabel(hif::StateTable *stateTable, const std::string &subprogramName) -> std::string;
+
     /// @brief Whether a rendered Verilog literal is entirely unknown.
     /// @details Both frontends give a port that stated no initial value one
     /// anyway - 'U' from vhdl2hif, all-x from verilog2hif - and an all-unknown
@@ -245,7 +296,30 @@ private:
     /// target of a global action emitted as a continuous assign.
     auto isContinuouslyDriven(hif::Declaration *declaration) -> bool;
 
-    std::string getDeclaration(hif::Declaration *declaration);
+    /// @brief Renders a declaration.
+    /// @param declaration The declaration to render.
+    /// @param withInitialValue Whether to append a *variable's* initial value.
+    /// False inside a subprogram body, where Verilog allows a variable
+    /// declaration assignment only at module level; the value is emitted there
+    /// by printSubprogramLocalInitializations instead. Deliberately does not
+    /// affect a parameter or localparam, whose value is legal - and mandatory -
+    /// where it is declared, in a subprogram body as much as at module level.
+    /// @return The declaration text, without the terminating semicolon.
+    std::string getDeclaration(hif::Declaration *declaration, bool withInitialValue = true);
+
+    /// @brief Assigns a subprogram's locals their initial values on entry.
+    /// @details Verilog allows a variable declaration assignment only at module
+    /// level, so a local that carries a value cannot state it where it is
+    /// declared - the file does not parse. The initialisation goes at the top
+    /// of the body instead, which is also what the value means when it came
+    /// from VHDL: a subprogram's local variable is initialised on every call,
+    /// not once at elaboration.
+    /// @param stateTable The subprogram's body.
+    /// @param returnVariableName The name of the function return variable to
+    /// skip, or an empty string for a task.
+    /// @return True if anything was printed.
+    auto printSubprogramLocalInitializations(hif::StateTable *stateTable, const std::string &returnVariableName)
+        -> bool;
 
     std::string getBitwidth(hif::Type *type);
 

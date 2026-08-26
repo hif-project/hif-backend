@@ -19,6 +19,7 @@
 
 #include <hif/hif.hpp>
 
+#include "hif2verilog/PostRefineMethods.hpp"
 #include "hif2verilog/PrintVerilogMethods.hpp"
 #include "hif2verilog/hif2verilogParseLine.hpp"
 
@@ -258,7 +259,13 @@ auto getStepName(const std::string &n) -> std::string
 
 void perform_pre_refinement(System & /*o*/, hif2verilogParseLine & /*cLine*/) {}
 
-void perform_post_refinement(System & /*o*/, hif2verilogParseLine & /*cLine*/) {}
+void perform_post_refinement(System &o, hif2verilogParseLine & /*cLine*/)
+{
+    hif::semantics::ILanguageSemantics *sem = hif::semantics::VerilogSemantics::getInstance();
+    fixSynchronousProcesses(&o, sem);
+    hoistForInitDeclarations(&o, sem);
+    lowerProcedurallyDrivenInoutPorts(&o, sem);
+}
 
 void perform_code_generation(System &o, hif2verilogParseLine &cLine)
 {
