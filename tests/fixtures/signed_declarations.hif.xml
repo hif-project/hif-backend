@@ -1,0 +1,184 @@
+<SYSTEM formatVersion="5.0" generationDate="10:21:54:595491" languageId="RTL" name="system" release="1.0.0" tool="VERILOG2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_verilog_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="signed_declarations">
+			<VIEW filename="" languageId="RTL" name="behav" standard="false">
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="a" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="3"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="b" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="3"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="wide" wrapper="false">
+						<VALUE>
+							<BITVECTORVAL VALUE="ZZZZZ">
+								<TYPE>
+									<BITVECTOR constexpr="true" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+										<RANGE direction="DOWNTO">
+											<LEFTBOUND>
+												<INTVAL value="4"/>
+											</LEFTBOUND>
+											<RIGHTBOUND>
+												<INTVAL value="0"/>
+											</RIGHTBOUND>
+										</RANGE>
+									</BITVECTOR>
+								</TYPE>
+							</BITVECTORVAL>
+						</VALUE>
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="4"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="lt" wrapper="false">
+						<VALUE>
+							<BITVAL value="Z">
+								<TYPE>
+									<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+								</TYPE>
+							</BITVAL>
+						</VALUE>
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+				</ENTITY>
+				<CONTENTS name="Architecture">
+					<STATETABLES>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="globact_process_0" standard="false">
+							<SENSITIVITY>
+								<IDENTIFIER name="a">
+								</IDENTIFIER>
+								<IDENTIFIER name="b">
+								</IDENTIFIER>
+							</SENSITIVITY>
+							<STATES>
+								<STATE atomic="false" name="state_0" priority="0">
+									<ACTIONS>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="wide">
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<EXPRESSION operator="+">
+													<VALUE1>
+														<CAST>
+															<VALUE>
+																<IDENTIFIER name="a">
+																</IDENTIFIER>
+															</VALUE>
+															<TYPE>
+																<BITVECTOR constexpr="false" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+																	<RANGE direction="DOWNTO">
+																		<LEFTBOUND>
+																			<INTVAL value="4"/>
+																		</LEFTBOUND>
+																		<RIGHTBOUND>
+																			<INTVAL value="0"/>
+																		</RIGHTBOUND>
+																	</RANGE>
+																</BITVECTOR>
+															</TYPE>
+														</CAST>
+													</VALUE1>
+													<VALUE2>
+														<CAST>
+															<VALUE>
+																<IDENTIFIER name="b">
+																</IDENTIFIER>
+															</VALUE>
+															<TYPE>
+																<BITVECTOR constexpr="false" logic="true" resolved="true" signed="true" typeVariant="NATIVE_TYPE">
+																	<RANGE direction="DOWNTO">
+																		<LEFTBOUND>
+																			<INTVAL value="4"/>
+																		</LEFTBOUND>
+																		<RIGHTBOUND>
+																			<INTVAL value="0"/>
+																		</RIGHTBOUND>
+																	</RANGE>
+																</BITVECTOR>
+															</TYPE>
+														</CAST>
+													</VALUE2>
+												</EXPRESSION>
+											</RIGHTHANDSIDE>
+										</ASSIGN>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="globact_process_1" standard="false">
+							<SENSITIVITY>
+								<IDENTIFIER name="a">
+								</IDENTIFIER>
+								<IDENTIFIER name="b">
+								</IDENTIFIER>
+							</SENSITIVITY>
+							<STATES>
+								<STATE atomic="false" name="state_1" priority="0">
+									<ACTIONS>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="lt">
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<EXPRESSION operator="&lt;">
+													<VALUE1>
+														<IDENTIFIER name="a">
+														</IDENTIFIER>
+													</VALUE1>
+													<VALUE2>
+														<IDENTIFIER name="b">
+														</IDENTIFIER>
+													</VALUE2>
+												</EXPRESSION>
+											</RIGHTHANDSIDE>
+										</ASSIGN>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+					</STATETABLES>
+					<GLOBALACTION/>
+				</CONTENTS>
+			</VIEW>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>

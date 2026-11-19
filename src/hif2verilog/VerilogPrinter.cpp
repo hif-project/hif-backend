@@ -251,6 +251,23 @@ auto VerilogPrinter::visitBreak(Break &o) -> int { return GuideVisitor::visitBre
 namespace
 {
 
+/// @brief Whether @p type is a vector the source declared `signed`.
+/// @details Verilog carries signedness on the declaration, and it decides how
+/// every operand is extended and compared (hif-backend#81). Integers are not
+/// covered: `integer` is signed by its own keyword.
+auto isSignedVector(hif::Type *type) -> bool
+{
+    if (auto *bv = dynamic_cast<hif::Bitvector *>(type)) {
+        return bv->isSigned();
+    }
+    return dynamic_cast<hif::Signed *>(type) != nullptr;
+}
+
+} // namespace
+
+namespace
+{
+
 /// @brief Whether a Verilog part-select may be applied directly to @p value.
 /// @details Verilog-2001 allows a part-select on a net or variable
 /// reference - an identifier, a bit-select of one, or a slice of one - but
@@ -331,6 +348,18 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
     }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
         auto difference = targetWidth - sourceWidth;
+        // A signed source widens by replicating its sign bit, not by padding
+        // zeros: `{{D{x[msb]}}, x}`. Zero-padding turned -1 in 4 bits into 15
+        // in 5 (hif-backend#81). The sign bit needs a part-select, so this only
+        // applies to an operand one can be taken from.
+        if (isSignedVector(sourceType) && isPartSelectable(castedValue)) {
+            (*_stream) << "{{" << difference << "{";
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "[" << (sourceWidth - 1) << "]}}, ";
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "}";
+            return 0;
+        }
         (*_stream) << "{" << difference << "'b";
         for (unsigned long long i = 0; i < difference; ++i) {
             (*_stream) << "0";
@@ -2757,6 +2786,10 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
 {
     std::stringstream ss;
     unsigned long long bw = hif::semantics::typeGetSpanBitwidth(type, _sem);
+    // `signed` goes between the net kind and the range: `reg signed [3:0] x`.
+    if (isSignedVector(type)) {
+        ss << "signed ";
+    }
     if (bw == 1) {
         return ss.str();
     }

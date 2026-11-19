@@ -809,3 +809,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cone_signal_target_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
 )
+
+# hif-backend#81: `signed` survives on declarations and widening replicates the sign bit.
+add_test(
+    NAME signed_declarations
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/signed_declarations.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/signed_declarations_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/signed_declarations_test.cmake
+)
