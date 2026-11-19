@@ -765,19 +765,25 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
     }
 
     // Set use of parenthesis for expression operands.
-    bool needOp1Paren =
-        ((dynamic_cast<ConstValue *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<Identifier *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<PPAssign *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<FunctionCall *>(o.getValue1()) == nullptr) && (dynamic_cast<Cast *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<Member *>(o.getValue1()) == nullptr));
-
-    bool needOp2Paren =
-        ((dynamic_cast<ConstValue *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<Identifier *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<PPAssign *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<FunctionCall *>(o.getValue2()) == nullptr) && (dynamic_cast<Cast *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<Member *>(o.getValue2()) == nullptr));
+    //
+    // A cast is printed as its operand when it changes nothing Verilog needs spelled out,
+    // so a cast around an expression is that expression, bare: `(s >>> n) + a` came back
+    // `s >>> n + a`, which Verilog reads as `s >>> (n + a)`. Look through casts to what is
+    // actually printed.
+    auto needsParenthesis = [](Value *operand) {
+        Value *inner = operand;
+        while (auto *cast = dynamic_cast<Cast *>(inner)) {
+            inner = cast->getValue();
+        }
+        if (inner != operand && dynamic_cast<Expression *>(inner) != nullptr) {
+            return true;
+        }
+        return (dynamic_cast<ConstValue *>(operand) == nullptr) && (dynamic_cast<Identifier *>(operand) == nullptr) &&
+               (dynamic_cast<PPAssign *>(operand) == nullptr) && (dynamic_cast<FunctionCall *>(operand) == nullptr) &&
+               (dynamic_cast<Cast *>(operand) == nullptr) && (dynamic_cast<Member *>(operand) == nullptr);
+    };
+    bool needOp1Paren = needsParenthesis(o.getValue1());
+    bool needOp2Paren = needsParenthesis(o.getValue2());
 
     // Check the existence of 2nd operand. If it is present the expression
     // is binary (i.e., Op1 op Op2) otherwise it is unary (i.e., op Op1)
