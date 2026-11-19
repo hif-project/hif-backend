@@ -263,6 +263,174 @@ auto VerilogPrinter::visitBreak(Break &o) -> int
 namespace
 {
 
+/// @brief Whether @p type is a vector the source declared `signed`.
+/// @details Verilog carries signedness on the declaration, and it decides how
+/// every operand is extended and compared (hif-backend#81). Integers are not
+/// covered: `integer` is signed by its own keyword.
+auto isSignedVector(hif::Type *type) -> bool
+{
+    if (auto *bv = dynamic_cast<hif::Bitvector *>(type)) {
+        return bv->isSigned();
+    }
+    return dynamic_cast<hif::Signed *>(type) != nullptr;
+}
+
+/// @brief The part-select of the low-order @p width bits of a value of type @p type.
+/// @details `[width-1:0]` is that only for a vector that runs down to bit 0. A vector
+/// that runs up, `[0:7]`, has its low-order bits at the right-hand end, and Verilog
+/// rejects a select against the declared direction ("part select is out of order"), so
+/// `a[3:0]` on a `[0:7]` is an error, and the bits to keep are `a[4:7]`. An ascending range is
+/// declared as it was (getBitwidth), so its bounds are read off the type; every other vector is
+/// declared [bits-1:0] and the select is what it always was.
+auto lowBitsSelect(hif::Type *type, unsigned long long width) -> std::string
+{
+    auto *spanned = dynamic_cast<hif::features::ITypeSpan *>(type);
+    if (spanned != nullptr && spanned->getSpan() != nullptr) {
+        auto *left  = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getLeftBound());
+        auto *right = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getRightBound());
+        if (left != nullptr && right != nullptr) {
+            const long long l = left->getValue();
+            const long long r = right->getValue();
+            const long long w = static_cast<long long>(width);
+            if (l < r) {
+                return "[" + std::to_string(r - (w - 1)) + ":" + std::to_string(r) + "]";
+            }
+            // A descending vector is declared [bits-1:0] whatever bounds it had (getBitwidth),
+            // so its low-order bits are at the bottom of that.
+        }
+    }
+    return "[" + std::to_string(width - 1) + ":0]";
+}
+
+/// @brief The index of the sign bit of a value of type @p type.
+/// @details The most significant bit is the left-hand end of the declared range. For a vector
+/// that runs up, `[2:9]`, that is its left bound, 2, and `x[7]` is the least significant bit
+/// but one. Every other vector is declared [bits-1:0] (getBitwidth), so it is bits-1.
+auto signBitIndex(hif::Type *type, unsigned long long width) -> long long
+{
+    auto *spanned = dynamic_cast<hif::features::ITypeSpan *>(type);
+    if (spanned != nullptr && spanned->getSpan() != nullptr) {
+        auto *left  = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getLeftBound());
+        auto *right = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getRightBound());
+        if (left != nullptr && right != nullptr && left->getValue() < right->getValue()) {
+            return left->getValue();
+        }
+    }
+    return static_cast<long long>(width) - 1;
+}
+
+/// @brief Whether everything an expression combines is signed.
+/// @details Verilog evaluates an expression as unsigned as soon as any operand is, and
+/// extends every operand the same way, so `a + b` with an unsigned `a` zero-extends a
+/// signed `b` too. Casts are looked through to the value they convert, since that is
+/// what Verilog sees. A shift count does not carry signedness upward, so only the
+/// shifted operand counts; a relational result and a concatenation are unsigned; the
+/// arms of a conditional share one type, its condition is not part of it.
+auto operandsAllSigned(hif::Value *value, hif::semantics::ILanguageSemantics *sem) -> bool
+{
+    while (auto *cast = dynamic_cast<hif::Cast *>(value)) {
+        value = cast->getValue();
+    }
+    if (auto *expression = dynamic_cast<hif::Expression *>(value)) {
+        const hif::Operator oper = expression->getOperator();
+        if (hif::operatorIsShift(oper)) {
+            return operandsAllSigned(expression->getValue1(), sem);
+        }
+        if (hif::operatorIsRelational(oper) || oper == op_concat) {
+            return false;
+        }
+        if (expression->getValue2() == nullptr) {
+            return operandsAllSigned(expression->getValue1(), sem);
+        }
+        return operandsAllSigned(expression->getValue1(), sem) && operandsAllSigned(expression->getValue2(), sem);
+    }
+    if (auto *when = dynamic_cast<hif::When *>(value)) {
+        for (auto *alternative : when->alts) {
+            if (!operandsAllSigned(alternative->getValue(), sem)) {
+                return false;
+            }
+        }
+        return when->getDefault() == nullptr || operandsAllSigned(when->getDefault(), sem);
+    }
+    hif::Type *type = hif::semantics::getSemanticType(value, sem);
+    if (auto *integer = dynamic_cast<hif::Int *>(type)) {
+        return integer->isSigned();
+    }
+    return isSignedVector(type);
+}
+
+/// @brief Whether a widening cast sits in a context that extends by sign.
+/// @details The operands of one context-determined expression share a signedness and
+/// are all extended by it, so this climbs to the root of the expression the cast is
+/// an operand of and asks whether everything under it is signed. The climb goes
+/// through casts, through arithmetic and bitwise operators, through the shifted (not
+/// the counting) operand of a shift, and through the arms of a conditional; it stops
+/// at a relational operator, whose two operands are the whole context, and at
+/// anything self-determined. A cast that is nothing's operand is extended by its own
+/// source. A logical right shift never sign-extends its operand: the bits it shifts
+/// in are zeros, and extending first would put sign bits where they land.
+auto isSignExtendingContext(hif::Cast &cast, hif::semantics::ILanguageSemantics *sem) -> bool
+{
+    if (auto *direct = dynamic_cast<hif::Expression *>(cast.getParent())) {
+        if (direct->getOperator() == op_srl && direct->getValue1() == &cast) {
+            return false;
+        }
+    }
+
+    hif::Object *node = &cast;
+    while (node->getParent() != nullptr) {
+        hif::Object *parent = node->getParent();
+        if (dynamic_cast<hif::Cast *>(parent) != nullptr) {
+            node = parent;
+            continue;
+        }
+        if (auto *expression = dynamic_cast<hif::Expression *>(parent)) {
+            const hif::Operator oper = expression->getOperator();
+            if (hif::operatorIsRelational(oper)) {
+                // The two operands are the whole context; the result is not part of it.
+                return operandsAllSigned(expression->getValue1(), sem) &&
+                       (expression->getValue2() == nullptr || operandsAllSigned(expression->getValue2(), sem));
+            }
+            if (hif::operatorIsShift(oper)) {
+                if (expression->getValue1() != node) {
+                    break;
+                }
+                node = parent;
+                continue;
+            }
+            if (hif::operatorIsArithmetic(oper) || hif::operatorIsBitwise(oper)) {
+                node = parent;
+                continue;
+            }
+            break;
+        }
+        if (auto *alternative = dynamic_cast<hif::WhenAlt *>(parent)) {
+            if (alternative->getValue() != node) {
+                break;
+            }
+            node = alternative->getParent();
+            continue;
+        }
+        if (auto *when = dynamic_cast<hif::When *>(parent)) {
+            if (when->getDefault() != node) {
+                break;
+            }
+            node = parent;
+            continue;
+        }
+        break;
+    }
+    if (node == &cast) {
+        return true;
+    }
+    return operandsAllSigned(static_cast<hif::Value *>(node), sem);
+}
+
+} // namespace
+
+namespace
+{
+
 /// @brief Whether a Verilog part-select may be applied directly to @p value.
 /// @details Verilog-2001 allows a part-select on a net or variable
 /// reference - an identifier, a bit-select of one, or a slice of one - but
@@ -315,7 +483,7 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         // something it can legally apply to.
         if (isPartSelectable(castedValue)) {
             castedValue->acceptVisitor(*this);
-            (*_stream) << "[" << (targetWidth - 1) << ":0]";
+            (*_stream) << lowBitsSelect(sourceType, targetWidth);
             return 0;
         }
         // Otherwise, if this cast is the whole right-hand side of an
@@ -338,11 +506,65 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
             &o, _sem);
         (*_stream) << "(";
         castedValue->acceptVisitor(*this);
-        (*_stream) << ")[" << (targetWidth - 1) << ":0]";
+        (*_stream) << ")" << lowBitsSelect(sourceType, targetWidth);
         return 0;
     }
+    // Neither width is a number, e.g. `a(WIDTH-2 downto 0)` out of a
+    // `WIDTH-1 downto 0` vector. The cast is still a narrowing when the bounds
+    // are the same symbol and the target's sits lower, and it has to be printed
+    // as the part-select it is, not as the whole operand (hif-backend#90).
+    if ((sourceWidth == 0 || targetWidth == 0) && isPartSelectable(castedValue)) {
+        std::string symbolicSelect;
+        if (this->getSymbolicNarrowing(sourceType, targetType, symbolicSelect)) {
+            castedValue->acceptVisitor(*this);
+            (*_stream) << symbolicSelect;
+            return 0;
+        }
+    }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
+        // An arithmetic right shift widened into an unsigned context. Printed
+        // {1'b0, s >>> n} it is a shift inside a concatenation, which is self-determined, so
+        // it is evaluated by its own signedness: arithmetic for a signed s. The surrounding
+        // expression is unsigned, which makes Verilog convert s before it shifts it, and the
+        // shift logical. $unsigned says that at the shift, and the extension stays outside it,
+        // so the width the shift is evaluated at is the one it had. (Widening the shifted
+        // operand instead changes that width, and a left shift then keeps bits it lost.)
+        auto *shift = dynamic_cast<Expression *>(castedValue);
+        Value *shifted = shift != nullptr ? shift->getValue1() : nullptr;
+        while (auto *shiftedCast = dynamic_cast<Cast *>(shifted)) {
+            shifted = shiftedCast->getValue();
+        }
+        if (shift != nullptr && shift->getOperator() == op_sra && shift->getValue2() != nullptr &&
+            isPartSelectable(shifted) && isSignedVector(hif::semantics::getSemanticType(shifted, _sem)) &&
+            !isSignExtendingContext(o, _sem)) {
+            (*_stream) << "{" << (targetWidth - sourceWidth) << "'b";
+            for (unsigned long long i = 0; i < targetWidth - sourceWidth; ++i) {
+                (*_stream) << "0";
+            }
+            (*_stream) << ", $unsigned(";
+            shifted->acceptVisitor(*this);
+            (*_stream) << ") >>> ";
+            shift->getValue2()->acceptVisitor(*this);
+            (*_stream) << "}";
+            return 0;
+        }
+
         auto difference = targetWidth - sourceWidth;
+        // A signed source widens by replicating its sign bit, not by padding
+        // zeros: `{{D{x[msb]}}, x}`. Zero-padding turned -1 in 4 bits into 15
+        // in 5 (hif-backend#81). The sign bit needs a part-select, so this only
+        // applies to an operand one can be taken from.
+        if (isSignedVector(sourceType) && isPartSelectable(castedValue) && isSignExtendingContext(o, _sem)) {
+            // A concatenation is unsigned in Verilog, whatever it is built from, so a
+            // signed comparison or division it feeds would be evaluated unsigned.
+            // $signed puts the signedness back.
+            (*_stream) << "$signed({{" << difference << "{";
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "[" << signBitIndex(sourceType, sourceWidth) << "]}}, ";
+            castedValue->acceptVisitor(*this);
+            (*_stream) << "})";
+            return 0;
+        }
         (*_stream) << "{" << difference << "'b";
         for (unsigned long long i = 0; i < difference; ++i) {
             (*_stream) << "0";
@@ -565,19 +787,25 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
     }
 
     // Set use of parenthesis for expression operands.
-    bool needOp1Paren =
-        ((dynamic_cast<ConstValue *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<Identifier *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<PPAssign *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<FunctionCall *>(o.getValue1()) == nullptr) && (dynamic_cast<Cast *>(o.getValue1()) == nullptr) &&
-         (dynamic_cast<Member *>(o.getValue1()) == nullptr));
-
-    bool needOp2Paren =
-        ((dynamic_cast<ConstValue *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<Identifier *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<PPAssign *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<FunctionCall *>(o.getValue2()) == nullptr) && (dynamic_cast<Cast *>(o.getValue2()) == nullptr) &&
-         (dynamic_cast<Member *>(o.getValue2()) == nullptr));
+    //
+    // A cast is printed as its operand when it changes nothing Verilog needs spelled out,
+    // so a cast around an expression is that expression, bare: `(s >>> n) + a` came back
+    // `s >>> n + a`, which Verilog reads as `s >>> (n + a)`. Look through casts to what is
+    // actually printed.
+    auto needsParenthesis = [](Value *operand) {
+        Value *inner = operand;
+        while (auto *cast = dynamic_cast<Cast *>(inner)) {
+            inner = cast->getValue();
+        }
+        if (inner != operand && dynamic_cast<Expression *>(inner) != nullptr) {
+            return true;
+        }
+        return (dynamic_cast<ConstValue *>(operand) == nullptr) && (dynamic_cast<Identifier *>(operand) == nullptr) &&
+               (dynamic_cast<PPAssign *>(operand) == nullptr) && (dynamic_cast<FunctionCall *>(operand) == nullptr) &&
+               (dynamic_cast<Cast *>(operand) == nullptr) && (dynamic_cast<Member *>(operand) == nullptr);
+    };
+    bool needOp1Paren = needsParenthesis(o.getValue1());
+    bool needOp2Paren = needsParenthesis(o.getValue2());
 
     // Check the existence of 2nd operand. If it is present the expression
     // is binary (i.e., Op1 op Op2) otherwise it is unary (i.e., op Op1)
@@ -1513,7 +1741,35 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         // reset into a synchronous one, and `always @(posedge clk or posedge
         // rst)` came back as `always @(posedge clk, rst)`, leaving rst
         // sensitive to both of its edges.
-        if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
+        // A memory cannot appear in an event list - `always @(mem, raddr)` is
+        // rejected ("Array mem needs an array index here"), and Verilog-2001 has
+        // no way to name one word of it there. `@(*)` is the spelling that still
+        // wakes the process when a word it reads changes (hif-backend#87).
+        bool sensitiveToArray = false;
+        if (o.sensitivityPos.empty() && o.sensitivityNeg.empty()) {
+            // An entry can be a bit-select or a part-select, which is not a symbol
+            // and which getDeclaration asserts on (hif-backend#23): resolve the
+            // identifier it is built on first, and skip what is not one.
+            hif::TerminalPrefixOptions prefixOptions;
+            prefixOptions.recurseIntoMembers   = true;
+            prefixOptions.recurseIntoSlices    = true;
+            prefixOptions.recurseIntoFieldRefs = true;
+            for (auto *signal : o.sensitivity) {
+                Value *base = hif::getTerminalPrefix(signal, prefixOptions);
+                if (dynamic_cast<hif::Identifier *>(base) == nullptr) {
+                    continue;
+                }
+                auto *declaration = hif::semantics::getDeclaration(base, _sem);
+                auto *data        = dynamic_cast<hif::DataDeclaration *>(declaration);
+                if (data != nullptr && dynamic_cast<hif::Array *>(data->getType()) != nullptr) {
+                    sensitiveToArray = true;
+                    break;
+                }
+            }
+        }
+        if (sensitiveToArray) {
+            (*_stream) << " @(*)";
+        } else if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
             bool isFirst = true;
             auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
                 for (auto *signal : list) {
@@ -2689,14 +2945,17 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     }
 
     if (auto variable = dynamic_cast<hif::Variable *>(declaration)) {
-        if (is_integer(variable->getType())) {
+        std::string arrayDimensions;
+        hif::Type *elementType = this->splitArrayType(variable->getType(), arrayDimensions);
+        if (is_integer(elementType)) {
             ss << "integer ";
         } else {
             ss << "reg ";
-            ss << this->getBitwidth(variable->getType());
+            ss << this->getBitwidth(elementType);
         }
-        ss << variable->getName();
-        if (withInitialValue) {
+        ss << variable->getName() << arrayDimensions;
+        // Verilog-2001 has no initializer for an unpacked array.
+        if (withInitialValue && arrayDimensions.empty()) {
             auto value = this->getValue(variable->getValue());
             if (!value.empty()) {
                 ss << " = " << value;
@@ -2705,10 +2964,13 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
         // A continuously driven net must be a wire; everything else is written
         // by a process, which needs a reg (hif-backend#26, #32).
+        std::string arrayDimensions;
+        hif::Type *elementType = this->splitArrayType(signal->getType(), arrayDimensions);
         ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
-        ss << this->getBitwidth(signal->getType());
-        ss << signal->getName();
-        if (withInitialValue) {
+        ss << this->getBitwidth(elementType);
+        ss << signal->getName() << arrayDimensions;
+        // Verilog-2001 has no initializer for an unpacked array.
+        if (withInitialValue && arrayDimensions.empty()) {
             auto value = this->getValue(signal->getValue());
             if (!value.empty()) {
                 ss << " = " << value;
@@ -2784,10 +3046,33 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     return ss.str();
 }
 
+hif::Type *VerilogPrinter::splitArrayType(hif::Type *type, std::string &dimensions)
+{
+    // An Array is Verilog's unpacked dimension: `reg [7:0] mem [0:3]`. The width
+    // belongs to the element, the array range goes after the name. Taking the
+    // array's span as the vector width, as typeGetSpanBitwidth does, printed
+    // `reg [0:3] mem` - four bits, element width lost (hif-backend#87).
+    while (auto *array = dynamic_cast<hif::Array *>(type)) {
+        hif::Range *span = array->getSpan();
+        if (span == nullptr || span->getLeftBound() == nullptr || span->getRightBound() == nullptr ||
+            array->getType() == nullptr) {
+            break;
+        }
+        dimensions += " [" + this->getSymbolicValue(span->getLeftBound()) + ":" +
+                      this->getSymbolicValue(span->getRightBound()) + "]";
+        type = array->getType();
+    }
+    return type;
+}
+
 std::string VerilogPrinter::getBitwidth(hif::Type *type)
 {
     std::stringstream ss;
     unsigned long long bw = hif::semantics::typeGetSpanBitwidth(type, _sem);
+    // `signed` goes between the net kind and the range: `reg signed [3:0] x`.
+    if (isSignedVector(type)) {
+        ss << "signed ";
+    }
     if (bw == 1) {
         return ss.str();
     }
@@ -2807,8 +3092,102 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
         }
         return ss.str();
     }
+    // An ascending range keeps its direction: `a(0 to 3)` has element 0 on the
+    // left, and `[3:0]` would put it on the right, so every index would read
+    // the opposite bit (hif-backend#91).
+    if (auto *typeSpan = dynamic_cast<hif::features::ITypeSpan *>(type)) {
+        hif::Range *span = typeSpan->getSpan();
+        auto *left       = span != nullptr ? dynamic_cast<hif::IntValue *>(span->getLeftBound()) : nullptr;
+        auto *right      = span != nullptr ? dynamic_cast<hif::IntValue *>(span->getRightBound()) : nullptr;
+        if (left != nullptr && right != nullptr && left->getValue() < right->getValue()) {
+            ss << "[" << left->getValue() << ":" << right->getValue() << "] ";
+            return ss.str();
+        }
+    }
     ss << "[" << (bw - 1) << ":0] ";
     return ss.str();
+}
+
+namespace
+{
+
+/// @brief A range bound split into a symbol and a constant offset.
+struct BoundParts
+{
+    bool valid = false;
+    /// The symbolic part as text; empty for a plain constant.
+    std::string base;
+    long long offset = 0;
+};
+
+} // namespace
+
+bool VerilogPrinter::getSymbolicNarrowing(hif::Type *sourceType, hif::Type *targetType, std::string &select)
+{
+    auto *sourceSpanned = dynamic_cast<hif::features::ITypeSpan *>(sourceType);
+    auto *targetSpanned = dynamic_cast<hif::features::ITypeSpan *>(targetType);
+    if (sourceSpanned == nullptr || targetSpanned == nullptr) {
+        return false;
+    }
+    hif::Range *sourceSpan = sourceSpanned->getSpan();
+    hif::Range *targetSpan = targetSpanned->getSpan();
+    if (sourceSpan == nullptr || targetSpan == nullptr || sourceSpan->getLeftBound() == nullptr ||
+        sourceSpan->getRightBound() == nullptr || targetSpan->getLeftBound() == nullptr ||
+        targetSpan->getRightBound() == nullptr) {
+        return false;
+    }
+    // Only a descending range, whose left bound is its most significant bit.
+    if (sourceSpan->getDirection() != hif::dir_downto || targetSpan->getDirection() != hif::dir_downto) {
+        return false;
+    }
+
+    auto split = [this](hif::Value *bound) -> BoundParts {
+        // A bound that came through a parameter is wrapped in casts to integer.
+        while (auto *cast = dynamic_cast<hif::Cast *>(bound)) {
+            bound = cast->getValue();
+        }
+        BoundParts parts;
+        if (auto *constant = dynamic_cast<hif::IntValue *>(bound)) {
+            parts.valid  = true;
+            parts.offset = constant->getValue();
+            return parts;
+        }
+        if (auto *expression = dynamic_cast<hif::Expression *>(bound)) {
+            auto *k = dynamic_cast<hif::IntValue *>(expression->getValue2());
+            if (k != nullptr && expression->getValue1() != nullptr &&
+                (expression->getOperator() == hif::op_plus || expression->getOperator() == hif::op_minus)) {
+                parts.valid  = true;
+                hif::Value *operand = expression->getValue1();
+                while (auto *cast = dynamic_cast<hif::Cast *>(operand)) {
+                    operand = cast->getValue();
+                }
+                parts.base   = this->getSymbolicValue(operand);
+                parts.offset = expression->getOperator() == hif::op_plus ? k->getValue() : -k->getValue();
+                return parts;
+            }
+        }
+        parts.valid = true;
+        parts.base  = this->getSymbolicValue(bound);
+        return parts;
+    };
+
+    const BoundParts sourceLeft  = split(sourceSpan->getLeftBound());
+    const BoundParts targetLeft  = split(targetSpan->getLeftBound());
+    const BoundParts sourceRight = split(sourceSpan->getRightBound());
+    const BoundParts targetRight = split(targetSpan->getRightBound());
+    if (!sourceLeft.valid || !targetLeft.valid || !sourceRight.valid || !targetRight.valid) {
+        return false;
+    }
+    // Same symbol on both left bounds, same low bit, and the target's top bit
+    // strictly lower: a narrowing whose width is the same symbol minus a
+    // constant, whatever the symbol turns out to be.
+    if (sourceLeft.base != targetLeft.base || sourceRight.base != targetRight.base ||
+        sourceRight.offset != targetRight.offset || targetLeft.offset >= sourceLeft.offset) {
+        return false;
+    }
+    select = "[" + this->getSymbolicValue(targetSpan->getLeftBound()) + ":" +
+             this->getSymbolicValue(targetSpan->getRightBound()) + "]";
+    return true;
 }
 
 std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
@@ -2825,6 +3204,20 @@ std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
     _stream = saved;
     return buf.str();
 }
+
+namespace
+{
+
+/// @brief The number of bits between two range bounds, in either direction.
+/// @details `7 downto 0` and `0 to 7` are both eight bits. Subtracting the
+/// right bound from the left gives a negative size for the ascending one, and
+/// a literal printed as `-2'b1100` (hif-backend#91).
+auto spanWidth(long long left, long long right) -> long long
+{
+    return (left >= right ? left - right : right - left) + 1;
+}
+
+} // namespace
 
 namespace
 {
@@ -2894,7 +3287,7 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                         auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
                         // If both bounds are valid, compute the width.
                         if (left_bound && right_bound) {
-                            auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                            auto width = spanWidth(left_bound->getValue(), right_bound->getValue());
                             ss << width << "'b";
                         }
                     }
@@ -2926,7 +3319,7 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                     auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
                     auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
                     if (left_bound && right_bound) {
-                        auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                        auto width = spanWidth(left_bound->getValue(), right_bound->getValue());
                         ss << width << "'b";
                     }
                 }

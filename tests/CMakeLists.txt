@@ -810,6 +810,56 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
 )
 
+# hif-backend#81: `signed` survives on declarations and widening replicates the sign bit.
+add_test(
+    NAME signed_declarations
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/signed_declarations.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/signed_declarations_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/signed_declarations_test.cmake
+)
+
+# hif-backend#91: an ascending range keeps its direction and a literal keeps a positive size.
+add_test(
+    NAME ascending_range
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ascending_range.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ascending_range_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/ascending_range_test.cmake
+)
+
+# hif-backend#90: a part-select of a parameter-width vector is printed, not dropped.
+add_test(
+    NAME symbolic_part_select
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/symbolic_part_select.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/symbolic_part_select_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/symbolic_part_select_test.cmake
+)
+
+# hif-backend#87: an unpacked array keeps its element width and is not named in an event list.
+add_test(
+    NAME unpacked_array
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/unpacked_array.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/unpacked_array_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/unpacked_array_test.cmake
+)
+
+# A bit-select in a sensitivity list must not crash the array check.
+add_test(
+    NAME member_sensitivity
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/member_sensitivity.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/member_sensitivity_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/member_sensitivity_test.cmake
+)
+
 # hif-backend#85: a named block and the disable that leaves it must be printed.
 add_test(
     NAME named_block_disable

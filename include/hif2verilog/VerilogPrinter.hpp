@@ -325,6 +325,24 @@ private:
 
     std::string getSymbolicValue(hif::Value *value);
 
+    /// @brief Whether a Cast from @p sourceType to @p targetType is a narrowing of a vector
+    /// whose widths are symbolic, such as `WIDTH-2 downto 0` out of `WIDTH-1 downto 0`.
+    /// @details Both left bounds must be the same symbol plus a constant, the right bounds equal,
+    /// and the target's left bound lower.
+    /// @param sourceType The type of the casted value.
+    /// @param targetType The type being cast to.
+    /// @param select Set to the part-select, e.g. `[WIDTH - 2:0]`, when this returns true.
+    /// @return True if it is a symbolic narrowing.
+    bool getSymbolicNarrowing(hif::Type *sourceType, hif::Type *targetType, std::string &select);
+
+    /// @brief Splits an array type into its element type and its unpacked dimensions.
+    /// @details `array [0:3] of bitvector[7:0]` gives the element `bitvector[7:0]` and the dimensions
+    /// ` [0:3]`, ready to follow the declared name.
+    /// @param type The declared type.
+    /// @param dimensions Appended with one ` [left:right]` per array level.
+    /// @return The innermost element type, or @p type itself when it is not an array.
+    hif::Type *splitArrayType(hif::Type *type, std::string &dimensions);
+
     std::string getValue(hif::Value *value);
 
     /// @brief Render an object through the visitor, capturing its output
