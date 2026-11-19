@@ -267,8 +267,9 @@ auto isSignedVector(hif::Type *type) -> bool
 /// @details Verilog evaluates an expression as unsigned as soon as any operand is, and
 /// extends every operand the same way, so `a + b` with an unsigned `a` zero-extends a
 /// signed `b` too. Casts are looked through to the value they convert, since that is
-/// what Verilog sees. A shift count and a relational result do not carry signedness
-/// upward, so only the shifted operand counts.
+/// what Verilog sees. A shift count does not carry signedness upward, so only the
+/// shifted operand counts; a relational result and a concatenation are unsigned; the
+/// arms of a conditional share one type, its condition is not part of it.
 auto operandsAllSigned(hif::Value *value, hif::semantics::ILanguageSemantics *sem) -> bool
 {
     while (auto *cast = dynamic_cast<hif::Cast *>(value)) {
@@ -279,13 +280,21 @@ auto operandsAllSigned(hif::Value *value, hif::semantics::ILanguageSemantics *se
         if (hif::operatorIsShift(oper)) {
             return operandsAllSigned(expression->getValue1(), sem);
         }
-        if (hif::operatorIsRelational(oper)) {
+        if (hif::operatorIsRelational(oper) || oper == op_concat) {
             return false;
         }
         if (expression->getValue2() == nullptr) {
             return operandsAllSigned(expression->getValue1(), sem);
         }
         return operandsAllSigned(expression->getValue1(), sem) && operandsAllSigned(expression->getValue2(), sem);
+    }
+    if (auto *when = dynamic_cast<hif::When *>(value)) {
+        for (auto *alternative : when->alts) {
+            if (!operandsAllSigned(alternative->getValue(), sem)) {
+                return false;
+            }
+        }
+        return when->getDefault() == nullptr || operandsAllSigned(when->getDefault(), sem);
     }
     hif::Type *type = hif::semantics::getSemanticType(value, sem);
     if (auto *integer = dynamic_cast<hif::Int *>(type)) {
@@ -295,26 +304,70 @@ auto operandsAllSigned(hif::Value *value, hif::semantics::ILanguageSemantics *se
 }
 
 /// @brief Whether a widening cast sits in a context that extends by sign.
-/// @details Climbs through the arithmetic and bitwise expressions the cast takes part in,
-/// whose operands all share one signedness, and asks whether all of them are signed.
-/// A cast that is not an operand of such an expression is extended by its own source.
+/// @details The operands of one context-determined expression share a signedness and
+/// are all extended by it, so this climbs to the root of the expression the cast is
+/// an operand of and asks whether everything under it is signed. The climb goes
+/// through casts, through arithmetic and bitwise operators, through the shifted (not
+/// the counting) operand of a shift, and through the arms of a conditional; it stops
+/// at a relational operator, whose two operands are the whole context, and at
+/// anything self-determined. A cast that is nothing's operand is extended by its own
+/// source. A logical right shift never sign-extends its operand: the bits it shifts
+/// in are zeros, and extending first would put sign bits where they land.
 auto isSignExtendingContext(hif::Cast &cast, hif::semantics::ILanguageSemantics *sem) -> bool
 {
-    hif::Object *top = &cast;
-    while (auto *parent = dynamic_cast<hif::Expression *>(top->getParent())) {
-        const hif::Operator oper = parent->getOperator();
-        if (!hif::operatorIsArithmetic(oper) && !hif::operatorIsBitwise(oper)) {
-            break;
+    if (auto *direct = dynamic_cast<hif::Expression *>(cast.getParent())) {
+        if (direct->getOperator() == op_srl && direct->getValue1() == &cast) {
+            return false;
         }
-        if (hif::operatorIsShift(oper) && parent->getValue2() == top) {
-            break;
-        }
-        top = parent;
     }
-    if (top == &cast) {
+
+    hif::Object *node = &cast;
+    while (node->getParent() != nullptr) {
+        hif::Object *parent = node->getParent();
+        if (dynamic_cast<hif::Cast *>(parent) != nullptr) {
+            node = parent;
+            continue;
+        }
+        if (auto *expression = dynamic_cast<hif::Expression *>(parent)) {
+            const hif::Operator oper = expression->getOperator();
+            if (hif::operatorIsRelational(oper)) {
+                // The two operands are the whole context; the result is not part of it.
+                return operandsAllSigned(expression->getValue1(), sem) &&
+                       (expression->getValue2() == nullptr || operandsAllSigned(expression->getValue2(), sem));
+            }
+            if (hif::operatorIsShift(oper)) {
+                if (expression->getValue1() != node) {
+                    break;
+                }
+                node = parent;
+                continue;
+            }
+            if (hif::operatorIsArithmetic(oper) || hif::operatorIsBitwise(oper)) {
+                node = parent;
+                continue;
+            }
+            break;
+        }
+        if (auto *alternative = dynamic_cast<hif::WhenAlt *>(parent)) {
+            if (alternative->getValue() != node) {
+                break;
+            }
+            node = alternative->getParent();
+            continue;
+        }
+        if (auto *when = dynamic_cast<hif::When *>(parent)) {
+            if (when->getDefault() != node) {
+                break;
+            }
+            node = parent;
+            continue;
+        }
+        break;
+    }
+    if (node == &cast) {
         return true;
     }
-    return operandsAllSigned(static_cast<hif::Value *>(top), sem);
+    return operandsAllSigned(static_cast<hif::Value *>(node), sem);
 }
 
 } // namespace
@@ -419,11 +472,14 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         // in 5 (hif-backend#81). The sign bit needs a part-select, so this only
         // applies to an operand one can be taken from.
         if (isSignedVector(sourceType) && isPartSelectable(castedValue) && isSignExtendingContext(o, _sem)) {
-            (*_stream) << "{{" << difference << "{";
+            // A concatenation is unsigned in Verilog, whatever it is built from, so a
+            // signed comparison or division it feeds would be evaluated unsigned.
+            // $signed puts the signedness back.
+            (*_stream) << "$signed({{" << difference << "{";
             castedValue->acceptVisitor(*this);
             (*_stream) << "[" << (sourceWidth - 1) << "]}}, ";
             castedValue->acceptVisitor(*this);
-            (*_stream) << "}";
+            (*_stream) << "})";
             return 0;
         }
         (*_stream) << "{" << difference << "'b";
