@@ -1,0 +1,172 @@
+<SYSTEM formatVersion="5.0" generationDate="10:24:44:555289" languageId="RTL" name="system" release="1.0.0" tool="VHDL2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_vhdl_ieee_std_logic_1164" standard="true"/>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_vhdl_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="ascending_range">
+			<VIEW filename="" languageId="RTL" name="rtl" standard="false">
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="a" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="UPTO">
+									<LEFTBOUND>
+										<INTVAL value="0">
+										</INTVAL>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="3">
+										</INTVAL>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="y" wrapper="false">
+						<VALUE>
+							<BITVECTORVAL VALUE="UUUU">
+								<TYPE>
+									<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+										<RANGE direction="DOWNTO">
+											<LEFTBOUND>
+												<INTVAL value="3">
+												</INTVAL>
+											</LEFTBOUND>
+											<RIGHTBOUND>
+												<INTVAL value="0">
+												</INTVAL>
+											</RIGHTBOUND>
+										</RANGE>
+									</BITVECTOR>
+								</TYPE>
+							</BITVECTORVAL>
+						</VALUE>
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="3">
+										</INTVAL>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0">
+										</INTVAL>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="first" wrapper="false">
+						<VALUE>
+							<BITVAL value="U">
+								<TYPE>
+									<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE">
+									</BIT>
+								</TYPE>
+							</BITVAL>
+						</VALUE>
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE">
+							</BIT>
+						</TYPE>
+					</PORT>
+				</ENTITY>
+				<CONTENTS name="rtl">
+					<DECLARATIONS>
+						<CONSTANT define="false" instance="true" name="mask" standard="false">
+							<TYPE>
+								<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+									<RANGE direction="UPTO">
+										<LEFTBOUND>
+											<INTVAL value="0">
+											</INTVAL>
+										</LEFTBOUND>
+										<RIGHTBOUND>
+											<INTVAL value="3">
+											</INTVAL>
+										</RIGHTBOUND>
+									</RANGE>
+								</BITVECTOR>
+							</TYPE>
+							<VALUE>
+								<BITVECTORVAL VALUE="1100">
+									<TYPE>
+										<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+											<RANGE direction="UPTO">
+												<LEFTBOUND>
+													<INTVAL value="0">
+													</INTVAL>
+												</LEFTBOUND>
+												<RIGHTBOUND>
+													<INTVAL value="3">
+													</INTVAL>
+												</RIGHTBOUND>
+											</RANGE>
+										</BITVECTOR>
+									</TYPE>
+								</BITVECTORVAL>
+							</VALUE>
+						</CONSTANT>
+					</DECLARATIONS>
+					<GLOBALACTION>
+						<ASSIGN>
+							<LEFTHANDSIDE>
+								<IDENTIFIER name="y">
+								</IDENTIFIER>
+							</LEFTHANDSIDE>
+							<RIGHTHANDSIDE>
+								<CAST>
+									<VALUE>
+										<EXPRESSION operator="&amp;">
+											<VALUE1>
+												<IDENTIFIER name="a">
+												</IDENTIFIER>
+											</VALUE1>
+											<VALUE2>
+												<IDENTIFIER name="mask">
+												</IDENTIFIER>
+											</VALUE2>
+										</EXPRESSION>
+									</VALUE>
+									<TYPE>
+										<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+											<RANGE direction="DOWNTO">
+												<LEFTBOUND>
+													<INTVAL value="3">
+													</INTVAL>
+												</LEFTBOUND>
+												<RIGHTBOUND>
+													<INTVAL value="0">
+													</INTVAL>
+												</RIGHTBOUND>
+											</RANGE>
+										</BITVECTOR>
+									</TYPE>
+								</CAST>
+							</RIGHTHANDSIDE>
+						</ASSIGN>
+						<ASSIGN>
+							<LEFTHANDSIDE>
+								<IDENTIFIER name="first">
+								</IDENTIFIER>
+							</LEFTHANDSIDE>
+							<RIGHTHANDSIDE>
+								<MEMBER>
+									<PREFIX>
+										<IDENTIFIER name="a">
+										</IDENTIFIER>
+									</PREFIX>
+									<INDEX>
+										<INTVAL value="0">
+										</INTVAL>
+									</INDEX>
+								</MEMBER>
+							</RIGHTHANDSIDE>
+						</ASSIGN>
+					</GLOBALACTION>
+				</CONTENTS>
+			</VIEW>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>

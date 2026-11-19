@@ -2809,6 +2809,18 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
         }
         return ss.str();
     }
+    // An ascending range keeps its direction: `a(0 to 3)` has element 0 on the
+    // left, and `[3:0]` would put it on the right, so every index would read
+    // the opposite bit (hif-backend#91).
+    if (auto *typeSpan = dynamic_cast<hif::features::ITypeSpan *>(type)) {
+        hif::Range *span = typeSpan->getSpan();
+        auto *left       = span != nullptr ? dynamic_cast<hif::IntValue *>(span->getLeftBound()) : nullptr;
+        auto *right      = span != nullptr ? dynamic_cast<hif::IntValue *>(span->getRightBound()) : nullptr;
+        if (left != nullptr && right != nullptr && left->getValue() < right->getValue()) {
+            ss << "[" << left->getValue() << ":" << right->getValue() << "] ";
+            return ss.str();
+        }
+    }
     ss << "[" << (bw - 1) << ":0] ";
     return ss.str();
 }
@@ -2827,6 +2839,20 @@ std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
     _stream = saved;
     return buf.str();
 }
+
+namespace
+{
+
+/// @brief The number of bits between two range bounds, in either direction.
+/// @details `7 downto 0` and `0 to 7` are both eight bits. Subtracting the
+/// right bound from the left gives a negative size for the ascending one, and
+/// a literal printed as `-2'b1100` (hif-backend#91).
+auto spanWidth(long long left, long long right) -> long long
+{
+    return (left >= right ? left - right : right - left) + 1;
+}
+
+} // namespace
 
 namespace
 {
@@ -2896,7 +2922,7 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                         auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
                         // If both bounds are valid, compute the width.
                         if (left_bound && right_bound) {
-                            auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                            auto width = spanWidth(left_bound->getValue(), right_bound->getValue());
                             ss << width << "'b";
                         }
                     }
@@ -2928,7 +2954,7 @@ std::string VerilogPrinter::getValue(hif::Value *value)
                     auto left_bound  = dynamic_cast<hif::IntValue *>(span->getLeftBound());
                     auto right_bound = dynamic_cast<hif::IntValue *>(span->getRightBound());
                     if (left_bound && right_bound) {
-                        auto width = left_bound->getValue() - right_bound->getValue() + 1;
+                        auto width = spanWidth(left_bound->getValue(), right_bound->getValue());
                         ss << width << "'b";
                     }
                 }

@@ -819,3 +819,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/signed_declarations_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/signed_declarations_test.cmake
 )
+
+# hif-backend#91: an ascending range keeps its direction and a literal keeps a positive size.
+add_test(
+    NAME ascending_range
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ascending_range.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ascending_range_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/ascending_range_test.cmake
+)
