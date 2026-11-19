@@ -810,6 +810,17 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
 )
 
+# hif-backend#94: an arithmetic shift is printed as shift_right/shift_left, not as the
+# operators sra/sla that numeric_std does not define.
+add_test(
+    NAME arithmetic_shift_vhdl
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VHDL_EXECUTABLE=$<TARGET_FILE:hif2vhdl>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/arithmetic_shift_vhdl.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/arithmetic_shift_vhdl_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic_shift_vhdl_test.cmake
+)
+
 # hif-backend#85: a named block and the disable that leaves it must be printed.
 add_test(
     NAME named_block_disable
