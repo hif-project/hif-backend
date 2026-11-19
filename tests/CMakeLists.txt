@@ -809,3 +809,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cone_signal_target_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cone_signal_target_test.cmake
 )
+
+# hif-backend#86: an if generate is printed as a generate block.
+add_test(
+    NAME if_generate_block
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/if_generate_block.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/if_generate_block_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/if_generate_block_test.cmake
+)
