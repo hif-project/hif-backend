@@ -37,14 +37,24 @@ if(NOT output_count EQUAL 1)
 endif()
 file(READ ${outputs} vhdl)
 
+if(vhdl STREQUAL "")
+    message(FATAL_ERROR "hif2vhdl left an empty file.")
+endif()
 if(vhdl MATCHES " sra " OR vhdl MATCHES " sla ")
     message(FATAL_ERROR "An arithmetic shift was printed as an operator numeric_std does not define.\n${vhdl}")
 endif()
-if(NOT vhdl MATCHES "shift_right\\(s,")
-    message(FATAL_ERROR "The arithmetic right shift of the signed port is not shift_right on it.\n${vhdl}")
-endif()
-if(NOT vhdl MATCHES "shift_left\\(s,")
-    message(FATAL_ERROR "The arithmetic left shift of the signed port is not shift_left on it.\n${vhdl}")
+
+# By a vector count, by a constant, and one nested in an unsigned sum: shifts of the
+# signed port and one of the unsigned port, all functions. The constant count is the
+# case that used to abort: its operand is resize(s, 32), a call with no declaration,
+# which the printer asked for a type.
+string(REGEX MATCHALL "shift_right\\(" rights "${vhdl}")
+string(REGEX MATCHALL "shift_left\\(" lefts "${vhdl}")
+list(LENGTH rights right_count)
+list(LENGTH lefts left_count)
+if(right_count LESS 4 OR left_count LESS 2)
+    message(FATAL_ERROR
+        "Expected at least 4 shift_right and 2 shift_left calls, found ${right_count} and ${left_count}.\n${vhdl}")
 endif()
 
 message(STATUS "arithmetic_shift_vhdl test passed.")

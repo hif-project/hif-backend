@@ -403,6 +403,56 @@ auto VHDLPrinter::visitEnumValue(EnumValue &o) -> int
     return 0;
 }
 
+namespace
+{
+
+/// @brief Whether a printed operand is a numeric_std signed or unsigned.
+/// @details Decided from the tree, never by typing the operand: at print time an
+/// operand can be a call to a library function, such as the resize(s, 32) the
+/// standardization puts around a shifted value, and typing a call with no
+/// declaration asserts, which ends the tool and leaves an empty file. The answer
+/// is read off what is there: a cast to signed/unsigned, the library functions
+/// that return their first argument's type, a declared name. Anything else is
+/// "no", and the operand is printed as it always was.
+auto isSignedOrUnsignedOperand(hif::Value *value, hif::semantics::ILanguageSemantics *sem) -> bool
+{
+    if (value == nullptr) {
+        return false;
+    }
+    if (auto *cast = dynamic_cast<hif::Cast *>(value)) {
+        return dynamic_cast<hif::Signed *>(cast->getType()) != nullptr ||
+               dynamic_cast<hif::Unsigned *>(cast->getType()) != nullptr;
+    }
+    if (auto *call = dynamic_cast<hif::FunctionCall *>(value)) {
+        const std::string &name = call->getName();
+        if (name == "to_signed" || name == "to_unsigned") {
+            return true;
+        }
+        if ((name == "resize" || name == "shift_left" || name == "shift_right" || name == "rotate_left" ||
+             name == "rotate_right") &&
+            !call->parameterAssigns.empty()) {
+            return isSignedOrUnsignedOperand(call->parameterAssigns.front()->getValue(), sem);
+        }
+        return false;
+    }
+    if (auto *expression = dynamic_cast<hif::Expression *>(value)) {
+        const hif::Operator oper = expression->getOperator();
+        if (oper == op_sra || oper == op_sla || oper == op_srl || oper == op_sll) {
+            return isSignedOrUnsignedOperand(expression->getValue1(), sem);
+        }
+        return false;
+    }
+    if (dynamic_cast<hif::Identifier *>(value) != nullptr) {
+        auto *declaration = hif::semantics::getDeclaration(value, sem);
+        auto *data        = dynamic_cast<hif::DataDeclaration *>(declaration);
+        return data != nullptr && (dynamic_cast<hif::Signed *>(data->getType()) != nullptr ||
+                                   dynamic_cast<hif::Unsigned *>(data->getType()) != nullptr);
+    }
+    return false;
+}
+
+} // namespace
+
 auto VHDLPrinter::visitExpression(Expression &o) -> int
 {
     // numeric_std has no `sra` or `sla` operator: `sll`, `srl`, `rol` and `ror` are
@@ -412,16 +462,13 @@ auto VHDLPrinter::visitExpression(Expression &o) -> int
     // (hif-backend#94). On an unsigned value shift_right is a logical shift, which is
     // what Verilog's `>>>` does to one.
     if ((o.getOperator() == op_sra || o.getOperator() == op_sla) && o.getValue1() != nullptr &&
-        o.getValue2() != nullptr) {
-        Type *shifted = hif::semantics::getSemanticType(o.getValue1(), _sem);
-        if (dynamic_cast<Signed *>(shifted) != nullptr || dynamic_cast<Unsigned *>(shifted) != nullptr) {
-            *(_outstream) << (o.getOperator() == op_sra ? "shift_right(" : "shift_left(");
-            o.getValue1()->acceptVisitor(*this);
-            *(_outstream) << ", ";
-            o.getValue2()->acceptVisitor(*this);
-            *(_outstream) << ")";
-            return 0;
-        }
+        o.getValue2() != nullptr && isSignedOrUnsignedOperand(o.getValue1(), _sem)) {
+        *(_outstream) << (o.getOperator() == op_sra ? "shift_right(" : "shift_left(");
+        o.getValue1()->acceptVisitor(*this);
+        *(_outstream) << ", ";
+        o.getValue2()->acceptVisitor(*this);
+        *(_outstream) << ")";
+        return 0;
     }
 
     // Set use of parenthesis for expression operands.
