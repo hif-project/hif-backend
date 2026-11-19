@@ -405,6 +405,25 @@ auto VHDLPrinter::visitEnumValue(EnumValue &o) -> int
 
 auto VHDLPrinter::visitExpression(Expression &o) -> int
 {
+    // numeric_std has no `sra` or `sla` operator: `sll`, `srl`, `rol` and `ror` are
+    // the operators, and an arithmetic shift is the function shift_right on a signed
+    // value (shift_left for the left one). Printing the HIF operator name gave
+    // `unsigned(a) sra n`, which is not VHDL and which vhdl2hif accepts anyway
+    // (hif-backend#94). On an unsigned value shift_right is a logical shift, which is
+    // what Verilog's `>>>` does to one.
+    if ((o.getOperator() == op_sra || o.getOperator() == op_sla) && o.getValue1() != nullptr &&
+        o.getValue2() != nullptr) {
+        Type *shifted = hif::semantics::getSemanticType(o.getValue1(), _sem);
+        if (dynamic_cast<Signed *>(shifted) != nullptr || dynamic_cast<Unsigned *>(shifted) != nullptr) {
+            *(_outstream) << (o.getOperator() == op_sra ? "shift_right(" : "shift_left(");
+            o.getValue1()->acceptVisitor(*this);
+            *(_outstream) << ", ";
+            o.getValue2()->acceptVisitor(*this);
+            *(_outstream) << ")";
+            return 0;
+        }
+    }
+
     // Set use of parenthesis for expression operands.
     bool needOp1Paren =
         ((dynamic_cast<ConstValue *>(o.getValue1()) == nullptr) &&
