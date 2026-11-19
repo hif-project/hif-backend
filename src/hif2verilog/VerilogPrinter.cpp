@@ -466,6 +466,67 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         }
     }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
+        // A shift is widened by widening what it shifts. `{1'b0, s >>> n}` makes the shift a
+        // self-determined operand of a concatenation, where it is evaluated by its own
+        // signedness, signed for a signed s, and an arithmetic shift of s is not what the
+        // surrounding unsigned expression asked for. Verilog extends the shifted operand to the
+        // width of the expression first, by the expression's signedness, and shifts that:
+        // `{1'b0, s} >>> n`.
+        auto *shift = dynamic_cast<Expression *>(castedValue);
+        // The shifted operand, past the casts standardization put around it.
+        Value *shifted = shift != nullptr ? shift->getValue1() : nullptr;
+        while (auto *shiftedCast = dynamic_cast<Cast *>(shifted)) {
+            shifted = shiftedCast->getValue();
+        }
+        if (shift != nullptr && hif::operatorIsShift(shift->getOperator()) && shift->getValue2() != nullptr &&
+            isPartSelectable(shifted)) {
+            Type *shiftedType = hif::semantics::getSemanticType(shifted, _sem);
+            const unsigned long long shiftedWidth =
+                shiftedType != nullptr ? hif::semantics::typeGetSpanBitwidth(shiftedType, _sem) : 0;
+            const char *shiftOperator = nullptr;
+            switch (shift->getOperator()) {
+            case op_sll:
+                shiftOperator = "<<";
+                break;
+            case op_srl:
+                shiftOperator = ">>";
+                break;
+            case op_sla:
+                shiftOperator = "<<<";
+                break;
+            case op_sra:
+                shiftOperator = ">>>";
+                break;
+            default:
+                break;
+            }
+            if (shiftOperator != nullptr && shiftedWidth != 0 && shiftedWidth < targetWidth) {
+                const auto padding = targetWidth - shiftedWidth;
+                const bool bySign  = isSignedVector(shiftedType) && shift->getOperator() != op_srl &&
+                                    isSignExtendingContext(o, _sem);
+                (*_stream) << "(";
+                if (bySign) {
+                    (*_stream) << "$signed({{" << padding << "{";
+                    shifted->acceptVisitor(*this);
+                    (*_stream) << "[" << (shiftedWidth - 1) << "]}}, ";
+                    shifted->acceptVisitor(*this);
+                    (*_stream) << "})";
+                } else {
+                    (*_stream) << "{" << padding << "'b";
+                    for (unsigned long long i = 0; i < padding; ++i) {
+                        (*_stream) << "0";
+                    }
+                    (*_stream) << ", ";
+                    shifted->acceptVisitor(*this);
+                    (*_stream) << "}";
+                }
+                (*_stream) << " " << shiftOperator << " ";
+                shift->getValue2()->acceptVisitor(*this);
+                (*_stream) << ")";
+                return 0;
+            }
+        }
+
         auto difference = targetWidth - sourceWidth;
         // A signed source widens by replicating its sign bit, not by padding
         // zeros: `{{D{x[msb]}}, x}`. Zero-padding turned -1 in 4 bits into 15
