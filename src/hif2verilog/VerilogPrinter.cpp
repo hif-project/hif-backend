@@ -263,6 +263,60 @@ auto isSignedVector(hif::Type *type) -> bool
     return dynamic_cast<hif::Signed *>(type) != nullptr;
 }
 
+/// @brief Whether everything an expression combines is signed.
+/// @details Verilog evaluates an expression as unsigned as soon as any operand is, and
+/// extends every operand the same way, so `a + b` with an unsigned `a` zero-extends a
+/// signed `b` too. Casts are looked through to the value they convert, since that is
+/// what Verilog sees. A shift count and a relational result do not carry signedness
+/// upward, so only the shifted operand counts.
+auto operandsAllSigned(hif::Value *value, hif::semantics::ILanguageSemantics *sem) -> bool
+{
+    while (auto *cast = dynamic_cast<hif::Cast *>(value)) {
+        value = cast->getValue();
+    }
+    if (auto *expression = dynamic_cast<hif::Expression *>(value)) {
+        const hif::Operator oper = expression->getOperator();
+        if (hif::operatorIsShift(oper)) {
+            return operandsAllSigned(expression->getValue1(), sem);
+        }
+        if (hif::operatorIsRelational(oper)) {
+            return false;
+        }
+        if (expression->getValue2() == nullptr) {
+            return operandsAllSigned(expression->getValue1(), sem);
+        }
+        return operandsAllSigned(expression->getValue1(), sem) && operandsAllSigned(expression->getValue2(), sem);
+    }
+    hif::Type *type = hif::semantics::getSemanticType(value, sem);
+    if (auto *integer = dynamic_cast<hif::Int *>(type)) {
+        return integer->isSigned();
+    }
+    return isSignedVector(type);
+}
+
+/// @brief Whether a widening cast sits in a context that extends by sign.
+/// @details Climbs through the arithmetic and bitwise expressions the cast takes part in,
+/// whose operands all share one signedness, and asks whether all of them are signed.
+/// A cast that is not an operand of such an expression is extended by its own source.
+auto isSignExtendingContext(hif::Cast &cast, hif::semantics::ILanguageSemantics *sem) -> bool
+{
+    hif::Object *top = &cast;
+    while (auto *parent = dynamic_cast<hif::Expression *>(top->getParent())) {
+        const hif::Operator oper = parent->getOperator();
+        if (!hif::operatorIsArithmetic(oper) && !hif::operatorIsBitwise(oper)) {
+            break;
+        }
+        if (hif::operatorIsShift(oper) && parent->getValue2() == top) {
+            break;
+        }
+        top = parent;
+    }
+    if (top == &cast) {
+        return true;
+    }
+    return operandsAllSigned(static_cast<hif::Value *>(top), sem);
+}
+
 } // namespace
 
 namespace
@@ -364,7 +418,7 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         // zeros: `{{D{x[msb]}}, x}`. Zero-padding turned -1 in 4 bits into 15
         // in 5 (hif-backend#81). The sign bit needs a part-select, so this only
         // applies to an operand one can be taken from.
-        if (isSignedVector(sourceType) && isPartSelectable(castedValue)) {
+        if (isSignedVector(sourceType) && isPartSelectable(castedValue) && isSignExtendingContext(o, _sem)) {
             (*_stream) << "{{" << difference << "{";
             castedValue->acceptVisitor(*this);
             (*_stream) << "[" << (sourceWidth - 1) << "]}}, ";
