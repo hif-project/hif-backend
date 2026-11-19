@@ -290,6 +290,23 @@ auto lowBitsSelect(hif::Type *type, unsigned long long width) -> std::string
     return "[" + std::to_string(width - 1) + ":0]";
 }
 
+/// @brief The index of the sign bit of a value of type @p type.
+/// @details The most significant bit is the left-hand end of the declared range. For a vector
+/// that runs up, `[2:9]`, that is its left bound, 2, and `x[7]` is the least significant bit
+/// but one. Every other vector is declared [bits-1:0] (getBitwidth), so it is bits-1.
+auto signBitIndex(hif::Type *type, unsigned long long width) -> long long
+{
+    auto *spanned = dynamic_cast<hif::features::ITypeSpan *>(type);
+    if (spanned != nullptr && spanned->getSpan() != nullptr) {
+        auto *left  = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getLeftBound());
+        auto *right = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getRightBound());
+        if (left != nullptr && right != nullptr && left->getValue() < right->getValue()) {
+            return left->getValue();
+        }
+    }
+    return static_cast<long long>(width) - 1;
+}
+
 /// @brief Whether everything an expression combines is signed.
 /// @details Verilog evaluates an expression as unsigned as soon as any operand is, and
 /// extends every operand the same way, so `a + b` with an unsigned `a` zero-extends a
@@ -531,7 +548,7 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
             // $signed puts the signedness back.
             (*_stream) << "$signed({{" << difference << "{";
             castedValue->acceptVisitor(*this);
-            (*_stream) << "[" << (sourceWidth - 1) << "]}}, ";
+            (*_stream) << "[" << signBitIndex(sourceType, sourceWidth) << "]}}, ";
             castedValue->acceptVisitor(*this);
             (*_stream) << "})";
             return 0;
