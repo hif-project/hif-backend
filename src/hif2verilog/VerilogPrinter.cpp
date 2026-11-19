@@ -246,7 +246,19 @@ auto VerilogPrinter::visitBool(Bool &o) -> int { return GuideVisitor::visitBool(
 
 auto VerilogPrinter::visitBoolValue(BoolValue &o) -> int { return GuideVisitor::visitBoolValue(o); }
 
-auto VerilogPrinter::visitBreak(Break &o) -> int { return GuideVisitor::visitBreak(o); }
+auto VerilogPrinter::visitBreak(Break &o) -> int
+{
+    // Verilog-2001 has no `break`. Leaving a loop is `disable` on a named
+    // block, which is what verilog2hif models as a named do-while(false) around
+    // the loop and a named Break inside it (hif-backend#85). Dropping it makes
+    // the loop run to completion.
+    const std::string name = o.getName();
+    if (name.empty() || name == NAME_NONE) {
+        return GuideVisitor::visitBreak(o);
+    }
+    (*_stream) << "disable " << name << ";\n";
+    return 0;
+}
 
 namespace
 {
@@ -2171,7 +2183,26 @@ auto VerilogPrinter::visitWhen(When &o) -> int
 
 auto VerilogPrinter::visitWhenAlt(WhenAlt &o) -> int { return GuideVisitor::visitWhenAlt(o); }
 
-auto VerilogPrinter::visitWhile(While &o) -> int { return hif::GuideVisitor::visitWhile(o); }
+auto VerilogPrinter::visitWhile(While &o) -> int
+{
+    // A named `do { ... } while (false)` is how verilog2hif represents a Verilog
+    // named block (`begin : name ... end`), the target of `disable name`
+    // (hif-backend#85). Print it back as the block, or the name and the
+    // disable that refers to it are lost.
+    const std::string name = o.getName();
+    auto *condition        = dynamic_cast<BoolValue *>(o.getCondition());
+    if (o.isDoWhile() && !name.empty() && name != NAME_NONE && condition != nullptr && !condition->getValue()) {
+        (*_stream) << "begin : " << name << "\n";
+        _stream->indent();
+        for (auto *action : o.actions) {
+            action->acceptVisitor(*this);
+        }
+        _stream->unindent();
+        (*_stream) << "end\n";
+        return 0;
+    }
+    return hif::GuideVisitor::visitWhile(o);
+}
 
 auto VerilogPrinter::visitWith(With &o) -> int
 {

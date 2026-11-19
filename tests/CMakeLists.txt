@@ -859,3 +859,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/member_sensitivity_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/member_sensitivity_test.cmake
 )
+
+# hif-backend#85: a named block and the disable that leaves it must be printed.
+add_test(
+    NAME named_block_disable
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/named_block_disable.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/named_block_disable_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/named_block_disable_test.cmake
+)
