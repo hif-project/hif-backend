@@ -1602,8 +1602,19 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         // wakes the process when a word it reads changes (hif-backend#87).
         bool sensitiveToArray = false;
         if (o.sensitivityPos.empty() && o.sensitivityNeg.empty()) {
+            // An entry can be a bit-select or a part-select, which is not a symbol
+            // and which getDeclaration asserts on (hif-backend#23): resolve the
+            // identifier it is built on first, and skip what is not one.
+            hif::TerminalPrefixOptions prefixOptions;
+            prefixOptions.recurseIntoMembers   = true;
+            prefixOptions.recurseIntoSlices    = true;
+            prefixOptions.recurseIntoFieldRefs = true;
             for (auto *signal : o.sensitivity) {
-                auto *declaration = hif::semantics::getDeclaration(signal, _sem);
+                Value *base = hif::getTerminalPrefix(signal, prefixOptions);
+                if (dynamic_cast<hif::Identifier *>(base) == nullptr) {
+                    continue;
+                }
+                auto *declaration = hif::semantics::getDeclaration(base, _sem);
                 auto *data        = dynamic_cast<hif::DataDeclaration *>(declaration);
                 if (data != nullptr && dynamic_cast<hif::Array *>(data->getType()) != nullptr) {
                     sensitiveToArray = true;

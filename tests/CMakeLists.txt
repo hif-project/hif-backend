@@ -849,3 +849,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/unpacked_array_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/unpacked_array_test.cmake
 )
+
+# A bit-select in a sensitivity list must not crash the array check.
+add_test(
+    NAME member_sensitivity
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/member_sensitivity.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/member_sensitivity_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/member_sensitivity_test.cmake
+)

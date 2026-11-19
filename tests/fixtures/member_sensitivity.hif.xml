@@ -1,0 +1,124 @@
+<SYSTEM formatVersion="5.0" generationDate="11:54:30:896794" languageId="RTL" name="system" release="1.0.0" tool="VERILOG2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_verilog_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="e1">
+			<VIEW filename="" languageId="RTL" name="behav" standard="false">
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="a" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="7"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="b" wrapper="false">
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="y" wrapper="false">
+						<VALUE>
+							<BITVAL value="X">
+								<TYPE>
+									<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+								</TYPE>
+							</BITVAL>
+						</VALUE>
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="z" wrapper="false">
+						<VALUE>
+							<BITVAL value="X">
+								<TYPE>
+									<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+								</TYPE>
+							</BITVAL>
+						</VALUE>
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+				</ENTITY>
+				<CONTENTS name="Architecture">
+					<STATETABLES>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="process_0" standard="false">
+							<SENSITIVITY>
+								<MEMBER>
+									<PREFIX>
+										<IDENTIFIER name="a">
+										</IDENTIFIER>
+									</PREFIX>
+									<INDEX>
+										<INTVAL value="0"/>
+									</INDEX>
+								</MEMBER>
+								<IDENTIFIER name="b">
+								</IDENTIFIER>
+							</SENSITIVITY>
+							<STATES>
+								<STATE atomic="false" name="process_0" priority="0">
+									<ACTIONS>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="y">
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<EXPRESSION operator="&amp;">
+													<VALUE1>
+														<MEMBER>
+															<PREFIX>
+																<IDENTIFIER name="a">
+																</IDENTIFIER>
+															</PREFIX>
+															<INDEX>
+																<INTVAL value="0"/>
+															</INDEX>
+														</MEMBER>
+													</VALUE1>
+													<VALUE2>
+														<IDENTIFIER name="b">
+														</IDENTIFIER>
+													</VALUE2>
+												</EXPRESSION>
+											</RIGHTHANDSIDE>
+										</ASSIGN>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="z">
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<MEMBER>
+													<PREFIX>
+														<IDENTIFIER name="a">
+														</IDENTIFIER>
+													</PREFIX>
+													<INDEX>
+														<INTVAL value="7"/>
+													</INDEX>
+												</MEMBER>
+											</RIGHTHANDSIDE>
+										</ASSIGN>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+					</STATETABLES>
+					<GLOBALACTION/>
+				</CONTENTS>
+			</VIEW>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>
