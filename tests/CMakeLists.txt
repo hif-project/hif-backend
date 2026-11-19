@@ -829,3 +829,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ascending_range_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/ascending_range_test.cmake
 )
+
+# hif-backend#90: a part-select of a parameter-width vector is printed, not dropped.
+add_test(
+    NAME symbolic_part_select
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/symbolic_part_select.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/symbolic_part_select_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/symbolic_part_select_test.cmake
+)

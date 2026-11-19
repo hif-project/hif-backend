@@ -1,0 +1,211 @@
+<SYSTEM formatVersion="5.0" generationDate="10:27:9:223994" languageId="RTL" name="system" release="1.0.0" tool="VHDL2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_vhdl_ieee_std_logic_1164" standard="true"/>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_vhdl_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="vhdl_generic_width">
+			<VIEW filename="" languageId="RTL" name="rtl" standard="false">
+				<TEMPLATE_PARAMETERS>
+					<VALUETP compileTimeConstant="true" name="width">
+						<RANGE direction="UPTO">
+							<LEFTBOUND>
+								<INTVAL value="-2147483647">
+								</INTVAL>
+							</LEFTBOUND>
+							<RIGHTBOUND>
+								<INTVAL value="2147483647">
+								</INTVAL>
+							</RIGHTBOUND>
+						</RANGE>
+						<TYPE>
+							<INTEGER constexpr="false" signed="true" typeVariant="NATIVE_TYPE">
+								<SPAN direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="31"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</SPAN>
+							</INTEGER>
+						</TYPE>
+						<VALUE>
+							<INTVAL value="6">
+								<TYPE>
+									<INTEGER constexpr="true" signed="true" typeVariant="NATIVE_TYPE">
+										<SPAN direction="DOWNTO">
+											<LEFTBOUND>
+												<INTVAL value="31"/>
+											</LEFTBOUND>
+											<RIGHTBOUND>
+												<INTVAL value="0"/>
+											</RIGHTBOUND>
+										</SPAN>
+									</INTEGER>
+								</TYPE>
+							</INTVAL>
+						</VALUE>
+					</VALUETP>
+				</TEMPLATE_PARAMETERS>
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="a" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<EXPRESSION operator="-">
+											<VALUE1>
+												<IDENTIFIER name="width">
+												</IDENTIFIER>
+											</VALUE1>
+											<VALUE2>
+												<INTVAL value="1">
+													<TYPE>
+														<INTEGER constexpr="true" signed="true" typeVariant="NATIVE_TYPE">
+															<SPAN direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="31"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</SPAN>
+														</INTEGER>
+													</TYPE>
+												</INTVAL>
+											</VALUE2>
+										</EXPRESSION>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0">
+										</INTVAL>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="y" wrapper="false">
+						<VALUE>
+							<AGGREGATE>
+								<OTHERS>
+									<BITVAL value="U">
+										<TYPE>
+											<BIT constexpr="true" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+										</TYPE>
+									</BITVAL>
+								</OTHERS>
+							</AGGREGATE>
+						</VALUE>
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<EXPRESSION operator="-">
+											<VALUE1>
+												<IDENTIFIER name="width">
+												</IDENTIFIER>
+											</VALUE1>
+											<VALUE2>
+												<INTVAL value="1">
+													<TYPE>
+														<INTEGER constexpr="true" signed="true" typeVariant="NATIVE_TYPE">
+															<SPAN direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="31"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</SPAN>
+														</INTEGER>
+													</TYPE>
+												</INTVAL>
+											</VALUE2>
+										</EXPRESSION>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0">
+										</INTVAL>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+				</ENTITY>
+				<CONTENTS name="rtl">
+					<GLOBALACTION>
+						<ASSIGN>
+							<LEFTHANDSIDE>
+								<IDENTIFIER name="y">
+								</IDENTIFIER>
+							</LEFTHANDSIDE>
+							<RIGHTHANDSIDE>
+								<EXPRESSION operator="CONCAT">
+									<VALUE1>
+										<BITVECTORVAL VALUE="0">
+											<TYPE>
+												<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+													<RANGE direction="DOWNTO">
+														<LEFTBOUND>
+															<INTVAL value="0"/>
+														</LEFTBOUND>
+														<RIGHTBOUND>
+															<INTVAL value="0"/>
+														</RIGHTBOUND>
+													</RANGE>
+												</BITVECTOR>
+											</TYPE>
+										</BITVECTORVAL>
+									</VALUE1>
+									<VALUE2>
+										<CAST>
+											<VALUE>
+												<IDENTIFIER name="a">
+												</IDENTIFIER>
+											</VALUE>
+											<TYPE>
+												<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+													<RANGE direction="DOWNTO">
+														<LEFTBOUND>
+															<EXPRESSION operator="-">
+																<VALUE1>
+																	<IDENTIFIER name="width">
+																	</IDENTIFIER>
+																</VALUE1>
+																<VALUE2>
+																	<INTVAL value="2">
+																		<TYPE>
+																			<INTEGER constexpr="true" signed="true" typeVariant="NATIVE_TYPE">
+																				<SPAN direction="DOWNTO">
+																					<LEFTBOUND>
+																						<INTVAL value="31"/>
+																					</LEFTBOUND>
+																					<RIGHTBOUND>
+																						<INTVAL value="0"/>
+																					</RIGHTBOUND>
+																				</SPAN>
+																			</INTEGER>
+																		</TYPE>
+																	</INTVAL>
+																</VALUE2>
+															</EXPRESSION>
+														</LEFTBOUND>
+														<RIGHTBOUND>
+															<INTVAL value="0">
+															</INTVAL>
+														</RIGHTBOUND>
+													</RANGE>
+												</BITVECTOR>
+											</TYPE>
+										</CAST>
+									</VALUE2>
+								</EXPRESSION>
+							</RIGHTHANDSIDE>
+						</ASSIGN>
+					</GLOBALACTION>
+				</CONTENTS>
+			</VIEW>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>

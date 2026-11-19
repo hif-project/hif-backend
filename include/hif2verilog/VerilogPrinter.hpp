@@ -325,6 +325,16 @@ private:
 
     std::string getSymbolicValue(hif::Value *value);
 
+    /// @brief Whether a Cast from @p sourceType to @p targetType is a narrowing of a vector
+    /// whose widths are symbolic, such as `WIDTH-2 downto 0` out of `WIDTH-1 downto 0`.
+    /// @details Both left bounds must be the same symbol plus a constant, the right bounds equal,
+    /// and the target's left bound lower.
+    /// @param sourceType The type of the casted value.
+    /// @param targetType The type being cast to.
+    /// @param select Set to the part-select, e.g. `[WIDTH - 2:0]`, when this returns true.
+    /// @return True if it is a symbolic narrowing.
+    bool getSymbolicNarrowing(hif::Type *sourceType, hif::Type *targetType, std::string &select);
+
     std::string getValue(hif::Value *value);
 
     /// @brief Render an object through the visitor, capturing its output

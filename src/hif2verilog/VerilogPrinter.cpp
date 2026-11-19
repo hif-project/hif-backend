@@ -346,6 +346,18 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         (*_stream) << ")[" << (targetWidth - 1) << ":0]";
         return 0;
     }
+    // Neither width is a number, e.g. `a(WIDTH-2 downto 0)` out of a
+    // `WIDTH-1 downto 0` vector. The cast is still a narrowing when the bounds
+    // are the same symbol and the target's sits lower, and it has to be printed
+    // as the part-select it is, not as the whole operand (hif-backend#90).
+    if ((sourceWidth == 0 || targetWidth == 0) && isPartSelectable(castedValue)) {
+        std::string symbolicSelect;
+        if (this->getSymbolicNarrowing(sourceType, targetType, symbolicSelect)) {
+            castedValue->acceptVisitor(*this);
+            (*_stream) << symbolicSelect;
+            return 0;
+        }
+    }
     if (sourceWidth != 0 && targetWidth != 0 && targetWidth > sourceWidth) {
         auto difference = targetWidth - sourceWidth;
         // A signed source widens by replicating its sign bit, not by padding
@@ -2823,6 +2835,88 @@ std::string VerilogPrinter::getBitwidth(hif::Type *type)
     }
     ss << "[" << (bw - 1) << ":0] ";
     return ss.str();
+}
+
+namespace
+{
+
+/// @brief A range bound split into a symbol and a constant offset.
+struct BoundParts
+{
+    bool valid = false;
+    /// The symbolic part as text; empty for a plain constant.
+    std::string base;
+    long long offset = 0;
+};
+
+} // namespace
+
+bool VerilogPrinter::getSymbolicNarrowing(hif::Type *sourceType, hif::Type *targetType, std::string &select)
+{
+    auto *sourceSpanned = dynamic_cast<hif::features::ITypeSpan *>(sourceType);
+    auto *targetSpanned = dynamic_cast<hif::features::ITypeSpan *>(targetType);
+    if (sourceSpanned == nullptr || targetSpanned == nullptr) {
+        return false;
+    }
+    hif::Range *sourceSpan = sourceSpanned->getSpan();
+    hif::Range *targetSpan = targetSpanned->getSpan();
+    if (sourceSpan == nullptr || targetSpan == nullptr || sourceSpan->getLeftBound() == nullptr ||
+        sourceSpan->getRightBound() == nullptr || targetSpan->getLeftBound() == nullptr ||
+        targetSpan->getRightBound() == nullptr) {
+        return false;
+    }
+    // Only a descending range, whose left bound is its most significant bit.
+    if (sourceSpan->getDirection() != hif::dir_downto || targetSpan->getDirection() != hif::dir_downto) {
+        return false;
+    }
+
+    auto split = [this](hif::Value *bound) -> BoundParts {
+        // A bound that came through a parameter is wrapped in casts to integer.
+        while (auto *cast = dynamic_cast<hif::Cast *>(bound)) {
+            bound = cast->getValue();
+        }
+        BoundParts parts;
+        if (auto *constant = dynamic_cast<hif::IntValue *>(bound)) {
+            parts.valid  = true;
+            parts.offset = constant->getValue();
+            return parts;
+        }
+        if (auto *expression = dynamic_cast<hif::Expression *>(bound)) {
+            auto *k = dynamic_cast<hif::IntValue *>(expression->getValue2());
+            if (k != nullptr && expression->getValue1() != nullptr &&
+                (expression->getOperator() == hif::op_plus || expression->getOperator() == hif::op_minus)) {
+                parts.valid  = true;
+                hif::Value *operand = expression->getValue1();
+                while (auto *cast = dynamic_cast<hif::Cast *>(operand)) {
+                    operand = cast->getValue();
+                }
+                parts.base   = this->getSymbolicValue(operand);
+                parts.offset = expression->getOperator() == hif::op_plus ? k->getValue() : -k->getValue();
+                return parts;
+            }
+        }
+        parts.valid = true;
+        parts.base  = this->getSymbolicValue(bound);
+        return parts;
+    };
+
+    const BoundParts sourceLeft  = split(sourceSpan->getLeftBound());
+    const BoundParts targetLeft  = split(targetSpan->getLeftBound());
+    const BoundParts sourceRight = split(sourceSpan->getRightBound());
+    const BoundParts targetRight = split(targetSpan->getRightBound());
+    if (!sourceLeft.valid || !targetLeft.valid || !sourceRight.valid || !targetRight.valid) {
+        return false;
+    }
+    // Same symbol on both left bounds, same low bit, and the target's top bit
+    // strictly lower: a narrowing whose width is the same symbol minus a
+    // constant, whatever the symbol turns out to be.
+    if (sourceLeft.base != targetLeft.base || sourceRight.base != targetRight.base ||
+        sourceRight.offset != targetRight.offset || targetLeft.offset >= sourceLeft.offset) {
+        return false;
+    }
+    select = "[" + this->getSymbolicValue(targetSpan->getLeftBound()) + ":" +
+             this->getSymbolicValue(targetSpan->getRightBound()) + "]";
+    return true;
 }
 
 std::string VerilogPrinter::getSymbolicValue(hif::Value *value)
