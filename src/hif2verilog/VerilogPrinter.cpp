@@ -1542,7 +1542,24 @@ auto VerilogPrinter::visitStateTable(StateTable &o) -> int
         // reset into a synchronous one, and `always @(posedge clk or posedge
         // rst)` came back as `always @(posedge clk, rst)`, leaving rst
         // sensitive to both of its edges.
-        if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
+        // A memory cannot appear in an event list - `always @(mem, raddr)` is
+        // rejected ("Array mem needs an array index here"), and Verilog-2001 has
+        // no way to name one word of it there. `@(*)` is the spelling that still
+        // wakes the process when a word it reads changes (hif-backend#87).
+        bool sensitiveToArray = false;
+        if (o.sensitivityPos.empty() && o.sensitivityNeg.empty()) {
+            for (auto *signal : o.sensitivity) {
+                auto *declaration = hif::semantics::getDeclaration(signal, _sem);
+                auto *data        = dynamic_cast<hif::DataDeclaration *>(declaration);
+                if (data != nullptr && dynamic_cast<hif::Array *>(data->getType()) != nullptr) {
+                    sensitiveToArray = true;
+                    break;
+                }
+            }
+        }
+        if (sensitiveToArray) {
+            (*_stream) << " @(*)";
+        } else if (!o.sensitivity.empty() || !o.sensitivityPos.empty() || !o.sensitivityNeg.empty()) {
             bool isFirst = true;
             auto printSensitivity = [&](hif::BList<hif::Value> &list, const std::string &edge) {
                 for (auto *signal : list) {
@@ -2699,14 +2716,17 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     }
 
     if (auto variable = dynamic_cast<hif::Variable *>(declaration)) {
-        if (is_integer(variable->getType())) {
+        std::string arrayDimensions;
+        hif::Type *elementType = this->splitArrayType(variable->getType(), arrayDimensions);
+        if (is_integer(elementType)) {
             ss << "integer ";
         } else {
             ss << "reg ";
-            ss << this->getBitwidth(variable->getType());
+            ss << this->getBitwidth(elementType);
         }
-        ss << variable->getName();
-        if (withInitialValue) {
+        ss << variable->getName() << arrayDimensions;
+        // Verilog-2001 has no initializer for an unpacked array.
+        if (withInitialValue && arrayDimensions.empty()) {
             auto value = this->getValue(variable->getValue());
             if (!value.empty()) {
                 ss << " = " << value;
@@ -2715,10 +2735,13 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     } else if (auto signal = dynamic_cast<hif::Signal *>(declaration)) {
         // A continuously driven net must be a wire; everything else is written
         // by a process, which needs a reg (hif-backend#26, #32).
+        std::string arrayDimensions;
+        hif::Type *elementType = this->splitArrayType(signal->getType(), arrayDimensions);
         ss << (this->isContinuouslyDriven(declaration) ? "wire " : "reg ");
-        ss << this->getBitwidth(signal->getType());
-        ss << signal->getName();
-        if (withInitialValue) {
+        ss << this->getBitwidth(elementType);
+        ss << signal->getName() << arrayDimensions;
+        // Verilog-2001 has no initializer for an unpacked array.
+        if (withInitialValue && arrayDimensions.empty()) {
             auto value = this->getValue(signal->getValue());
             if (!value.empty()) {
                 ss << " = " << value;
@@ -2792,6 +2815,25 @@ std::string VerilogPrinter::getDeclaration(hif::Declaration *declaration, bool w
     //     messageError("Unexpected Declaration", declaration, _sem);
     // }
     return ss.str();
+}
+
+hif::Type *VerilogPrinter::splitArrayType(hif::Type *type, std::string &dimensions)
+{
+    // An Array is Verilog's unpacked dimension: `reg [7:0] mem [0:3]`. The width
+    // belongs to the element, the array range goes after the name. Taking the
+    // array's span as the vector width, as typeGetSpanBitwidth does, printed
+    // `reg [0:3] mem` - four bits, element width lost (hif-backend#87).
+    while (auto *array = dynamic_cast<hif::Array *>(type)) {
+        hif::Range *span = array->getSpan();
+        if (span == nullptr || span->getLeftBound() == nullptr || span->getRightBound() == nullptr ||
+            array->getType() == nullptr) {
+            break;
+        }
+        dimensions += " [" + this->getSymbolicValue(span->getLeftBound()) + ":" +
+                      this->getSymbolicValue(span->getRightBound()) + "]";
+        type = array->getType();
+    }
+    return type;
 }
 
 std::string VerilogPrinter::getBitwidth(hif::Type *type)

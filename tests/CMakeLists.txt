@@ -839,3 +839,13 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/symbolic_part_select_work
         -P ${CMAKE_CURRENT_SOURCE_DIR}/symbolic_part_select_test.cmake
 )
+
+# hif-backend#87: an unpacked array keeps its element width and is not named in an event list.
+add_test(
+    NAME unpacked_array
+    COMMAND ${CMAKE_COMMAND}
+        -DHIF2VERILOG_EXECUTABLE=$<TARGET_FILE:hif2verilog>
+        -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/unpacked_array.hif.xml
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/unpacked_array_work
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/unpacked_array_test.cmake
+)

@@ -1,0 +1,327 @@
+<SYSTEM formatVersion="5.0" generationDate="10:31:52:680297" languageId="RTL" name="system" release="1.0.0" tool="VERILOG2HIF">
+	<LIBRARYDEFS>
+		<LIBRARYDEF clinkage="false" languageId="RTL" name="hif_verilog_standard" standard="true"/>
+	</LIBRARYDEFS>
+	<DESIGNUNITS>
+		<DESIGNUNIT name="reg_array_sync_write">
+			<VIEW filename="" languageId="RTL" name="behav" standard="false">
+				<ENTITY name="Entity">
+					<PORT direction="IN" name="clk" wrapper="false">
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="we" wrapper="false">
+						<TYPE>
+							<BIT constexpr="false" logic="true" resolved="true" typeVariant="NATIVE_TYPE"/>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="waddr" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="1"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="wdata" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="7"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="IN" name="raddr" wrapper="false">
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="1"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+					<PORT direction="OUT" name="rdata" wrapper="false">
+						<VALUE>
+							<BITVECTORVAL VALUE="ZZZZZZZZ">
+								<TYPE>
+									<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+										<RANGE direction="DOWNTO">
+											<LEFTBOUND>
+												<INTVAL value="7"/>
+											</LEFTBOUND>
+											<RIGHTBOUND>
+												<INTVAL value="0"/>
+											</RIGHTBOUND>
+										</RANGE>
+									</BITVECTOR>
+								</TYPE>
+							</BITVECTORVAL>
+						</VALUE>
+						<TYPE>
+							<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+								<RANGE direction="DOWNTO">
+									<LEFTBOUND>
+										<INTVAL value="7"/>
+									</LEFTBOUND>
+									<RIGHTBOUND>
+										<INTVAL value="0"/>
+									</RIGHTBOUND>
+								</RANGE>
+							</BITVECTOR>
+						</TYPE>
+					</PORT>
+				</ENTITY>
+				<CONTENTS name="Architecture">
+					<DECLARATIONS>
+						<SIGNAL name="mem" standard="false" wrapper="false">
+							<TYPE>
+								<ARRAY signed="false" typeVariant="NATIVE_TYPE">
+									<RANGE direction="UPTO">
+										<LEFTBOUND>
+											<INTVAL value="0"/>
+										</LEFTBOUND>
+										<RIGHTBOUND>
+											<INTVAL value="3"/>
+										</RIGHTBOUND>
+									</RANGE>
+									<TYPE>
+										<BITVECTOR constexpr="false" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+											<RANGE direction="DOWNTO">
+												<LEFTBOUND>
+													<INTVAL value="7"/>
+												</LEFTBOUND>
+												<RIGHTBOUND>
+													<INTVAL value="0"/>
+												</RIGHTBOUND>
+											</RANGE>
+										</BITVECTOR>
+									</TYPE>
+								</ARRAY>
+							</TYPE>
+							<VALUE>
+								<AGGREGATE>
+									<ALTS>
+										<ALT>
+											<INDICES>
+												<INTVAL value="0"/>
+											</INDICES>
+											<VALUE>
+												<BITVECTORVAL VALUE="XXXXXXXX">
+													<TYPE>
+														<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+															<RANGE direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="7"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</RANGE>
+														</BITVECTOR>
+													</TYPE>
+												</BITVECTORVAL>
+											</VALUE>
+										</ALT>
+										<ALT>
+											<INDICES>
+												<INTVAL value="1"/>
+											</INDICES>
+											<VALUE>
+												<BITVECTORVAL VALUE="XXXXXXXX">
+													<TYPE>
+														<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+															<RANGE direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="7"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</RANGE>
+														</BITVECTOR>
+													</TYPE>
+												</BITVECTORVAL>
+											</VALUE>
+										</ALT>
+										<ALT>
+											<INDICES>
+												<INTVAL value="2"/>
+											</INDICES>
+											<VALUE>
+												<BITVECTORVAL VALUE="XXXXXXXX">
+													<TYPE>
+														<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+															<RANGE direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="7"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</RANGE>
+														</BITVECTOR>
+													</TYPE>
+												</BITVECTORVAL>
+											</VALUE>
+										</ALT>
+										<ALT>
+											<INDICES>
+												<INTVAL value="3"/>
+											</INDICES>
+											<VALUE>
+												<BITVECTORVAL VALUE="XXXXXXXX">
+													<TYPE>
+														<BITVECTOR constexpr="true" logic="true" resolved="true" signed="false" typeVariant="NATIVE_TYPE">
+															<RANGE direction="DOWNTO">
+																<LEFTBOUND>
+																	<INTVAL value="7"/>
+																</LEFTBOUND>
+																<RIGHTBOUND>
+																	<INTVAL value="0"/>
+																</RIGHTBOUND>
+															</RANGE>
+														</BITVECTOR>
+													</TYPE>
+												</BITVECTORVAL>
+											</VALUE>
+										</ALT>
+									</ALTS>
+								</AGGREGATE>
+							</VALUE>
+						</SIGNAL>
+					</DECLARATIONS>
+					<STATETABLES>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="process_0" standard="false">
+							<SENSITIVITY_POS>
+								<IDENTIFIER name="clk">
+								</IDENTIFIER>
+							</SENSITIVITY_POS>
+							<STATES>
+								<STATE atomic="false" name="process_0" priority="0">
+									<ACTIONS>
+										<IF>
+											<ALT>
+												<CONDITION>
+													<CAST>
+														<VALUE>
+															<IDENTIFIER name="we">
+															</IDENTIFIER>
+														</VALUE>
+														<TYPE>
+															<BOOLEAN constexpr="false" typeVariant="NATIVE_TYPE"/>
+														</TYPE>
+													</CAST>
+												</CONDITION>
+												<ASSIGN>
+													<LEFTHANDSIDE>
+														<MEMBER>
+															<PREFIX>
+																<IDENTIFIER name="mem">
+																</IDENTIFIER>
+															</PREFIX>
+															<INDEX>
+																<CAST>
+																	<VALUE>
+																		<IDENTIFIER name="waddr">
+																		</IDENTIFIER>
+																	</VALUE>
+																	<TYPE>
+																		<INTEGER constexpr="false" signed="false" typeVariant="NATIVE_TYPE">
+																			<SPAN direction="DOWNTO">
+																				<LEFTBOUND>
+																					<INTVAL value="7"/>
+																				</LEFTBOUND>
+																				<RIGHTBOUND>
+																					<INTVAL value="0"/>
+																				</RIGHTBOUND>
+																			</SPAN>
+																		</INTEGER>
+																	</TYPE>
+																</CAST>
+															</INDEX>
+														</MEMBER>
+													</LEFTHANDSIDE>
+													<RIGHTHANDSIDE>
+														<IDENTIFIER name="wdata">
+														</IDENTIFIER>
+													</RIGHTHANDSIDE>
+												</ASSIGN>
+											</ALT>
+										</IF>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+						<STATETABLE dontinitialize="false" entryStateName="" flavour="HDL" name="globact_process_0" standard="false">
+							<SENSITIVITY>
+								<IDENTIFIER name="mem">
+								</IDENTIFIER>
+								<IDENTIFIER name="raddr">
+								</IDENTIFIER>
+							</SENSITIVITY>
+							<STATES>
+								<STATE atomic="false" name="state_0" priority="0">
+									<ACTIONS>
+										<ASSIGN>
+											<LEFTHANDSIDE>
+												<IDENTIFIER name="rdata">
+												</IDENTIFIER>
+											</LEFTHANDSIDE>
+											<RIGHTHANDSIDE>
+												<MEMBER>
+													<PREFIX>
+														<IDENTIFIER name="mem">
+														</IDENTIFIER>
+													</PREFIX>
+													<INDEX>
+														<CAST>
+															<VALUE>
+																<IDENTIFIER name="raddr">
+																</IDENTIFIER>
+															</VALUE>
+															<TYPE>
+																<INTEGER constexpr="false" signed="false" typeVariant="NATIVE_TYPE">
+																	<SPAN direction="DOWNTO">
+																		<LEFTBOUND>
+																			<INTVAL value="7"/>
+																		</LEFTBOUND>
+																		<RIGHTBOUND>
+																			<INTVAL value="0"/>
+																		</RIGHTBOUND>
+																	</SPAN>
+																</INTEGER>
+															</TYPE>
+														</CAST>
+													</INDEX>
+												</MEMBER>
+											</RIGHTHANDSIDE>
+										</ASSIGN>
+									</ACTIONS>
+								</STATE>
+							</STATES>
+						</STATETABLE>
+					</STATETABLES>
+					<GLOBALACTION/>
+				</CONTENTS>
+			</VIEW>
+		</DESIGNUNIT>
+	</DESIGNUNITS>
+</SYSTEM>

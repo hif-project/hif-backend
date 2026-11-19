@@ -335,6 +335,14 @@ private:
     /// @return True if it is a symbolic narrowing.
     bool getSymbolicNarrowing(hif::Type *sourceType, hif::Type *targetType, std::string &select);
 
+    /// @brief Splits an array type into its element type and its unpacked dimensions.
+    /// @details `array [0:3] of bitvector[7:0]` gives the element `bitvector[7:0]` and the dimensions
+    /// ` [0:3]`, ready to follow the declared name.
+    /// @param type The declared type.
+    /// @param dimensions Appended with one ` [left:right]` per array level.
+    /// @return The innermost element type, or @p type itself when it is not an array.
+    hif::Type *splitArrayType(hif::Type *type, std::string &dimensions);
+
     std::string getValue(hif::Value *value);
 
     /// @brief Render an object through the visitor, capturing its output

@@ -42,7 +42,7 @@ if(NOT output_count EQUAL 1)
 endif()
 file(READ ${outputs} verilog)
 
-if(NOT verilog MATCHES "a\[width - 2:0\]")
+if(NOT verilog MATCHES "a\\[width - 2:0\\]")
     message(FATAL_ERROR "The part-select of the parameter-width vector was dropped: expected 'a[width - 2:0]' (hif-backend#90).
 ")
 endif()
