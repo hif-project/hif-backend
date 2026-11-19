@@ -263,6 +263,33 @@ auto isSignedVector(hif::Type *type) -> bool
     return dynamic_cast<hif::Signed *>(type) != nullptr;
 }
 
+/// @brief The part-select of the low-order @p width bits of a value of type @p type.
+/// @details `[width-1:0]` is that only for a vector that runs down to bit 0. A vector
+/// that runs up, `[0:7]`, has its low-order bits at the right-hand end, and Verilog
+/// rejects a select against the declared direction ("part select is out of order"), so
+/// `a[3:0]` on a `[0:7]` is an error, and the bits to keep are `a[4:7]`. An ascending range is
+/// declared as it was (getBitwidth), so its bounds are read off the type; every other vector is
+/// declared [bits-1:0] and the select is what it always was.
+auto lowBitsSelect(hif::Type *type, unsigned long long width) -> std::string
+{
+    auto *spanned = dynamic_cast<hif::features::ITypeSpan *>(type);
+    if (spanned != nullptr && spanned->getSpan() != nullptr) {
+        auto *left  = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getLeftBound());
+        auto *right = dynamic_cast<hif::IntValue *>(spanned->getSpan()->getRightBound());
+        if (left != nullptr && right != nullptr) {
+            const long long l = left->getValue();
+            const long long r = right->getValue();
+            const long long w = static_cast<long long>(width);
+            if (l < r) {
+                return "[" + std::to_string(r - (w - 1)) + ":" + std::to_string(r) + "]";
+            }
+            // A descending vector is declared [bits-1:0] whatever bounds it had (getBitwidth),
+            // so its low-order bits are at the bottom of that.
+        }
+    }
+    return "[" + std::to_string(width - 1) + ":0]";
+}
+
 /// @brief Whether everything an expression combines is signed.
 /// @details Verilog evaluates an expression as unsigned as soon as any operand is, and
 /// extends every operand the same way, so `a + b` with an unsigned `a` zero-extends a
@@ -427,7 +454,7 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
         // something it can legally apply to.
         if (isPartSelectable(castedValue)) {
             castedValue->acceptVisitor(*this);
-            (*_stream) << "[" << (targetWidth - 1) << ":0]";
+            (*_stream) << lowBitsSelect(sourceType, targetWidth);
             return 0;
         }
         // Otherwise, if this cast is the whole right-hand side of an
@@ -450,7 +477,7 @@ auto VerilogPrinter::visitCast(Cast &o) -> int
             &o, _sem);
         (*_stream) << "(";
         castedValue->acceptVisitor(*this);
-        (*_stream) << ")[" << (targetWidth - 1) << ":0]";
+        (*_stream) << ")" << lowBitsSelect(sourceType, targetWidth);
         return 0;
     }
     // Neither width is a number, e.g. `a(WIDTH-2 downto 0)` out of a
