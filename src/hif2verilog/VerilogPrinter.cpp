@@ -682,7 +682,9 @@ auto VerilogPrinter::visitExpression(Expression &o) -> int
     case op_deref:
         break; // TODO
     case op_sla:
-        (*_stream) << "sla"; // TODO
+        // Verilog's arithmetic left shift: the mirror of `>>>` below. Printing the HIF
+        // operator name, `sla`, is not Verilog (hif-backend#95).
+        (*_stream) << "<<<";
         break;
     case op_sra:
         // Verilog's arithmetic right shift. The logical shifts above use
