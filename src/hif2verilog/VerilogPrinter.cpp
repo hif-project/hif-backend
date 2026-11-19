@@ -1180,7 +1180,44 @@ auto VerilogPrinter::visitIf(If &o) -> int
 
 auto VerilogPrinter::visitIfAlt(IfAlt &o) -> int { return GuideVisitor::visitIfAlt(o); }
 
-auto VerilogPrinter::visitIfGenerate(IfGenerate &o) -> int { return GuideVisitor::visitIfGenerate(o); }
+auto VerilogPrinter::visitIfGenerate(IfGenerate &o) -> int
+{
+    // `generate if (cond) begin : name ... end endgenerate`. Left to the guide
+    // visitor, the condition was printed bare ahead of the first process in the
+    // branch - `WIDE[0:0]always @( ... )` - and the block, its name and the
+    // generate keywords were all lost (hif-backend#86). The `else` of the source
+    // arrives as a second IfGenerate with the negated condition, so each is
+    // printed on its own.
+    (*_stream) << "generate\n";
+    _stream->indent();
+    (*_stream) << "if (" << this->getValue(o.getCondition()) << ") begin";
+    if (!o.getName().empty() && o.getName() != NAME_NONE) {
+        (*_stream) << " : " << o.getName();
+    }
+    (*_stream) << "\n";
+    _stream->indent();
+
+    // Same order as a module body.
+    this->printList(o.declarations, ";", true, true);
+    if (o.getGlobalAction() != nullptr) {
+        o.getGlobalAction()->acceptVisitor(*this);
+    }
+    for (auto *instance : o.instances) {
+        instance->acceptVisitor(*this);
+    }
+    for (auto *generate : o.generates) {
+        generate->acceptVisitor(*this);
+    }
+    for (auto *stateTable : o.stateTables) {
+        stateTable->acceptVisitor(*this);
+    }
+
+    _stream->unindent();
+    (*_stream) << "end\n";
+    _stream->unindent();
+    (*_stream) << "endgenerate\n";
+    return 0;
+}
 
 auto VerilogPrinter::visitInstance(Instance &o) -> int
 {
